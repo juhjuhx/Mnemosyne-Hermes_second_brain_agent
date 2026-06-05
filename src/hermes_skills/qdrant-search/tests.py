@@ -27,9 +27,14 @@ def test_embed_text_calls_ollama(monkeypatch, server):
     def fake_post(url, json, timeout):
         captured["url"] = url
         captured["payload"] = json
+
         class R:
-            def raise_for_status(self): pass
-            def json(self): return {"embedding": [0.1] * 768}
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"embedding": [0.1] * 768}
+
         return R()
 
     monkeypatch.setattr("requests.post", fake_post)
@@ -42,6 +47,7 @@ def test_embed_text_calls_ollama(monkeypatch, server):
 def test_build_filter_empty():
     """build_filter should return None for empty dict."""
     from .src.qdrant_server import QdrantMCPServer
+
     s = QdrantMCPServer()
     assert s.build_filter({}) is None
     assert s.build_filter(None) is None
@@ -50,6 +56,7 @@ def test_build_filter_empty():
 def test_build_filter_with_conditions():
     """build_filter should produce a Qdrant Filter with must-conditions."""
     from .src.qdrant_server import QdrantMCPServer
+
     s = QdrantMCPServer()
     flt = s.build_filter({"tag": "family", "year": 2024})
     assert flt is not None

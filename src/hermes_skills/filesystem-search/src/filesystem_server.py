@@ -4,7 +4,6 @@ filesystem_server.py — MCP server exposing metadata-based file lookup.
 Implementation behind the `filesystem-search` skill.
 """
 
-import fnmatch
 import os
 import sqlite3
 import threading
@@ -100,20 +99,33 @@ class FileDB:
             if not r:
                 return None
             return {
-                "file_id": r[0], "path": r[1], "type": r[2],
-                "size_bytes": r[3], "hash_sha256": r[4], "mtime": r[5],
-                "indexed_at": r[6], "chunks": r[7], "suggested_move": r[8],
+                "file_id": r[0],
+                "path": r[1],
+                "type": r[2],
+                "size_bytes": r[3],
+                "hash_sha256": r[4],
+                "mtime": r[5],
+                "indexed_at": r[6],
+                "chunks": r[7],
+                "suggested_move": r[8],
             }
 
-    def tag(self, action: str, file_id: Optional[str] = None, tag: Optional[str] = None) -> dict:
+    def tag(
+        self, action: str, file_id: Optional[str] = None, tag: Optional[str] = None
+    ) -> dict:
         """Add/remove/list tags."""
         with self._lock, self._conn() as c:
             if action == "add" and file_id and tag:
-                c.execute("INSERT OR IGNORE INTO tags (file_id, tag) VALUES (?, ?)", (file_id, tag))
+                c.execute(
+                    "INSERT OR IGNORE INTO tags (file_id, tag) VALUES (?, ?)",
+                    (file_id, tag),
+                )
                 c.commit()
                 return {"ok": True, "action": "add", "file_id": file_id, "tag": tag}
             elif action == "remove" and file_id and tag:
-                c.execute("DELETE FROM tags WHERE file_id = ? AND tag = ?", (file_id, tag))
+                c.execute(
+                    "DELETE FROM tags WHERE file_id = ? AND tag = ?", (file_id, tag)
+                )
                 c.commit()
                 return {"ok": True, "action": "remove", "file_id": file_id, "tag": tag}
             elif action == "list" and file_id:
@@ -144,6 +156,7 @@ class FilesystemMCPServer:
 def main():
     import json
     import sys
+
     server = FilesystemMCPServer()
     for line in sys.stdin:
         try:
@@ -153,18 +166,38 @@ def main():
                 args = req["params"].get("arguments", {})
                 if hasattr(server, tool):
                     result = getattr(server, tool)(**args)
-                    print(json.dumps({"jsonrpc": "2.0", "id": req["id"], "result": result}))
+                    print(
+                        json.dumps(
+                            {"jsonrpc": "2.0", "id": req["id"], "result": result}
+                        )
+                    )
                 else:
-                    print(json.dumps({"jsonrpc": "2.0", "id": req["id"], "error": f"unknown tool: {tool}"}))
+                    print(
+                        json.dumps(
+                            {
+                                "jsonrpc": "2.0",
+                                "id": req["id"],
+                                "error": f"unknown tool: {tool}",
+                            }
+                        )
+                    )
             elif req.get("method") == "initialize":
-                print(json.dumps({
-                    "jsonrpc": "2.0", "id": req["id"],
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "serverInfo": {"name": "filesystem-search", "version": "1.0.0"},
-                        "capabilities": {"tools": {}}
-                    }
-                }))
+                print(
+                    json.dumps(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": req["id"],
+                            "result": {
+                                "protocolVersion": "2024-11-05",
+                                "serverInfo": {
+                                    "name": "filesystem-search",
+                                    "version": "1.0.0",
+                                },
+                                "capabilities": {"tools": {}},
+                            },
+                        }
+                    )
+                )
         except Exception as e:
             print(json.dumps({"jsonrpc": "2.0", "error": str(e)}))
 

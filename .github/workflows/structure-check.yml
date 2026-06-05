@@ -25,7 +25,7 @@ jobs:
             .gitignore \
             docs/00_index.md \
             src/hermes_skills \
-            tests/eval_v2_100.md
+            tests/eval_v2_100.jsonl
           do
             if [ ! -e "$f" ]; then
               echo "::error file=$f::Missing required path: $f"

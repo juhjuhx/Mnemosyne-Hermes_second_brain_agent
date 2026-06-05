@@ -11,7 +11,6 @@ Usage:
 """
 
 import argparse
-import json
 import logging
 import shutil
 import sys
@@ -20,7 +19,9 @@ from pathlib import Path
 
 import requests
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 log = logging.getLogger("snapshot")
 
 
@@ -58,7 +59,9 @@ def main():
     parser.add_argument("--url", default="http://127.0.0.1:6333")
     parser.add_argument("--collection", default="second_brain")
     parser.add_argument("--output", required=True, help="Output directory")
-    parser.add_argument("--keep-days", type=int, default=7, help="Retain N days of snapshots")
+    parser.add_argument(
+        "--keep-days", type=int, default=7, help="Retain N days of snapshots"
+    )
     args = parser.parse_args()
 
     output = Path(args.output)

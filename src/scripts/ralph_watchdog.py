@@ -12,13 +12,14 @@ import argparse
 import json
 import logging
 import subprocess
-import sys
 import time
 from pathlib import Path
 
 import yaml
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 log = logging.getLogger("ralph")
 
 
@@ -35,12 +36,17 @@ class Watchdog:
         log.info("Running eval suite...")
         result = subprocess.run(
             [
-                "python", "src/scripts/eval_runner.py",
-                "--eval-set", "tests/eval_v2_100.jsonl",
-                "--hermes-url", "http://127.0.0.1:8642",
-                "--output", f"tests/_results/{int(time.time())}.json",
+                "python",
+                "src/scripts/eval_runner.py",
+                "--eval-set",
+                "tests/eval_v2_100.jsonl",
+                "--hermes-url",
+                "http://127.0.0.1:8642",
+                "--output",
+                f"tests/_results/{int(time.time())}.json",
             ],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         if result.returncode != 0:
             log.error(f"Eval failed: {result.stderr}")
@@ -60,11 +66,13 @@ class Watchdog:
             if actual is None:
                 continue
             if actual < threshold:
-                failures.append({
-                    "metric": metric,
-                    "actual": actual,
-                    "threshold": threshold,
-                })
+                failures.append(
+                    {
+                        "metric": metric,
+                        "actual": actual,
+                        "threshold": threshold,
+                    }
+                )
         return failures
 
     def notify(self, failures: list, metrics: dict):
@@ -76,7 +84,9 @@ class Watchdog:
         # Write to regressions log
         with open("logs/regressions.log", "a") as f:
             ts = time.strftime("%Y-%m-%d %H:%M:%S")
-            f.write(f"[{ts}] {json.dumps({'failures': failures, 'metrics': metrics})}\n")
+            f.write(
+                f"[{ts}] {json.dumps({'failures': failures, 'metrics': metrics})}\n"
+            )
 
     def run(self):
         """Main loop."""

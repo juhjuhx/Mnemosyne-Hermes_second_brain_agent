@@ -29,6 +29,13 @@ htmlcov/
 dist/
 build/
 
+# Runtime data (indexer / filesystem-skill SQLite stores, test DBs)
+*.db
+*.sqlite
+*.sqlite3
+files.db
+ai_brain_test_files.db
+
 # Node (Open WebUI customization, if any)
 node_modules/
 npm-debug.log

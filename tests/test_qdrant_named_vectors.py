@@ -9,15 +9,13 @@ this invariant.
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock
-
-import pytest
 
 
 # --------------------------------------------------------------------------- #
 # text_vec dimension = 768 (nomic-embed-text)
 # --------------------------------------------------------------------------- #
+
 
 def test_embed_text_returns_768_dim(monkeypatch, fake_ollama_embedding):
     from qdrant_server import QdrantMCPServer
@@ -34,8 +32,18 @@ def test_indexer_uses_text_vec_named_vector(
     from indexer import Config, FileDB, process_text_file
 
     client, store = in_memory_qdrant
-    monkeypatch.setattr("indexer.upsert_qdrant",
-                        lambda *a, **kw: client.upsert(*a, **kw))
+
+    from types import SimpleNamespace
+
+    def fake_upsert(qdrant_url, collection, point_id, vectors, payload, **_):
+        return client.upsert(
+            collection_name=collection,
+            points=[
+                SimpleNamespace(id=point_id, vector=vectors, payload=payload or {})
+            ],
+        )
+
+    monkeypatch.setattr("indexer.upsert_qdrant", fake_upsert)
 
     cfg = MagicMock(spec=Config)
     cfg.dry_run = False
@@ -57,6 +65,7 @@ def test_indexer_uses_text_vec_named_vector(
 # --------------------------------------------------------------------------- #
 # qdrant-search: search by named vector
 # --------------------------------------------------------------------------- #
+
 
 def test_search_text_uses_text_vec(monkeypatch, in_memory_qdrant):
     """A modality='text' search should hit the text_vec index."""
@@ -122,6 +131,7 @@ def test_search_image_uses_image_vec(monkeypatch, in_memory_qdrant):
 # Filter applies to BOTH modalities
 # --------------------------------------------------------------------------- #
 
+
 def test_filter_applies_to_payload_fields():
     from qdrant_server import QdrantMCPServer
     from qdrant_client.models import Filter
@@ -135,6 +145,7 @@ def test_filter_applies_to_payload_fields():
 
 def test_filter_none_returns_none():
     from qdrant_server import QdrantMCPServer
+
     s = QdrantMCPServer()
     assert s.build_filter(None) is None
     assert s.build_filter({}) is None

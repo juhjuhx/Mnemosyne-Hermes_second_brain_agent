@@ -1,25 +1,23 @@
 """Tests for video-slice skill."""
 
-import os
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 
 def test_detect_scenes_uses_adaptive_detector():
     """detect_scenes should use AdaptiveDetector by default."""
     from src.video_slice_server import detect_scenes
 
-    with patch("src.video_slice_server.subprocess") as mock_sub, \
-         patch("scenedetect.open_video") as mock_open, \
-         patch("scenedetect.SceneManager") as mock_sm:
-        mock_video = mock_open.return_value
+    with (
+        patch("src.video_slice_server.subprocess"),
+        patch("scenedetect.open_video"),
+        patch("scenedetect.SceneManager") as mock_sm,
+    ):
         mock_sm_inst = mock_sm.return_value
         mock_sm_inst.get_scene_list.return_value = [
-            (type("FrameTime", (), {"get_seconds": lambda self: 0.0})(),
-             type("FrameTime", (), {"get_seconds": lambda self: 8.5})())
+            (
+                type("FrameTime", (), {"get_seconds": lambda self: 0.0})(),
+                type("FrameTime", (), {"get_seconds": lambda self: 8.5})(),
+            )
         ]
         result = detect_scenes("/fake/video.mp4", max_segment_sec=10)
         assert len(result) == 1
@@ -30,12 +28,16 @@ def test_detect_scenes_splits_long_scenes():
     """Scenes longer than max_segment_sec should be split."""
     from src.video_slice_server import detect_scenes
 
-    with patch("src.video_slice_server.subprocess"), \
-         patch("scenedetect.open_video"), \
-         patch("scenedetect.SceneManager") as mock_sm:
+    with (
+        patch("src.video_slice_server.subprocess"),
+        patch("scenedetect.open_video"),
+        patch("scenedetect.SceneManager") as mock_sm,
+    ):
         mock_sm.return_value.get_scene_list.return_value = [
-            (type("F", (), {"get_seconds": lambda s: 0.0})(),
-             type("F", (), {"get_seconds": lambda s: 25.0})())
+            (
+                type("F", (), {"get_seconds": lambda s: 0.0})(),
+                type("F", (), {"get_seconds": lambda s: 25.0})(),
+            )
         ]
         result = detect_scenes("/fake.mp4", max_segment_sec=10)
         # 25s scene split into 3 chunks: 0-10, 10-20, 20-25
@@ -58,6 +60,7 @@ def test_extract_middle_frame_calls_ffmpeg(tmp_path):
 def test_slice_nonexistent_video():
     """slice with non-existent video should return error, not crash."""
     from src.video_slice_server import VideoSliceMCPServer
+
     server = VideoSliceMCPServer()
     result = server.slice(video_path="/nonexistent/video.mp4")
     assert "error" in result

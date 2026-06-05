@@ -5,7 +5,6 @@ Implementation behind the `video-slice` skill.
 """
 
 import os
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -15,8 +14,14 @@ from typing import Optional
 def ffprobe_duration(video_path: str, ffmpeg_path: str = "ffmpeg") -> float:
     """Get video duration in seconds."""
     cmd = [
-        "ffprobe", "-v", "error", "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1", video_path
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        video_path,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     return float(result.stdout.strip())
@@ -29,6 +34,7 @@ def detect_scenes(
 ) -> list:
     """Use PySceneDetect to find scene boundaries."""
     from scenedetect import open_video, SceneManager
+
     detector_cls = {
         "adaptive": "AdaptiveDetector",
         "threshold": "ThresholdDetector",
@@ -65,8 +71,17 @@ def extract_middle_frame(
     """Extract the middle frame of a segment."""
     mid = (start_sec + end_sec) / 2
     cmd = [
-        "ffmpeg", "-y", "-ss", str(mid), "-i", video_path,
-        "-frames:v", "1", "-q:v", "2", output
+        "ffmpeg",
+        "-y",
+        "-ss",
+        str(mid),
+        "-i",
+        video_path,
+        "-frames:v",
+        "1",
+        "-q:v",
+        "2",
+        output,
     ]
     subprocess.run(cmd, capture_output=True, check=True)
     return output
@@ -80,12 +95,16 @@ def transcribe_segment(
 ) -> str:
     """Transcribe an audio file using whisper.cpp."""
     cmd = [
-        whisper_path, audio_path,
-        "--model", model,
-        "--language", language,
-        "--output-format", "txt",
+        whisper_path,
+        audio_path,
+        "--model",
+        model,
+        "--language",
+        language,
+        "--output-format",
+        "txt",
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    subprocess.run(cmd, capture_output=True, text=True, check=True)
     # whisper.cpp writes to <audio_path>.txt
     txt_path = audio_path + ".txt"
     if os.path.exists(txt_path):
@@ -134,8 +153,17 @@ class VideoSliceMCPServer:
                     audio_path = os.path.join(tmpdir, f"seg_{i:04d}.wav")
                     # Extract audio for this segment
                     cmd = [
-                        self.ffmpeg_path, "-y", "-ss", str(start), "-i", video_path,
-                        "-to", str(end - start), "-vn", "-acodec", "pcm_s16le",
+                        self.ffmpeg_path,
+                        "-y",
+                        "-ss",
+                        str(start),
+                        "-i",
+                        video_path,
+                        "-to",
+                        str(end - start),
+                        "-vn",
+                        "-acodec",
+                        "pcm_s16le",
                         audio_path,
                     ]
                     subprocess.run(cmd, capture_output=True)
@@ -160,8 +188,13 @@ class VideoSliceMCPServer:
         tmpdir = tempfile.mkdtemp(prefix="keyframes_")
         out_pattern = os.path.join(tmpdir, "kf_%04d.jpg")
         cmd = [
-            self.ffmpeg_path, "-y", "-i", video_path,
-            "-vf", f"fps={fps}", out_pattern,
+            self.ffmpeg_path,
+            "-y",
+            "-i",
+            video_path,
+            "-vf",
+            f"fps={fps}",
+            out_pattern,
         ]
         subprocess.run(cmd, capture_output=True, check=True)
         keyframes = sorted(Path(tmpdir).glob("kf_*.jpg"))
@@ -182,8 +215,14 @@ class VideoSliceMCPServer:
         tmpdir = tempfile.mkdtemp(prefix="vtx_")
         audio_path = os.path.join(tmpdir, "audio.wav")
         cmd = [
-            self.ffmpeg_path, "-y", "-i", video_path,
-            "-vn", "-acodec", "pcm_s16le", audio_path,
+            self.ffmpeg_path,
+            "-y",
+            "-i",
+            video_path,
+            "-vn",
+            "-acodec",
+            "pcm_s16le",
+            audio_path,
         ]
         subprocess.run(cmd, capture_output=True, check=True)
         text = transcribe_segment(audio_path, language, model, self.whisper_path)
@@ -193,6 +232,7 @@ class VideoSliceMCPServer:
 def main():
     import json
     import sys
+
     server = VideoSliceMCPServer()
     for line in sys.stdin:
         try:
@@ -202,18 +242,38 @@ def main():
                 args = req["params"].get("arguments", {})
                 if hasattr(server, tool):
                     result = getattr(server, tool)(**args)
-                    print(json.dumps({"jsonrpc": "2.0", "id": req["id"], "result": result}))
+                    print(
+                        json.dumps(
+                            {"jsonrpc": "2.0", "id": req["id"], "result": result}
+                        )
+                    )
                 else:
-                    print(json.dumps({"jsonrpc": "2.0", "id": req["id"], "error": f"unknown tool: {tool}"}))
+                    print(
+                        json.dumps(
+                            {
+                                "jsonrpc": "2.0",
+                                "id": req["id"],
+                                "error": f"unknown tool: {tool}",
+                            }
+                        )
+                    )
             elif req.get("method") == "initialize":
-                print(json.dumps({
-                    "jsonrpc": "2.0", "id": req["id"],
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "serverInfo": {"name": "video-slice", "version": "1.0.0"},
-                        "capabilities": {"tools": {}}
-                    }
-                }))
+                print(
+                    json.dumps(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": req["id"],
+                            "result": {
+                                "protocolVersion": "2024-11-05",
+                                "serverInfo": {
+                                    "name": "video-slice",
+                                    "version": "1.0.0",
+                                },
+                                "capabilities": {"tools": {}},
+                            },
+                        }
+                    )
+                )
         except Exception as e:
             print(json.dumps({"jsonrpc": "2.0", "error": str(e)}))
 

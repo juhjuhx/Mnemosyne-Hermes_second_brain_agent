@@ -11,7 +11,6 @@ This file is the entrypoint for pytest discovery. It:
 
 from __future__ import annotations
 
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -32,14 +31,16 @@ for p in (SCRIPTS_DIR,):
     sys.path.insert(0, str(p))
 
 # Per-skill sys.path entries: each skill is importable as e.g.
-#   from src.qdrant_server import QdrantMCPServer
+#   from qdrant_server import QdrantMCPServer
+# because the server module lives at <skill>/src/<skill>_server.py.
 for skill in ("qdrant-search", "filesystem-search", "video-slice"):
-    sys.path.insert(0, str(HERMES_SKILLS_DIR / skill))
+    sys.path.insert(0, str(HERMES_SKILLS_DIR / skill / "src"))
 
 
 # --------------------------------------------------------------------------- #
 # Fixtures
 # --------------------------------------------------------------------------- #
+
 
 @pytest.fixture
 def tmp_dir():
@@ -99,7 +100,11 @@ def fake_ollama_embedding(monkeypatch):
                     # Deterministic vector from the prompt
                     prompt = (json or {}).get("prompt", "")
                     seed = sum(ord(c) for c in prompt) % 1000
-                    return {"embedding": [(seed * (i + 1) % 100) / 100.0 for i in range(768)]}
+                    return {
+                        "embedding": [
+                            (seed * (i + 1) % 100) / 100.0 for i in range(768)
+                        ]
+                    }
                 return {"embedding": [0.0] * 768}
 
         return R()
@@ -119,7 +124,9 @@ def in_memory_qdrant():
         for pt in points:
             store[pt.id] = (pt.vector, pt.payload)
 
-    def search(collection_name, query_vector, limit, query_filter=None, with_payload=True, **_):
+    def search(
+        collection_name, query_vector, limit, query_filter=None, with_payload=True, **_
+    ):
         name, vec = query_vector
         results = []
         for pid, (vectors, payload) in store.items():
@@ -128,7 +135,9 @@ def in_memory_qdrant():
             v = vectors[name]
             # Cosine similarity
             num = sum(a * b for a, b in zip(v, vec))
-            den = (sum(a * a for a in v) ** 0.5) * (sum(b * b for b in vec) ** 0.5 + 1e-9)
+            den = (sum(a * a for a in v) ** 0.5) * (
+                sum(b * b for b in vec) ** 0.5 + 1e-9
+            )
             score = num / den
             # Apply filter
             if query_filter and query_filter.must:

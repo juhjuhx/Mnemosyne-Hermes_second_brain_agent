@@ -1,0 +1,43 @@
+# .yamllint.yml — yamllint configuration for CI
+#
+# Used by .github/workflows/ci.yml (lint-yaml job, yamllint v1.x, strict: true).
+# Strict mode promotes every warning to an error, so we explicitly disable
+# the cosmetic-default rules that would otherwise trip on real files in this
+# repo (long descriptive headers, leading `---` not always present, `on:` as
+# a GitHub Actions key).
+
+extends: default
+
+# Skip files that contain YAML embedded inside markdown code fences
+# (e.g. examples/*.yaml are tutorial snippets, not real configs).
+ignore: |
+  examples/
+
+rules:
+  # Our YAML files (workflows, examples, this config) have descriptive
+  # multi-line comments and links that routinely exceed 80 chars.
+  line-length: disable
+
+  # Don't require `---` at the start of every YAML file.
+  document-start: disable
+
+  # GitHub Actions uses `on:` (a literal English word, not a bool) as a
+  # workflow key — yamllint's `truthy` rule complains by default.
+  truthy:
+    check-keys: false
+    level: warning
+
+  # Tighten comment rules slightly: require exactly one space after `#`
+  # so things like `#comment` (no space) are flagged.
+  comments:
+    min-spaces-from-content: 1
+    require-starting-space: true
+
+  # Use 2-space indent, allow consistent (block or compact) sequence indent.
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+    check-multi-line-strings: false
+
+  # Trailing newline at end of file is nice but not worth failing on.
+  new-line-at-end-of-file: disable

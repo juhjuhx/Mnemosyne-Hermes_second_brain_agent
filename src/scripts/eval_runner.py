@@ -14,11 +14,12 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 import requests
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 log = logging.getLogger("eval")
 
 
@@ -95,12 +96,12 @@ def main():
 
     eval_set = load_eval_set(args.eval_set)
     if args.limit:
-        eval_set = eval_set[:args.limit]
+        eval_set = eval_set[: args.limit]
     log.info(f"Loaded {len(eval_set)} eval entries")
 
     results = []
     for i, entry in enumerate(eval_set):
-        log.info(f"[{i+1}/{len(eval_set)}] {entry['id']}: {entry['query'][:60]}")
+        log.info(f"[{i + 1}/{len(eval_set)}] {entry['id']}: {entry['query'][:60]}")
         result = run_query(args.hermes_url, entry["query"], args.model)
         result["entry"] = entry
         results.append(result)
@@ -108,7 +109,7 @@ def main():
 
     # Compute metrics
     mrr = compute_mrr_at_10(results)
-    p50, p95 = compute_latency_p95(results)
+    p50, p95 = compute_latency_p50_p95(results)
     n_ok = sum(1 for r in results if r.get("ok"))
     metrics = {
         "n_total": len(results),
@@ -129,7 +130,9 @@ def main():
     log.info(f"Saved: {output_path}")
 
     if metrics["n_ok"] < metrics["n_total"] * 0.95:
-        log.warning(f"More than 5% of queries failed: {metrics['n_failed']}/{metrics['n_total']}")
+        log.warning(
+            f"More than 5% of queries failed: {metrics['n_failed']}/{metrics['n_total']}"
+        )
         sys.exit(1)
 
 

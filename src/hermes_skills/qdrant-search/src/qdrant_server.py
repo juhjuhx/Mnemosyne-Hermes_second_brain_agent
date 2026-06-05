@@ -20,10 +20,16 @@ class QdrantMCPServer:
         embedding_url: Optional[str] = None,
         embedding_model: Optional[str] = None,
     ):
-        self.qdrant_url = qdrant_url or os.environ.get("QDRANT_URL", "http://127.0.0.1:6333")
+        self.qdrant_url = qdrant_url or os.environ.get(
+            "QDRANT_URL", "http://127.0.0.1:6333"
+        )
         self.collection = collection or os.environ.get("COLLECTION", "second_brain")
-        self.embedding_url = embedding_url or os.environ.get("EMBEDDING_URL", "http://127.0.0.1:11434")
-        self.embedding_model = embedding_model or os.environ.get("EMBEDDING_MODEL", "nomic-embed-text")
+        self.embedding_url = embedding_url or os.environ.get(
+            "EMBEDDING_URL", "http://127.0.0.1:11434"
+        )
+        self.embedding_model = embedding_model or os.environ.get(
+            "EMBEDDING_MODEL", "nomic-embed-text"
+        )
         self.client = QdrantClient(url=self.qdrant_url)
 
     def embed_text(self, text: str) -> list:
@@ -62,13 +68,10 @@ class QdrantMCPServer:
 
         if modality == "text":
             vector_name = "text_vec"
-            vec_param = {"text_vec": vec}
         elif modality == "image":
             vector_name = "image_vec"
-            vec_param = {"image_vec": vec}
         else:  # both — search text for now (text is more general)
             vector_name = "text_vec"
-            vec_param = {"text_vec": vec}
 
         hits = self.client.search(
             collection_name=self.collection,
@@ -100,6 +103,7 @@ class QdrantMCPServer:
     ):
         """Upsert a point with named vectors. Used by the indexer."""
         from qdrant_client.models import PointStruct
+
         vectors = {}
         if text_vec is not None:
             vectors["text_vec"] = text_vec
@@ -118,6 +122,7 @@ class QdrantMCPServer:
 def main():
     import json
     import sys
+
     server = QdrantMCPServer()
     # Minimal stdio MCP loop
     for line in sys.stdin:
@@ -128,14 +133,22 @@ def main():
                 result = server.search(**args)
                 print(json.dumps({"jsonrpc": "2.0", "id": req["id"], "result": result}))
             elif req.get("method") == "initialize":
-                print(json.dumps({
-                    "jsonrpc": "2.0", "id": req["id"],
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "serverInfo": {"name": "qdrant-search", "version": "1.0.0"},
-                        "capabilities": {"tools": {}}
-                    }
-                }))
+                print(
+                    json.dumps(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": req["id"],
+                            "result": {
+                                "protocolVersion": "2024-11-05",
+                                "serverInfo": {
+                                    "name": "qdrant-search",
+                                    "version": "1.0.0",
+                                },
+                                "capabilities": {"tools": {}},
+                            },
+                        }
+                    )
+                )
         except Exception as e:
             print(json.dumps({"jsonrpc": "2.0", "error": str(e)}))
 

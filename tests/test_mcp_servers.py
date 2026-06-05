@@ -10,9 +10,6 @@ from __future__ import annotations
 
 import io
 import json
-import sqlite3
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -22,13 +19,14 @@ import pytest
 # qdrant-search: stdio loop
 # --------------------------------------------------------------------------- #
 
+
 def test_qdrant_initialize_handshake(monkeypatch):
     from qdrant_server import QdrantMCPServer
 
     # Replace stdin with a single initialize request
-    initialize_req = json.dumps({
-        "jsonrpc": "2.0", "id": 1, "method": "initialize"
-    }) + "\n"
+    initialize_req = (
+        json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize"}) + "\n"
+    )
     fake_stdin = io.StringIO(initialize_req)
     fake_stdout = io.StringIO()
 
@@ -36,10 +34,10 @@ def test_qdrant_initialize_handshake(monkeypatch):
     monkeypatch.setattr("sys.stdout", fake_stdout)
 
     # Patch the server to avoid network
-    monkeypatch.setattr(QdrantMCPServer, "__init__",
-                        lambda self: None)
+    monkeypatch.setattr(QdrantMCPServer, "__init__", lambda self: None)
 
     from qdrant_server import main
+
     main()
 
     out = fake_stdout.getvalue()
@@ -51,11 +49,17 @@ def test_qdrant_initialize_handshake(monkeypatch):
 def test_qdrant_search_returns_jsonrpc_envelope(monkeypatch):
     from qdrant_server import QdrantMCPServer
 
-    request = json.dumps({
-        "jsonrpc": "2.0", "id": 7,
-        "method": "tools/call",
-        "params": {"name": "search", "arguments": {"query": "hi"}},
-    }) + "\n"
+    request = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 7,
+                "method": "tools/call",
+                "params": {"name": "search", "arguments": {"query": "hi"}},
+            }
+        )
+        + "\n"
+    )
     fake_stdin = io.StringIO(request)
     fake_stdout = io.StringIO()
     monkeypatch.setattr("sys.stdin", fake_stdin)
@@ -63,11 +67,12 @@ def test_qdrant_search_returns_jsonrpc_envelope(monkeypatch):
 
     # Mock the server instance to return a canned result
     inst = QdrantMCPServer.__new__(QdrantMCPServer)
-    inst.search = lambda **kw: {"results": [{"file_id": "abc", "score": 0.9}]}
+    inst.search = lambda *args, **kw: {"results": [{"file_id": "abc", "score": 0.9}]}
     monkeypatch.setattr(QdrantMCPServer, "__init__", lambda self: None)
     monkeypatch.setattr(QdrantMCPServer, "search", inst.search)
 
     from qdrant_server import main
+
     main()
 
     out = fake_stdout.getvalue()
@@ -81,36 +86,46 @@ def test_qdrant_search_returns_jsonrpc_envelope(monkeypatch):
 # filesystem-search: stdio loop
 # --------------------------------------------------------------------------- #
 
+
 def test_filesystem_unknown_tool_returns_error(monkeypatch, tmp_dir):
     from filesystem_server import FilesystemMCPServer, FileDB
 
     db_path = tmp_dir / "files.db"
-    db = FileDB(str(db_path))
+    FileDB(str(db_path))
 
-    request = json.dumps({
-        "jsonrpc": "2.0", "id": 11,
-        "method": "tools/call",
-        "params": {"name": "nope", "arguments": {}},
-    }) + "\n"
+    request = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 11,
+                "method": "tools/call",
+                "params": {"name": "nope", "arguments": {}},
+            }
+        )
+        + "\n"
+    )
     fake_stdin = io.StringIO(request)
     fake_stdout = io.StringIO()
     monkeypatch.setattr("sys.stdin", fake_stdin)
     monkeypatch.setattr("sys.stdout", fake_stdout)
 
     monkeypatch.setattr(FilesystemMCPServer, "__init__", lambda self: None)
-    monkeypatch.setattr(FilesystemMCPServer, "__init__", lambda self, db_path=None: None)
-    inst = FilesystemMCPServer.__new__(FilesystemMCPServer)
+    monkeypatch.setattr(
+        FilesystemMCPServer, "__init__", lambda self, db_path=None: None
+    )
 
     # Force the dispatcher to fail on unknown tools
-    with patch.object(FilesystemMCPServer, "find",
-                      side_effect=AttributeError("nope")):
+    with patch.object(FilesystemMCPServer, "find", side_effect=AttributeError("nope")):
         from filesystem_server import main
+
         # Patch builtins.hasattr to return False for 'nope'
         orig_hasattr = hasattr
+
         def fake_hasattr(obj, name):
             if name == "nope":
                 return False
             return orig_hasattr(obj, name)
+
         with patch("filesystem_server.hasattr", fake_hasattr):
             main()
 
@@ -124,20 +139,30 @@ def test_filesystem_unknown_tool_returns_error(monkeypatch, tmp_dir):
 # video-slice: stdio loop — gracefully reports missing video
 # --------------------------------------------------------------------------- #
 
-def test_video_slice_missing_file_returns_error_dict(monkeypatch):
-    from video_slice_server import VideoSliceMCPServer
 
-    request = json.dumps({
-        "jsonrpc": "2.0", "id": 21,
-        "method": "tools/call",
-        "params": {"name": "slice", "arguments": {"video_path": "/no/such.mp4"}},
-    }) + "\n"
+def test_video_slice_missing_file_returns_error_dict(monkeypatch):
+
+    request = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 21,
+                "method": "tools/call",
+                "params": {
+                    "name": "slice",
+                    "arguments": {"video_path": "/no/such.mp4"},
+                },
+            }
+        )
+        + "\n"
+    )
     fake_stdin = io.StringIO(request)
     fake_stdout = io.StringIO()
     monkeypatch.setattr("sys.stdin", fake_stdin)
     monkeypatch.setattr("sys.stdout", fake_stdout)
 
     from video_slice_server import main
+
     main()
 
     out = fake_stdout.getvalue()
@@ -150,14 +175,19 @@ def test_video_slice_missing_file_returns_error_dict(monkeypatch):
 # Cross-skill: all three servers emit valid JSON-RPC envelopes
 # --------------------------------------------------------------------------- #
 
-@pytest.mark.parametrize("module,expected_name", [
-    ("qdrant_server", "qdrant-search"),
-    ("filesystem_server", "filesystem-search"),
-    ("video_slice_server", "video-slice"),
-])
+
+@pytest.mark.parametrize(
+    "module,expected_name",
+    [
+        ("qdrant_server", "qdrant-search"),
+        ("filesystem_server", "filesystem-search"),
+        ("video_slice_server", "video-slice"),
+    ],
+)
 def test_all_skills_initialize(module, expected_name, monkeypatch):
     """Every skill must respond to `initialize` with its name and version."""
     import importlib
+
     mod = importlib.import_module(module)
     main_fn = getattr(mod, "main")
 

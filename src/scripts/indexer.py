@@ -12,15 +12,11 @@ Usage:
 
 import argparse
 import hashlib
-import json
 import logging
-import os
 import signal
 import sqlite3
-import subprocess
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 from queue import Queue
 from threading import Thread
@@ -94,8 +90,16 @@ class FileDB:
         cur = self.conn.execute("SELECT 1 FROM files WHERE path=?", (path,))
         return cur.fetchone() is not None
 
-    def record_file(self, file_id: str, path: str, type_: str, size: int,
-                    sha256: str, mtime: int, chunks: int):
+    def record_file(
+        self,
+        file_id: str,
+        path: str,
+        type_: str,
+        size: int,
+        sha256: str,
+        mtime: int,
+        chunks: int,
+    ):
         self.conn.execute(
             """
             INSERT OR REPLACE INTO files
@@ -106,8 +110,15 @@ class FileDB:
         )
         self.conn.commit()
 
-    def record_chunk(self, chunk_id: str, file_id: str, idx: int,
-                     chunk_type: str, text: Optional[str], point_id: int):
+    def record_chunk(
+        self,
+        chunk_id: str,
+        file_id: str,
+        idx: int,
+        chunk_type: str,
+        text: Optional[str],
+        point_id: int,
+    ):
         self.conn.execute(
             """
             INSERT OR REPLACE INTO chunks
@@ -153,11 +164,13 @@ def embed_text(text: str, ollama_url: str) -> list:
     return r.json()["embedding"]
 
 
-def upsert_qdrant(qdrant_url: str, collection: str, point_id: int,
-                  vectors: dict, payload: dict):
+def upsert_qdrant(
+    qdrant_url: str, collection: str, point_id: int, vectors: dict, payload: dict
+):
     """Upsert a point with named vectors to Qdrant."""
     from qdrant_client import QdrantClient
     from qdrant_client.models import PointStruct
+
     client = QdrantClient(url=qdrant_url)
     client.upsert(
         collection_name=collection,
@@ -198,14 +211,26 @@ def process_text_file(path: Path, cfg: Config, db: FileDB) -> int:
         vec = embed_text(chunk, cfg.ollama_url)
         point_id = int(hash(f"{file_id}:{idx}") % (2**63))
         upsert_qdrant(
-            cfg.qdrant_url, cfg.collection, point_id,
+            cfg.qdrant_url,
+            cfg.collection,
+            point_id,
             vectors={"text_vec": vec},
             payload={"file_id": file_id, "chunk_index": idx, "text": chunk[:500]},
         )
-        db.record_chunk(f"{file_id}:{idx}", file_id, idx, "paragraph", chunk[:1000], point_id)
+        db.record_chunk(
+            f"{file_id}:{idx}", file_id, idx, "paragraph", chunk[:1000], point_id
+        )
         n_chunks += 1
-    db.record_file(file_id, str(path), "text", path.stat().st_size,
-                   sha256_of(path), int(path.stat().st_mtime), n_chunks)
+    if not cfg.dry_run:
+        db.record_file(
+            file_id,
+            str(path),
+            "text",
+            path.stat().st_size,
+            sha256_of(path),
+            int(path.stat().st_mtime),
+            n_chunks,
+        )
     return n_chunks
 
 
@@ -222,8 +247,15 @@ def process_file(path: Path, cfg: Config, db: FileDB) -> int:
             log.info(f"[DRY-RUN] {type_}: {path}")
             return 0
         file_id = sha256_of(path)[:16]
-        db.record_file(file_id, str(path), type_, path.stat().st_size,
-                       sha256_of(path), int(path.stat().st_mtime), 0)
+        db.record_file(
+            file_id,
+            str(path),
+            type_,
+            path.stat().st_size,
+            sha256_of(path),
+            int(path.stat().st_mtime),
+            0,
+        )
         return 0
     else:
         log.warning(f"Unknown type for {path}, skipping")

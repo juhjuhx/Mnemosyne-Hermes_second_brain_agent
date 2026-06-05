@@ -41,6 +41,10 @@ def _spawn_skill(skill_name: str, db_path: Path = None) -> subprocess.Popen:
     env = {
         "PYTHONPATH": str(src),
         "PATH": "/usr/bin:/bin:/usr/local/bin",
+        # Disable stdout buffering so the parent can readline() the JSON-RPC
+        # response immediately. Without this, the child's print() is block-buffered
+        # when stdout is a pipe, and the parent deadlocks waiting for output.
+        "PYTHONUNBUFFERED": "1",
     }
     if db_path is not None:
         env["DB_PATH"] = str(db_path)
@@ -57,7 +61,12 @@ def _spawn_skill(skill_name: str, db_path: Path = None) -> subprocess.Popen:
 
 def _rpc(p: subprocess.Popen, method: str, params: dict = None, id_: int = 1) -> dict:
     """Send one JSON-RPC request, read one JSON-RPC response."""
-    p.stdin.write(json.dumps({"jsonrpc": "2.0", "id": id_, "method": method, "params": params or {}}) + "\n")
+    p.stdin.write(
+        json.dumps(
+            {"jsonrpc": "2.0", "id": id_, "method": method, "params": params or {}}
+        )
+        + "\n"
+    )
     p.stdin.flush()
     line = p.stdout.readline()
     if not line:
@@ -70,6 +79,7 @@ def _rpc(p: subprocess.Popen, method: str, params: dict = None, id_: int = 1) ->
 # Filesystem-search end-to-end
 # --------------------------------------------------------------------------- #
 
+
 def test_filesystem_search_initialize_and_find():
     if not shutil.which(sys.executable):
         pytest.skip("no python interpreter")
@@ -79,6 +89,7 @@ def test_filesystem_search_initialize_and_find():
 
     # Seed: create a tiny DB with a few rows
     import sqlite3
+
     con = sqlite3.connect(str(db))
     con.executescript("""
         CREATE TABLE IF NOT EXISTS files (
@@ -97,10 +108,15 @@ def test_filesystem_search_initialize_and_find():
         init = _rpc(p, "initialize", id_=0)
         assert init["result"]["serverInfo"]["name"] == "filesystem-search"
 
-        result = _rpc(p, "tools/call", {
-            "name": "find",
-            "arguments": {"filename": "photo", "limit": 5},
-        }, id_=1)
+        result = _rpc(
+            p,
+            "tools/call",
+            {
+                "name": "find",
+                "arguments": {"filename": "photo", "limit": 5},
+            },
+            id_=1,
+        )
         assert "results" in result["result"]
         assert len(result["result"]["results"]) == 1
         assert result["result"]["results"][0]["file_id"] == "a"
@@ -115,6 +131,7 @@ def test_filesystem_search_initialize_and_find():
 # video-slice end-to-end (graceful on missing video)
 # --------------------------------------------------------------------------- #
 
+
 def test_video_slice_initialize_and_missing_video():
     if not shutil.which(sys.executable):
         pytest.skip("no python interpreter")
@@ -123,10 +140,15 @@ def test_video_slice_initialize_and_missing_video():
         init = _rpc(p, "initialize", id_=0)
         assert init["result"]["serverInfo"]["name"] == "video-slice"
 
-        result = _rpc(p, "tools/call", {
-            "name": "slice",
-            "arguments": {"video_path": "/no/such/video.mp4"},
-        }, id_=1)
+        result = _rpc(
+            p,
+            "tools/call",
+            {
+                "name": "slice",
+                "arguments": {"video_path": "/no/such/video.mp4"},
+            },
+            id_=1,
+        )
         assert "error" in result["result"]
     finally:
         p.terminate()
@@ -136,6 +158,7 @@ def test_video_slice_initialize_and_missing_video():
 # --------------------------------------------------------------------------- #
 # qdrant-search initialize (we don't run a real Qdrant; just check handshake)
 # --------------------------------------------------------------------------- #
+
 
 def test_qdrant_search_initialize():
     if not shutil.which(sys.executable):

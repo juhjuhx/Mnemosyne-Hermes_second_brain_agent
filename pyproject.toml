@@ -1,0 +1,95 @@
+# pyproject.toml — Mnemosyne v4
+#
+# Project metadata + production dependencies. The repo's source code lives
+# under src/ and is run via direct `python src/scripts/foo.py` invocations
+# or imported by tests via conftest.py's sys.path injection — there are no
+# installable Python packages, hence `[tool.setuptools] packages = []`.
+#
+# CI runs `pip install -e .` to pull in the runtime dependencies declared
+# below. The editable install is a no-op for the source code itself.
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mnemosyne-second-brain"
+version = "0.1.0"
+description = "A local-first, privacy-preserving personal AI second brain. Indexes your notes, photos, videos, and audio into a private, semantically searchable archive on your own hardware."
+readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
+authors = [
+    { name = "juhjuhx" },
+]
+keywords = [
+    "local-first",
+    "second-brain",
+    "hermes-agent",
+    "qdrant",
+    "mcp",
+    "ollama",
+    "llama-cpp",
+    "tailscale",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPL-3.0+)",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Home Automation",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Filesystems",
+    "Topic :: Text Processing :: Indexing",
+    "Typing :: Typed",
+]
+requires-python = ">=3.10"
+
+# Runtime deps — pinned to the v4 plan target (June 2026).
+dependencies = [
+    "pyyaml>=6.0",
+    "requests>=2.32",
+    "watchdog>=5.0",
+    "qdrant-client>=1.12.1",
+    "ollama>=0.4.4",
+]
+
+[project.optional-dependencies]
+# Used by CI for the `test-python` job.
+test = [
+    "pytest>=8.3.4",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "responses>=0.25.3",
+    "scenedetect>=0.6.7",
+    "faster-whisper>=1.0.3",
+    "opencv-python-headless>=4.10.0",
+]
+# Used by CI for the `lint-python` job.
+lint = [
+    "ruff>=0.6.9",
+    "mypy>=1.13.0",
+]
+# Per-skill extras (optional — only needed when running a specific skill).
+qdrant = []
+filesystem = []
+video = [
+    "scenedetect>=0.6.7",
+    "opencv-python-headless>=4.10.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/juhjuhx/Mnemosyne-Hermes_second_brain_agent"
+Issues = "https://github.com/juhjuhx/Mnemosyne-Hermes_second_brain_agent/issues"
+
+# --------------------------------------------------------------------------- #
+# No installable packages: source code under src/ is run directly.
+# --------------------------------------------------------------------------- #
+
+[tool.setuptools]
+packages = []
