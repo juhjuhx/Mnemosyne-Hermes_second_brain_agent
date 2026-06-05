@@ -3,7 +3,7 @@
 > **A local-first, privacy-preserving personal AI second brain.** Indexes your notes, photos, videos, and audio into a private, semantically searchable archive on your own hardware. No cloud, no telemetry, no surveillance.
 
 [![Status](https://img.shields.io/badge/status-pre--implementation-yellow)]()
-[![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/code-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![License: CC BY-SA 4.0](https://img.shields.io/badge/docs-CC%20BY--SA%204.0-lightgrey.svg)](LICENSE-DOCS)
 [![Privacy: 100% Local](https://img.shields.io/badge/privacy-100%25%20local-success)]()
 [![Powered by Hermes Agent](https://img.shields.io/badge/powered%20by-Hermes%20Agent-blueviolet)](https://github.com/NousResearch/hermes-agent)
@@ -39,7 +39,7 @@ The plan is **parameterized for any similar "small Mac + workstation" pair**. Th
 
 ---
 
-## Stack (all MIT, all local)
+## Stack (all AGPL-3.0, all local)
 
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent) — autonomous agent runtime
 - [Ollama](https://ollama.com) (M1, Metal) + [llama.cpp](https://github.com/ggerganov/llama.cpp) (workstation, Vulkan)
@@ -71,7 +71,7 @@ Mnemosyne will not compromise on these:
 ```
 mnemosyne/                       (a.k.a. ~/mnemosyne/ when cloned)
 ├── README.md                    ← you are here
-├── LICENSE                      ← MIT for code
+├── LICENSE                      ← AGPL-3.0 for code
 ├── LICENSE-DOCS                 ← CC BY-SA 4.0 for documentation
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
@@ -149,14 +149,14 @@ Legend: ✅ done · ⏳ pending hardware
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md). The plan is parameterizable; PRs to add new hardware profiles (e.g. M2/M3, RX 7900, multi-GPU) are very welcome.
 
-**Code**: MIT — see [`LICENSE`](LICENSE)
+**Code**: AGPL-3.0 — see [`LICENSE`](LICENSE)
 **Docs**: CC BY-SA 4.0 — see [`LICENSE-DOCS`](LICENSE-DOCS)
 
 ---
 
 ## License
 
-- All **code** under [`LICENSE`](LICENSE) (MIT)
+- All **code** under [`LICENSE`](LICENSE) (AGPL-3.0)
 - All **documentation, diagrams, and eval sets** under [`LICENSE-DOCS`](LICENSE-DOCS) (CC BY-SA 4.0)
 - Third-party components retain their own licenses — see the [Component Integration Matrix](docs/02_方案文檔/架構B_開源組件整合表.md).
 

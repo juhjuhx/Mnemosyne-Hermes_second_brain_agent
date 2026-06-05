@@ -84,7 +84,7 @@ chore: bump llama.cpp to b4567
 
 By contributing, you agree that:
 
-- Your **code** contributions are licensed under MIT ([`LICENSE`](LICENSE))
+- Your **code** contributions are licensed under AGPL-3.0 ([`LICENSE`](LICENSE))
 - Your **documentation** contributions are licensed under CC BY-SA 4.0 ([`LICENSE-DOCS`](LICENSE-DOCS))
 
 ## Reporting bugs / requesting features

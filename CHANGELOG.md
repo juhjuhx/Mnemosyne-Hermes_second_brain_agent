@@ -156,6 +156,7 @@ is complete; deployment awaits the two physical machines.
 - Replaced Cloudflare-edge hybrid with Tailscale mesh
 - Adopted Open WebUI for the Web front-end
 - Reorganized to GitHub-ready layout (docs/, src/, tests/, examples/, .github/)
+- **License changed from MIT to AGPL-3.0-or-later** (2026-06-05): Root `LICENSE` replaced with FSF AGPL v3 text; SPDX header added. `README.md`, `CONTRIBUTING.md`, `docs/00_index.md`, and all 3 skill `manifest.json` updated. Old MIT references in historical entries (v3 snapshot, Hermes/Mnemosyne attributions) preserved as-is.
 
 ### Fixed
 

@@ -121,7 +121,7 @@ The "what was the v4 plan at this exact moment" snapshots.
 | File | What |
 |---|---|
 | `README.md` | GitHub landing page |
-| `LICENSE` | MIT (code) |
+| `LICENSE` | AGPL-3.0 (code) |
 | `LICENSE-DOCS` | CC BY-SA 4.0 (documentation) |
 | `CHANGELOG.md` | Keep-a-Changelog format; `[Unreleased]` = current v4 plan freeze |
 | `CONTRIBUTING.md` | How to contribute |
