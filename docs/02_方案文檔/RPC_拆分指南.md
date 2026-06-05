@@ -150,4 +150,4 @@ See [Phase 5 進階路線指南 §5.2](../Phase_5_進階路線指南.md) for det
 
 - [Phase 5 進階路線指南 §5.1](../Phase_5_進階路線指南.md)
 - [v4 master plan §14](../個人AI第二腦落地方案_v4.md)
-- [llama.cpp RPC docs](https://github.com/ggerganov/llama.cpp/blob/master/examples/rpc/README.md)
+- [llama.cpp RPC docs](https://github.com/ggerganov/llama.cpp/blob/master/tools/rpc/README.md)
