@@ -59,8 +59,8 @@ All commands are run from the **repo root**.
 ### Tests
 
 ```bash
-# Install test deps (one-time; matches CI)
-pip install -r tests/requirements.txt
+# Install deps (one-time; matches CI). pyproject.toml is the source of truth.
+pip install -e .
 
 # Run the full unit + integration suite (no live Qdrant/Ollama required)
 pytest tests/ -v
@@ -129,6 +129,9 @@ bash docs/06_備份與同步/sync_onedrive.sh
 .
 ├── AGENTS.md                            ← you are here (operational)
 ├── LICENSE, LICENSE-DOCS                ← AGPL-3.0 (code) / CC BY-SA 4.0 (docs)
+├── pyproject.toml                       ← Python project metadata + deps (editable install)
+├── .yamllint.yml                        ← yamllint config (strict-mode safe)
+├── lychee.toml                          ← lychee link checker config (excludes RFC 2606 placeholders)
 ├── CHANGELOG.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md
 ├── docs/
 │   ├── 00_index.md                      ← master TOC, every artifact
@@ -157,20 +160,30 @@ bash docs/06_備份與同步/sync_onedrive.sh
 
 ## Known issues / gotchas
 
-- **License is AGPL-3.0, not MIT.** `LICENSE` is the FSF AGPL v3 text
-  (~590 lines, header reads "GNU AFFERO GENERAL PUBLIC LICENSE Version
-  3, 19 November 2007"). Some skill `manifest.json` files may still
-  carry `"license": "MIT"` from the v4 freeze; the root `LICENSE` is
-  authoritative. AGPL-3.0 closes the SaaS loophole — if Mnemosyne is
-  ever offered as a remote service, Section 13 requires offering
-  Corresponding Source to all users.
-- **No `pyproject.toml` / `setup.py`.** CI runs `pip install -e .`
-  (`ci.yml:78`); that step will currently fail. Only
-  `pip install -r tests/requirements.txt` is needed for tests.
-- **No `.yamllint.yml`.** CI's `lint-yaml` job references it and will
-  fail. Add it before relying on that job.
-- **`structure-check.yml:28` references `tests/eval_v2_100.md`** — the
-  real file is `tests/eval_v2_100.jsonl`. Job fails until corrected.
+- **License is AGPL-3.0-or-later, not MIT.** `LICENSE` is the FSF AGPL v3
+  text with `# SPDX-License-Identifier: AGPL-3.0-or-later` header. All 3
+  skill `manifest.json` files, `README.md`, `CONTRIBUTING.md`, and
+  `docs/00_index.md` have been updated to match. Historical entries in
+  `CHANGELOG.md` and `docs/01_對話與調研紀錄/` still reference MIT — that
+  is correct (v3 snapshot was MIT; v4 changed to AGPL-3.0). AGPL-3.0
+  closes the SaaS loophole — Section 13 requires offering Corresponding
+  Source to all users if offered as a remote service.
+- **`pyproject.toml` exists.** CI runs `pip install -e .` (`ci.yml:78`);
+  it installs deps from `tests/requirements.txt`. The `packages = []`
+  setting means no actual code is installed; tests use `conftest.py`
+  sys.path injection instead of `__init__.py`.
+- **`.yamllint.yml` exists.** CI's `lint-yaml` job uses it with
+  `strict: true`. It disables `line-length`, `document-start`, and
+  loosens `truthy` for GitHub Actions `on:` keys. The `examples/` dir
+  is excluded (YAML inside markdown code fences).
+- **`lychee.toml` exists.** The `markdown-link-check` workflow uses
+  `lychee-action@v2` which downloads lychee v0.23.0. This version has
+  breaking CLI changes: `--exclude-mail` was removed (use
+  `--exclude '^mailto:.*'`), `--accept` cannot be repeated (use
+  `accept = [...]` in toml). All config is in `lychee.toml`; the
+  workflow only passes `--offline docs/ README.md`.
+- **`structure-check.yml` line 28** checks for `tests/eval_v2_100.jsonl`
+  (not `.md`). This is correct as of the CI fix commit.
 - **URLs point to the user's fork** `github.com/juhjuhx/Mnemosyne-Hermes_second_brain_agent`
   (in `README.md`, `CHANGELOG.md`, `SECURITY.md`, `Phase_0_啟動手冊.md`,
   `還原演練.md`, `src/systemd/*.service`). If you fork, search-replace
@@ -196,6 +209,13 @@ bash docs/06_備份與同步/sync_onedrive.sh
 - **MCP protocol version** is `2024-11-05`. Skill `serverInfo.name` is
   `qdrant-search` / `filesystem-search` / `video-slice` — the
   `test_all_skills_initialize` test pins these names.
+- **WSL credential handling.** The first `git push` from a fresh WSL
+  session requires entering the PAT at the git prompt (username
+  `juhjuhx`, password = fine-grained PAT). `credential.helper=store`
+  saves it to `~/.git-credentials` for subsequent pushes. If pushing
+  fails with "Password authentication not supported", the PAT was not
+  saved — re-enter it. PATs expire in 90 days; rotate at
+  `https://github.com/settings/tokens?type=beta`.
 
 ---
 
