@@ -1,8 +1,9 @@
 # lychee config — Markdown link check workflow
-# https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml
+# https://github.com/lycheeverse/lychee/blob/lychee-v0.23.0/lychee.example.toml
 #
 # Used by .github/workflows/markdown-link-check.yml
 # Skip placeholders so RFC 2606 reserved TLDs and template URLs don't fail CI.
+# Schema validated against lychee v0.23.0 example config (see link above).
 
 exclude = [
   # RFC 2606 reserved domains — used as placeholders in our docs
@@ -10,22 +11,18 @@ exclude = [
   "^https?://[a-zA-Z0-9.-]*\\.test(/.*)?$",
   "^https?://[a-zA-Z0-9.-]*\\.example\\.ts\\.net(/.*)?$",
   "^https?://[a-zA-Z0-9.-]*\\.invalid(/.*)?$",
-  # Mailto links (lychee tried to HEAD them in older versions)
+  # Mailto links
   "^mailto:.*",
-  # Already excluded in the workflow CLI args, repeated here for clarity
+  # Localhost (m1/station loopback, local dev services)
   "^http://localhost.*",
   "^http://127\\.0\\.0\\.1.*",
+  "^http://m1(:[0-9]+)?(/.*)?$",
+  "^http://station(:[0-9]+)?(/.*)?$",
 ]
 
 # Accept these HTTP status codes as "alive" (don't fail CI on them).
 # 403: forbidden (some sites block bots with 403)
 # 429: rate-limited
-# 500/502/503: server errors that might be transient
 accept = [200, 203, 206, 301, 302, 304, 307, 308, 403, 429]
 
-[cache]
-# Cache successful link checks for 1 day to avoid hammering external sites
-# on every push. Failure cache is shorter (1 hour) so a fixed link clears quickly.
-max_age = "1d"
-failure_max_age = "1h"
 
