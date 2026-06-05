@@ -19,7 +19,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         with:
-          # lychee v0.23+ removed --exclude-mail in favor of --include-mail (inverted).
-          # mailto: links are excluded by default; no flag needed.
-          args: --offline --exclude 'http://localhost.*' --exclude 'http://127.0.0.1.*' --exclude '^mailto:.*' --accept 429 --accept 403 docs/ README.md
+          # All non-default config lives in ./lychee.toml (excludes, accept codes,
+          # cache). Only pass --offline and the input paths here so the workflow
+          # stays version-agnostic across lychee releases.
+          args: --offline docs/ README.md
           fail: true
