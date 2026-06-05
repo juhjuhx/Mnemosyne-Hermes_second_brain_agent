@@ -255,6 +255,6 @@ MIT (code) and CC BY-SA 4.0 (docs) licenses.
 
 ## See also
 
-- [v4 master plan §8](../個人AI第二腦落地方案_v4.md)
-- [Phase 1 部署指南](../Phase_1_部署指南.md)
-- [Hermes Agent 整合指南](../Hermes_Agent_整合指南.md)
+- [v4 master plan §8](個人AI第二腦落地方案_v4.md)
+- [Phase 1 部署指南](Phase_1_部署指南.md)
+- [Hermes Agent 整合指南](Hermes_Agent_整合指南.md)

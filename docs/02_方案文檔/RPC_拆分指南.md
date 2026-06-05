@@ -142,12 +142,12 @@ lighter half to M1's CPU/RAM".
 For Qwen 3.6 35B-A3B (MoE), RPC alone is suboptimal. KTransformers
 intelligently offloads only **inactive** experts to system RAM.
 
-See [Phase 5 進階路線指南 §5.2](../Phase_5_進階路線指南.md) for details.
+See [Phase 5 進階路線指南 §5.2](Phase_5_進階路線指南.md) for details.
 
 ---
 
 ## See also
 
-- [Phase 5 進階路線指南 §5.1](../Phase_5_進階路線指南.md)
-- [v4 master plan §14](../個人AI第二腦落地方案_v4.md)
+- [Phase 5 進階路線指南 §5.1](Phase_5_進階路線指南.md)
+- [v4 master plan §14](個人AI第二腦落地方案_v4.md)
 - [llama.cpp RPC docs](https://github.com/ggerganov/llama.cpp/blob/master/tools/rpc/README.md)

@@ -63,6 +63,6 @@ Those stories go here, in free-form markdown.
 
 ## See also
 
-- [`../../../CHANGELOG.md`](../../../CHANGELOG.md) — canonical changelog
-- [`../../06_備份與同步/版本標籤規範.md`](../../06_備份與同步/版本標籤規範.md) — tag conventions
-- [`../../02_方案文檔/Phase_*_*.md`](../../02_方案文檔/) — the phase plans
+- [`../../../CHANGELOG.md`](../../CHANGELOG.md) — canonical changelog
+- [`../../06_備份與同步/版本標籤規範.md`](../06_備份與同步/版本標籤規範.md) — tag conventions
+- [`../../02_方案文檔/Phase_*_*.md`](../02_方案文檔/) — the phase plans

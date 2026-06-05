@@ -288,5 +288,5 @@ src/hermes_skills/
 ## See also
 
 - [agentskills.io spec](https://agentskills.io)
-- [Hermes Agent 整合指南](../Hermes_Agent_整合指南.md)
-- [v4 master plan §20](../個人AI第二腦落地方案_v4.md) — skill library overview
+- [Hermes Agent 整合指南](Hermes_Agent_整合指南.md)
+- [v4 master plan §20](個人AI第二腦落地方案_v4.md) — skill library overview

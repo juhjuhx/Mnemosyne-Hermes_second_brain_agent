@@ -208,6 +208,6 @@ network changes.
 
 ## See also
 
-- [Phase 0 啟動手冊](../Phase_0_啟動手冊.md) — initial Tailscale setup
-- [v4 master plan §16](../個人AI第二腦落地方案_v4.md) — network topology
-- [架構B 開源組件整合表](../架構B_開源組件整合表.md) — Tailscale version pin
+- [Phase 0 啟動手冊](Phase_0_啟動手冊.md) — initial Tailscale setup
+- [v4 master plan §16](個人AI第二腦落地方案_v4.md) — network topology
+- [架構B 開源組件整合表](架構B_開源組件整合表.md) — Tailscale version pin

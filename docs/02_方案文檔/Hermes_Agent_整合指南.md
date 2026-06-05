@@ -250,7 +250,7 @@ hermes watchdog status
 
 ## See also
 
-- [v4 master plan §3, §7, §12](../個人AI第二腦落地方案_v4.md)
-- [Hermes_Skill_範本庫](../Hermes_Skill_範本庫.md) — 3 example skills
-- [Phase_3_Hermes整合指南](../Phase_3_Hermes整合指南.md) — full setup
-- [Open_WebUI_整合指南](../Open_WebUI_整合指南.md) — UI integration
+- [v4 master plan §3, §7, §12](個人AI第二腦落地方案_v4.md)
+- [Hermes_Skill_範本庫](Hermes_Skill_範本庫.md) — 3 example skills
+- [Phase_3_Hermes整合指南](Phase_3_Hermes整合指南.md) — full setup
+- [Open_WebUI_整合指南](Open_WebUI_整合指南.md) — UI integration

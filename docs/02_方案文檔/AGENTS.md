@@ -4,7 +4,7 @@
 >
 > **Two entry points** — read both:
 >
-> 1. **[`/AGENTS.md`](../../../AGENTS.md)** — *operational*: exact commands,
+> 1. **[`/AGENTS.md`](../../AGENTS.md)** — *operational*: exact commands,
 >    CI state, gotchas, workflow. **Read this first** for any code change.
 > 2. **This file** — *conceptual*: why v4, the 7 invariants, hardware, stack,
 >    reading order, and project history.

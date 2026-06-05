@@ -143,6 +143,6 @@ conversations.
 
 ## See also
 
-- [Hermes Agent 整合指南](../Hermes_Agent_整合指南.md)
-- [Phase 3 Hermes 整合指南](../Phase_3_Hermes整合指南.md) — full setup
-- [Tailscale 私網設定指南](../Tailscale_私網設定指南.md) — access from phone
+- [Hermes Agent 整合指南](Hermes_Agent_整合指南.md)
+- [Phase 3 Hermes 整合指南](Phase_3_Hermes整合指南.md) — full setup
+- [Tailscale 私網設定指南](Tailscale_私網設定指南.md) — access from phone

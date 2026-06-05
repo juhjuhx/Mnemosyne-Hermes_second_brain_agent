@@ -225,6 +225,6 @@ for at least 1 month and you've collected 100+ hours of usage data.
 
 ## See also
 
-- [v4 master plan §14](../個人AI第二腦落地方案_v4.md)
-- [RPC 拆分指南](../RPC_拆分指南.md) — detailed RPC setup
-- [Tailscale 私網設定指南](../Tailscale_私網設定指南.md) — Headscale alternative
+- [v4 master plan §14](個人AI第二腦落地方案_v4.md)
+- [RPC 拆分指南](RPC_拆分指南.md) — detailed RPC setup
+- [Tailscale 私網設定指南](Tailscale_私網設定指南.md) — Headscale alternative

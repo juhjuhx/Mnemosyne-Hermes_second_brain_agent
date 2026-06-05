@@ -628,7 +628,7 @@ Each skill follows the `agentskills.io` spec:
 
 | Term | Meaning |
 |---|---|
-| **Second brain** | A personal knowledge system that augments human memory. See [`個人AI第二腦完整方法論.md`](../../個人AI第二腦完整方法論.md) for the theoretical foundation. |
+| **Second brain** | A personal knowledge system that augments human memory. See `個人AI第二腦完整方法論.md` (planned, not yet committed) for the theoretical foundation. |
 | **Hermes Agent** | The agent runtime (NousResearch/hermes-agent) that replaces v3's self-built FastAPI agent. |
 | **Mnemosyne** | The memory layer (AxDSan/mnemosyne) that replaces v3's self-built memory. |
 | **MCP** | Model Context Protocol — Anthropic's tool protocol. Standardized. |
