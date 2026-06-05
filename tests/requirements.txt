@@ -1,0 +1,35 @@
+# Test dependencies for the v4 plan.
+# Install with:  pip install -r tests/requirements.txt
+#
+# All versions are pinned to the v4 plan target (June 2026).
+
+# --- core testing ---
+pytest==8.3.4
+pytest-cov==5.0.0
+pytest-mock==3.14.0
+
+# --- indexer / scripts ---
+pyyaml==6.0.2
+requests==2.32.3
+watchdog==5.0.3
+
+# --- Qdrant + embeddings ---
+qdrant-client==1.12.1
+# Ollama client is consumed over HTTP via requests (no SDK needed)
+# but listed for reference:
+ollama==0.4.4
+
+# --- Skills ---
+# (each skill has its own requirements; listed here for convenience)
+scenedetect==0.6.7
+# whisper.cpp is a system binary; the python binding is faster-whisper:
+faster-whisper==1.0.3
+# OpenCV is needed for video I/O in some PySceneDetect paths:
+opencv-python-headless==4.10.0.84
+
+# --- mocking / fakes ---
+responses==0.25.3
+
+# --- linters (used in CI) ---
+ruff==0.6.9
+mypy==1.13.0

@@ -1,0 +1,99 @@
+# hermes_config.yaml — Sample Hermes Agent config
+
+> Copy to `~/ai-brain-station/hermes_config/hermes_config.yaml` (M1) or
+> `~/ai-brain-station/hermes_config/hermes_config.yaml` (workstation)
+> and edit the values for your environment.
+
+```yaml
+# === Identity ===
+agent_name: "hermes-m1"           # or "hermes-station" on the workstation
+machine: m1                       # m1 | station
+
+# === Models ===
+# The `primary` is always local. The `fallback` can be on the OTHER
+# machine via Tailscale (e.g. "http://100.x.y.z:8081/v1" for the
+# workstation's llama-server).
+models:
+  primary:
+    backend: ollama               # m1
+    model: gemma-4-e2b
+    url: http://127.0.0.1:11434
+  fallback:
+    backend: llamacpp             # workstation
+    model: qwen3.6-27b-prism-dq-q4
+    url: http://100.x.y.z:8081/v1  # Tailscale IP of workstation
+
+# === Skills (MCP servers) ===
+skills:
+  - name: qdrant-search
+    command: python3
+    args: ["-m", "qdrant_server"]   # see src/hermes_skills/qdrant-search/
+    env:
+      QDRANT_URL: http://127.0.0.1:6333
+      EMBEDDING_URL: http://127.0.0.1:11434
+      EMBEDDING_MODEL: nomic-embed-text
+
+  - name: filesystem-search
+    command: python3
+    args: ["-m", "filesystem_server"]
+    env:
+      DB_PATH: ~/ai-brain-station/index/files.db
+
+  - name: video-slice
+    command: python3
+    args: ["-m", "video_slice_server"]
+    env:
+      FFMPEG_PATH: /opt/homebrew/bin/ffmpeg     # macOS
+      # FFMPEG_PATH: /usr/bin/ffmpeg             # Linux
+      WHISPER_PATH: ~/ai-brain-station/bin/whisper
+
+  - name: whisper-transcribe
+    command: python3
+    args: ["-m", "whisper_server"]
+    env:
+      WHISPER_MODEL: tiny             # tiny/base/small/medium on M1; large-v3 on station
+
+# === Memory ===
+memory:
+  backend: mnemosyne
+  db_path: ~/ai-brain-station/hermes_config/mnemosyne/mnemosyne.db
+  max_size_mb: 5120                  # 5GB soft cap; alert at 80%
+
+# === Tagging ===
+tags:
+  enabled: true
+  suggest_only: true                 # v3 invariant: never auto-tag
+
+# === Logging ===
+logging:
+  level: INFO
+  file: ~/ai-brain-station/logs/hermes.log
+  rotate: daily
+  keep_days: 30
+
+# === Safety (v3 invariants — DO NOT change) ===
+safety:
+  never_auto_move: true              # v3 invariant
+  never_facial_emotion: true         # v3 invariant
+  never_voice_emotion: true          # v3 invariant
+  require_confirm_for_destructive: true
+  max_tool_calls_per_query: 20
+```
+
+## Tailscale IP discovery
+
+To find the workstation's Tailscale IP, run on the workstation:
+
+```bash
+tailscale ip -4
+```
+
+Replace `100.x.y.z` in the example with that value. Magic DNS works
+too — e.g. `workstation.tail-xxxx.ts.net:8081/v1` — but the IP is
+more portable.
+
+## See also
+
+- [`../docs/02_方案文檔/Hermes_Agent_整合指南.md`](../docs/02_方案文檔/Hermes_Agent_整合指南.md) — full Hermes setup
+- [`../docs/02_方案文檔/Tailscale_私網設定指南.md`](../docs/02_方案文檔/Tailscale_私網設定指南.md) — Tailscale mesh
+- [`../src/hermes_skills/`](../src/hermes_skills/) — the 3 shipped skills

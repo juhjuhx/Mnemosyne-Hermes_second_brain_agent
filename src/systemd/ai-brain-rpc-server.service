@@ -1,0 +1,24 @@
+[Unit]
+Description=Personal AI Second Brain — llama.cpp RPC server (Phase 5)
+Documentation=https://github.com/juhjuhx/Mnemosyne-Hermes_second_brain_agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/home/%i/ai-brain-station
+
+ExecStart=/home/%i/ai-brain-station/llama.cpp/build-rpc/bin/rpc-server \
+  -H 127.0.0.1 \
+  -p 50052
+
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=append:/home/%i/ai-brain-station/logs/rpc-server.out.log
+StandardError=append:/home/%i/ai-brain-station/logs/rpc-server.err.log
+
+[Install]
+WantedBy=multi-user.target

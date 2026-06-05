@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap');
+      text { font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Noto Sans TC', monospace; }
+    </style>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185"/>
+    </marker>
+    <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34d399"/>
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#0f172a"/>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+
+  <text x="30" y="40" fill="white" font-size="18" font-weight="700">Phase 4 — ralph-watchdog Eval Loop</text>
+  <text x="30" y="58" fill="#94a3b8" font-size="10">Run eval → detect regression → fix → re-run. Auto-pause on regression; human approval required for fixes.</text>
+
+  <!-- Loop nodes -->
+  <!-- Step 1: Run eval -->
+  <rect x="80" y="120" width="200" height="80" rx="6" fill="#0f172a"/>
+  <rect x="80" y="120" width="200" height="80" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="180" y="145" fill="white" font-size="12" font-weight="600" text-anchor="middle">1. Run eval</text>
+  <text x="180" y="163" fill="#94a3b8" font-size="9" text-anchor="middle">100 queries</text>
+  <text x="180" y="178" fill="#94a3b8" font-size="9" text-anchor="middle">tests/eval_v2_100.jsonl</text>
+  <text x="180" y="192" fill="#34d399" font-size="8" text-anchor="middle">→ tests/_results/&lt;ts&gt;.json</text>
+
+  <line x1="280" y1="160" x2="370" y2="160" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+  <!-- Step 2: Detect regression -->
+  <polygon points="450,160 530,120 610,160 530,200" fill="#0f172a"/>
+  <polygon points="450,160 530,120 610,160 530,200" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="530" y="155" fill="white" font-size="11" font-weight="600" text-anchor="middle">2. Regression?</text>
+  <text x="530" y="170" fill="#fbbf24" font-size="9" text-anchor="middle">MRR &lt; 0.80</text>
+  <text x="530" y="184" fill="#fbbf24" font-size="9" text-anchor="middle">faith &lt; 0.85</text>
+
+  <!-- All green path -->
+  <line x1="610" y1="160" x2="730" y2="160" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+  <text x="670" y="152" fill="#34d399" font-size="9" font-weight="600">No</text>
+
+  <rect x="730" y="120" width="180" height="80" rx="6" fill="#0f172a"/>
+  <rect x="730" y="120" width="180" height="80" rx="6" fill="rgba(52,211,153,0.3)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="820" y="148" fill="white" font-size="12" font-weight="600" text-anchor="middle">3a. All green</text>
+  <text x="820" y="167" fill="white" font-size="12" font-weight="600" text-anchor="middle">→ sleep</text>
+  <text x="820" y="185" fill="#34d399" font-size="8" text-anchor="middle">next eval: weekly cron</text>
+
+  <!-- Regression path -->
+  <line x1="530" y1="200" x2="530" y2="280" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrow-rose)"/>
+  <text x="540" y="245" fill="#fb7185" font-size="9" font-weight="600">Yes</text>
+
+  <rect x="380" y="280" width="200" height="80" rx="6" fill="#0f172a"/>
+  <rect x="380" y="280" width="200" height="80" rx="6" fill="rgba(136,19,65,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+  <text x="480" y="305" fill="white" font-size="12" font-weight="600" text-anchor="middle">3b. Notify</text>
+  <text x="480" y="323" fill="white" font-size="12" font-weight="600" text-anchor="middle">+ pause</text>
+  <text x="480" y="340" fill="#94a3b8" font-size="9" text-anchor="middle">log to regressions.log</text>
+  <text x="480" y="354" fill="#fb7185" font-size="8" text-anchor="middle">auto_pause: true</text>
+
+  <line x1="480" y1="360" x2="480" y2="410" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrow-rose)"/>
+
+  <rect x="380" y="410" width="200" height="80" rx="6" fill="#0f172a"/>
+  <rect x="380" y="410" width="200" height="80" rx="6" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="1.5"/>
+  <text x="480" y="435" fill="white" font-size="12" font-weight="600" text-anchor="middle">4. Diagnose</text>
+  <text x="480" y="453" fill="white" font-size="12" font-weight="600" text-anchor="middle">(ralph + human)</text>
+  <text x="480" y="470" fill="#94a3b8" font-size="9" text-anchor="middle">inspect failed queries</text>
+  <text x="480" y="484" fill="#94a3b8" font-size="8" text-anchor="middle">propose config / skill fix</text>
+
+  <line x1="380" y1="450" x2="200" y2="450" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="280" y="442" fill="#fb923c" font-size="9" font-weight="600">human-approved</text>
+
+  <rect x="80" y="410" width="120" height="80" rx="6" fill="#0f172a"/>
+  <rect x="80" y="410" width="120" height="80" rx="6" fill="rgba(59,130,246,0.3)" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="140" y="435" fill="white" font-size="12" font-weight="600" text-anchor="middle">5. Apply</text>
+  <text x="140" y="453" fill="white" font-size="12" font-weight="600" text-anchor="middle">fix</text>
+  <text x="140" y="470" fill="#94a3b8" font-size="8" text-anchor="middle">edit config / skill</text>
+  <text x="140" y="484" fill="#94a3b8" font-size="8" text-anchor="middle">+ CHANGELOG.md</text>
+
+  <!-- Back to step 1 -->
+  <line x1="140" y1="410" x2="140" y2="200" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="3,2" marker-end="url(#arrow)"/>
+  <text x="50" y="300" fill="#60a5fa" font-size="9" font-weight="600" transform="rotate(-90 50 300)">back to step 1</text>
+
+  <!-- Bottom: config -->
+  <rect x="40" y="510" width="920" height="70" rx="6" fill="#0f172a"/>
+  <rect x="40" y="510" width="920" height="70" rx="6" fill="rgba(59,130,246,0.1)" stroke="#60a5fa" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="55" y="528" fill="#60a5fa" font-size="10" font-weight="600">ralph_watchdog.yaml (key config)</text>
+  <text x="55" y="546" fill="white" font-size="9">thresholds: { mrr_at_10: 0.80, recall_at_10: 0.75, ndcg_at_10: 0.80, faithfulness: 0.85, tool_accuracy: 0.90 }</text>
+  <text x="55" y="560" fill="white" font-size="9">on_regression: [log_to: ~/ai-brain/logs/regressions.log, notify: hermes, auto_pause: true]</text>
+  <text x="55" y="574" fill="#94a3b8" font-size="8">max_iterations: 5; backoff: exponential (1h, 4h, 16h, 64h, 256h); manual override required for fixes</text>
+</svg>

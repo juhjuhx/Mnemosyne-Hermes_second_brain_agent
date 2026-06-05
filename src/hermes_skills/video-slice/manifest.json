@@ -1,0 +1,59 @@
+{
+  "name": "video-slice",
+  "version": "1.0.0",
+  "description": "Split videos into segments, extract frames, transcribe",
+  "transport": "stdio",
+  "command": "python",
+  "args": ["-m", "src.mcp_servers.video_slice_server"],
+  "env": {
+    "FFMPEG_PATH": "/usr/local/bin/ffmpeg",
+    "WHISPER_PATH": "/Users/Shared/ai-brain/venv/bin/whisper",
+    "DEFAULT_DETECTOR": "adaptive",
+    "MAX_SEGMENT_SEC": "10"
+  },
+  "tools": [
+    {
+      "name": "slice",
+      "description": "Split video into segments with optional frame + transcript extraction",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "video_path": {"type": "string"},
+          "max_segment_sec": {"type": "integer", "default": 10},
+          "detector": {"type": "string", "enum": ["adaptive", "threshold", "content"], "default": "adaptive"},
+          "extract_frames": {"type": "boolean", "default": true},
+          "transcribe": {"type": "boolean", "default": false},
+          "transcribe_model": {"type": "string", "enum": ["tiny", "base", "small", "medium", "large-v3"], "default": "tiny"}
+        },
+        "required": ["video_path"]
+      }
+    },
+    {
+      "name": "keyframes",
+      "description": "Extract keyframes only",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "video_path": {"type": "string"},
+          "fps": {"type": "number", "default": 1}
+        },
+        "required": ["video_path"]
+      }
+    },
+    {
+      "name": "transcribe",
+      "description": "Transcribe video audio",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "video_path": {"type": "string"},
+          "language": {"type": "string", "enum": ["zh", "en", "auto"], "default": "auto"},
+          "model": {"type": "string", "default": "tiny"}
+        },
+        "required": ["video_path"]
+      }
+    }
+  ],
+  "author": "Personal AI Second Brain Contributors",
+  "license": "MIT"
+}

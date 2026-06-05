@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.brain.openwebui</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/Shared/ai-brain/venv/bin/open-webui</string>
+        <string>serve</string>
+        <string>--port</string>
+        <string>3000</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/Shared/ai-brain/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>OPENAI_API_BASE_URLS</key>
+        <string>["http://127.0.0.1:8642/v1"]</string>
+        <key>OPENAI_API_KEYS</key>
+        <string>["hermes-not-validated"]</string>
+        <key>DEFAULT_MODEL</key>
+        <string>hermes-agent</string>
+        <key>ENABLE_SIGNUP</key>
+        <string>false</string>
+        <key>WEBUI_AUTH</key>
+        <string>false</string>
+        <key>DATA_DIR</key>
+        <string>/Users/Shared/ai-brain/open_webui/data</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/Shared/ai-brain/logs/openwebui.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/Shared/ai-brain/logs/openwebui.err.log</string>
+</dict>
+</plist>

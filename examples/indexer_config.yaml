@@ -1,0 +1,65 @@
+# indexer_config.yaml — Sample indexer config
+
+> Copy to `~/ai-brain-station/index/indexer_config.yaml` (M1) and
+> edit the values for your environment.
+
+```yaml
+# === Paths (REQUIRED) ===
+inbox: ~/ai-brain-station/inbox           # where new files appear
+archive: ~/ai-brain-station/archive       # where indexed files live
+
+# === Backends ===
+qdrant_url: http://127.0.0.1:6333
+ollama_url: http://127.0.0.1:11434
+collection: second_brain
+
+# === Workers (DO NOT CHANGE — v3 invariant) ===
+workers: 1                                # MUST be 1; see test_config_rejects_workers_greater_than_one
+
+# === Behavior ===
+dry_run: false                            # if true: log everything but write nothing
+recursive: false                          # only watch the top of inbox/, not subdirs
+
+# === File type handling ===
+# Each file type is dispatched to a handler. The default is:
+#   - text (.md, .txt, .pdf, .docx, .rtf) → chunk → embed → Qdrant
+#   - image (.jpg, .jpeg, .png, .heic, .webp) → MobileCLIP / siglip → Qdrant
+#   - video (.mp4, .mov, .mkv, .webm, .avi) → PySceneDetect → per-segment embed
+#   - audio (.mp3, .m4a, .wav, .flac, .ogg) → faster-whisper → Qdrant
+handlers:
+  text:
+    chunk_max_tokens: 512
+    embed_model: nomic-embed-text         # 768-dim, m1 only
+  image:
+    embed_model: mobileclip-s0            # 512-dim, m1 only
+    # embed_model: siglip-base-512        # 512-dim, workstation on demand
+  video:
+    detector: adaptive                    # PySceneDetect AdaptiveDetector
+    max_segment_sec: 10
+    extract_middle_frame: true
+    transcribe: false                     # set true to also run whisper
+  audio:
+    model: tiny                           # whisper.cpp tiny on m1
+    # model: large-v3                     # faster-whisper large-v3 on workstation
+
+# === Suggestion policy (v3 invariant: never auto-move) ===
+suggest_move:
+  enabled: true                           # always suggest, never mutate
+  rules:
+    - match: "*.jpg"
+      suggest: archive/image/
+    - match: "*.mp4"
+      suggest: archive/video/
+    - match: "*.md"
+      suggest: archive/text/
+
+# === Logging ===
+log_level: INFO
+log_file: ~/ai-brain-station/logs/indexer.log
+```
+
+## See also
+
+- [`../src/scripts/indexer.py`](../src/scripts/indexer.py) — the indexer
+- [`../tests/test_index_pipeline.py`](../tests/test_index_pipeline.py) — invariant tests
+- [`../docs/02_方案文檔/Phase_2_索引流水線指南.md`](../docs/02_方案文檔/Phase_2_索引流水線指南.md) — pipeline guide

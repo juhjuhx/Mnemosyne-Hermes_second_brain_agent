@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap');
+      text { font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Noto Sans TC', monospace; }
+    </style>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#0f172a"/>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+
+  <text x="30" y="40" fill="white" font-size="18" font-weight="700">Risk Heatmap — 20 Risks × Probability × Impact</text>
+  <text x="30" y="58" fill="#94a3b8" font-size="10">P (probability) on Y axis; I (impact) on X axis. Risk IDs in each cell.</text>
+
+  <!-- Grid background -->
+  <rect x="120" y="120" width="800" height="450" fill="none" stroke="#334155" stroke-width="1"/>
+
+  <!-- Y-axis labels: Probability -->
+  <text x="40" y="135" fill="#94a3b8" font-size="10" font-weight="600">High (H)</text>
+  <text x="40" y="290" fill="#94a3b8" font-size="10" font-weight="600">Medium (M)</text>
+  <text x="40" y="445" fill="#94a3b8" font-size="10" font-weight="600">Low (L)</text>
+  <text x="20" y="350" fill="#94a3b8" font-size="11" font-weight="600" transform="rotate(-90 20 350)">Probability</text>
+
+  <!-- X-axis labels: Impact -->
+  <text x="200" y="600" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle">Low (L)</text>
+  <text x="450" y="600" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle">Medium (M)</text>
+  <text x="750" y="600" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle">High (H)</text>
+  <text x="500" y="640" fill="#94a3b8" font-size="11" font-weight="600" text-anchor="middle">Impact</text>
+
+  <!-- Heatmap cells (background colors for severity) -->
+  <!-- 3x3 grid with severity shading -->
+  <rect x="120" y="120" width="266" height="150" fill="rgba(96,165,250,0.05)"/> <!-- HL -->
+  <rect x="386" y="120" width="266" height="150" fill="rgba(251,191,36,0.08)"/> <!-- HM -->
+  <rect x="652" y="120" width="268" height="150" fill="rgba(251,113,133,0.15)"/> <!-- HH -->
+  <rect x="120" y="270" width="266" height="150" fill="rgba(96,165,250,0.05)"/> <!-- ML -->
+  <rect x="386" y="270" width="266" height="150" fill="rgba(251,191,36,0.08)"/> <!-- MM -->
+  <rect x="652" y="270" width="268" height="150" fill="rgba(251,191,36,0.12)"/> <!-- MH -->
+  <rect x="120" y="420" width="266" height="150" fill="rgba(52,211,153,0.05)"/> <!-- LL -->
+  <rect x="386" y="420" width="266" height="150" fill="rgba(96,165,250,0.05)"/> <!-- LM -->
+  <rect x="652" y="420" width="268" height="150" fill="rgba(251,113,133,0.1)"/> <!-- LH -->
+
+  <!-- Cell borders -->
+  <line x1="386" y1="120" x2="386" y2="570" stroke="#334155" stroke-width="0.5"/>
+  <line x1="652" y1="120" x2="652" y2="570" stroke="#334155" stroke-width="0.5"/>
+  <line x1="120" y1="270" x2="920" y2="270" stroke="#334155" stroke-width="0.5"/>
+  <line x1="120" y1="420" x2="920" y2="420" stroke="#334155" stroke-width="0.5"/>
+
+  <!-- Risk cells (filled rectangles with risk ID labels) -->
+  <!-- LL cell: R16 -->
+  <rect x="140" y="445" width="80" height="50" rx="4" fill="rgba(52,211,153,0.2)" stroke="#34d399" stroke-width="1"/>
+  <text x="180" y="468" fill="white" font-size="11" font-weight="600" text-anchor="middle">R16</text>
+  <text x="180" y="483" fill="#94a3b8" font-size="7" text-anchor="middle">PWA breaks</text>
+
+  <rect x="225" y="445" width="80" height="50" rx="4" fill="rgba(52,211,153,0.2)" stroke="#34d399" stroke-width="1"/>
+  <text x="265" y="468" fill="white" font-size="11" font-weight="600" text-anchor="middle">R17</text>
+  <text x="265" y="483" fill="#94a3b8" font-size="7" text-anchor="middle">Tailscale IP</text>
+
+  <!-- LM cell: R10, R02 -->
+  <rect x="406" y="430" width="80" height="50" rx="4" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="1"/>
+  <text x="446" y="453" fill="white" font-size="11" font-weight="600" text-anchor="middle">R10</text>
+  <text x="446" y="468" fill="#94a3b8" font-size="7" text-anchor="middle">CLIP non-sq</text>
+
+  <rect x="491" y="430" width="80" height="50" rx="4" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="1"/>
+  <text x="531" y="453" fill="white" font-size="11" font-weight="600" text-anchor="middle">R11</text>
+  <text x="531" y="468" fill="#94a3b8" font-size="7" text-anchor="middle">Whisper zh</text>
+
+  <rect x="576" y="430" width="70" height="50" rx="4" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="1"/>
+  <text x="611" y="453" fill="white" font-size="11" font-weight="600" text-anchor="middle">R12</text>
+  <text x="611" y="468" fill="#94a3b8" font-size="7" text-anchor="middle">Backlog</text>
+
+  <!-- LH cell: R05, R08, R09, R20 -->
+  <rect x="672" y="430" width="55" height="50" rx="4" fill="rgba(251,113,133,0.2)" stroke="#fb7185" stroke-width="1"/>
+  <text x="699" y="453" fill="white" font-size="11" font-weight="600" text-anchor="middle">R05</text>
+
+  <rect x="732" y="430" width="55" height="50" rx="4" fill="rgba(251,113,133,0.2)" stroke="#fb7185" stroke-width="1"/>
+  <text x="759" y="453" fill="white" font-size="11" font-weight="600" text-anchor="middle">R08</text>
+
+  <rect x="792" y="430" width="55" height="50" rx="4" fill="rgba(251,113,133,0.2)" stroke="#fb7185" stroke-width="1"/>
+  <text x="819" y="453" fill="white" font-size="11" font-weight="600" text-anchor="middle">R09</text>
+
+  <rect x="852" y="430" width="55" height="50" rx="4" fill="rgba(251,113,133,0.2)" stroke="#fb7185" stroke-width="1"/>
+  <text x="879" y="453" fill="white" font-size="11" font-weight="600" text-anchor="middle">R20</text>
+
+  <rect x="672" y="485" width="55" height="50" rx="4" fill="rgba(251,113,133,0.2)" stroke="#fb7185" stroke-width="1"/>
+  <text x="699" y="508" fill="white" font-size="11" font-weight="600" text-anchor="middle">R19</text>
+
+  <rect x="732" y="485" width="55" height="50" rx="4" fill="rgba(251,113,133,0.2)" stroke="#fb7185" stroke-width="1"/>
+  <text x="759" y="508" fill="white" font-size="11" font-weight="600" text-anchor="middle">R04</text>
+
+  <rect x="792" y="485" width="55" height="50" rx="4" fill="rgba(251,113,133,0.2)" stroke="#fb7185" stroke-width="1"/>
+  <text x="819" y="508" fill="white" font-size="11" font-weight="600" text-anchor="middle">R18</text>
+
+  <rect x="852" y="485" width="55" height="50" rx="4" fill="rgba(251,113,133,0.2)" stroke="#fb7185" stroke-width="1"/>
+  <text x="879" y="508" fill="white" font-size="11" font-weight="600" text-anchor="middle">R02</text>
+
+  <!-- ML cell: R14, R15 -->
+  <rect x="406" y="290" width="80" height="55" rx="4" fill="rgba(251,191,36,0.2)" stroke="#fbbf24" stroke-width="1"/>
+  <text x="446" y="315" fill="white" font-size="11" font-weight="600" text-anchor="middle">R14</text>
+  <text x="446" y="332" fill="#94a3b8" font-size="7" text-anchor="middle">MTP degrade</text>
+
+  <rect x="491" y="290" width="80" height="55" rx="4" fill="rgba(251,191,36,0.2)" stroke="#fbbf24" stroke-width="1"/>
+  <text x="531" y="315" fill="white" font-size="11" font-weight="600" text-anchor="middle">R15</text>
+  <text x="531" y="332" fill="#94a3b8" font-size="7" text-anchor="middle">35B OOM</text>
+
+  <!-- MM cell: R03, R06, R07 -->
+  <rect x="672" y="280" width="55" height="50" rx="4" fill="rgba(251,191,36,0.2)" stroke="#fbbf24" stroke-width="1"/>
+  <text x="699" y="303" fill="white" font-size="11" font-weight="600" text-anchor="middle">R03</text>
+  <text x="699" y="318" fill="#94a3b8" font-size="7" text-anchor="middle">Ollama sleep</text>
+
+  <rect x="732" y="280" width="55" height="50" rx="4" fill="rgba(251,191,36,0.2)" stroke="#fbbf24" stroke-width="1"/>
+  <text x="759" y="303" fill="white" font-size="11" font-weight="600" text-anchor="middle">R06</text>
+  <text x="759" y="318" fill="#94a3b8" font-size="7" text-anchor="middle">Skills lost</text>
+
+  <rect x="792" y="280" width="55" height="50" rx="4" fill="rgba(251,191,36,0.2)" stroke="#fbbf24" stroke-width="1"/>
+  <text x="819" y="303" fill="white" font-size="11" font-weight="600" text-anchor="middle">R07</text>
+  <text x="819" y="318" fill="#94a3b8" font-size="7" text-anchor="middle">Mnemo grows</text>
+
+  <!-- MH cell: R01, R13 -->
+  <rect x="406" y="140" width="80" height="50" rx="4" fill="rgba(251,191,36,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="446" y="163" fill="white" font-size="11" font-weight="600" text-anchor="middle">R01</text>
+  <text x="446" y="178" fill="#94a3b8" font-size="7" text-anchor="middle">M1 RAM</text>
+
+  <rect x="491" y="140" width="80" height="50" rx="4" fill="rgba(251,113,133,0.3)" stroke="#fb7185" stroke-width="1.5"/>
+  <text x="531" y="163" fill="white" font-size="11" font-weight="600" text-anchor="middle">R13</text>
+  <text x="531" y="178" fill="#94a3b8" font-size="7" text-anchor="middle">Eval errors</text>
+
+  <!-- HH cell (no risks currently) -->
+  <text x="785" y="200" fill="#94a3b8" font-size="10" font-style="italic">no risks at HH</text>
+
+  <!-- HL cell (no risks currently) -->
+  <text x="250" y="200" fill="#94a3b8" font-size="10" font-style="italic">no risks at HL</text>
+
+  <!-- Legend -->
+  <rect x="40" y="650" width="920" height="40" rx="6" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+  <text x="60" y="668" fill="#94a3b8" font-size="9" font-weight="600">LEGEND</text>
+  <rect x="120" y="660" width="14" height="14" rx="2" fill="rgba(52,211,153,0.2)" stroke="#34d399"/>
+  <text x="140" y="670" fill="white" font-size="9">Low × Low (monitor)</text>
+  <rect x="280" y="660" width="14" height="14" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa"/>
+  <text x="300" y="670" fill="white" font-size="9">Med impact (mitigate)</text>
+  <rect x="430" y="660" width="14" height="14" rx="2" fill="rgba(251,191,36,0.3)" stroke="#fbbf24"/>
+  <text x="450" y="670" fill="white" font-size="9">High probability (urgent)</text>
+  <rect x="620" y="660" width="14" height="14" rx="2" fill="rgba(251,113,133,0.3)" stroke="#fb7185"/>
+  <text x="640" y="670" fill="white" font-size="9">High impact (priority)</text>
+  <text x="850" y="670" fill="#94a3b8" font-size="8" font-style="italic">20 risks total</text>
+</svg>

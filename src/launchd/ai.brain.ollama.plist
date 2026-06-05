@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.brain.ollama</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/ollama</string>
+        <string>serve</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>OLLAMA_HOST</key>
+        <string>127.0.0.1:11434</string>
+        <key>OLLAMA_KEEP_ALIVE</key>
+        <string>10m</string>
+        <key>OLLAMA_NUM_PARALLEL</key>
+        <string>2</string>
+        <key>OLLAMA_MAX_LOADED_MODELS</key>
+        <string>1</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/Shared/ai-brain/logs/ollama.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/Shared/ai-brain/logs/ollama.err.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/Shared/ai-brain</string>
+</dict>
+</plist>

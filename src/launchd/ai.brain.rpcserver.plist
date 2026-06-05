@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.brain.rpcserver</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/Shared/ai-brain-station/llama.cpp/build-rpc/bin/rpc-server</string>
+        <string>-H</string>
+        <string>127.0.0.1</string>
+        <string>-p</string>
+        <string>50052</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/Shared/ai-brain/logs/rpcserver.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/Shared/ai-brain/logs/rpcserver.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,35 @@
+# Ollama Modelfile for the M1 edge agent
+# Based on unsloth/gemma-4-e2b-it-GGUF:Q4_K_XL
+#
+# Build:  ollama create hermes-edge -f Modelfile.gemma4
+# Test:   ollama run hermes-edge "Hello"
+# Use:    Hermes Agent connects to http://127.0.0.1:11434/v1 with model "hermes-edge"
+
+FROM unsloth/gemma-4-e2b-it-GGUF:Q4_K_XL
+
+# System prompt — primes the model to route to workstation for hard tasks
+SYSTEM """You are the M1 edge agent of the Personal AI Second Brain.
+
+Your role:
+- Handle fast, local queries (chat, simple Q&A, quick lookups).
+- Suggest routing to the workstation agent (Qwen 3.6 27B) for:
+  * Long-form analysis or summarization
+  * Multi-document reasoning
+  * Code generation
+  * Deep research
+- Always respect the user's privacy: do not send personal data to external services.
+
+When you don't know, say so. When you need to use a tool, call it via MCP.
+"""
+
+# Sampling parameters
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER num_ctx 8192
+PARAMETER repeat_penalty 1.1
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# Keep responses concise (this is an edge model)
+PARAMETER num_predict 1024

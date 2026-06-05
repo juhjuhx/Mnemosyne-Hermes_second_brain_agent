@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.brain.hermes</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/Shared/ai-brain/venv/bin/hermes-agent</string>
+        <string>--config</string>
+        <string>/Users/Shared/ai-brain/hermes_config/config.yaml</string>
+        <string>--port</string>
+        <string>8642</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/Shared/ai-brain/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>PYTHONPATH</key>
+        <string>/Users/Shared/ai-brain/hermes_config</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/Shared/ai-brain/logs/hermes.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/Shared/ai-brain/logs/hermes.err.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/Shared/ai-brain</string>
+</dict>
+</plist>

@@ -1,0 +1,42 @@
+[Unit]
+Description=Personal AI Second Brain — llama-server (Qwen 3.6 27B-PRISM-DQ)
+Documentation=https://github.com/juhjuhx/Mnemosyne-Hermes_second_brain_agent
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/home/%i/ai-brain-station
+
+ExecStart=/home/%i/ai-brain-station/llama.cpp/build/bin/llama-server \
+  --model=/home/%i/ai-brain-station/models/Qwen3.6-27B-PRISM-PRO-DQ.Q4_K_M.gguf \
+  --speculative-model-draft=auto \
+  --draft-max=8 \
+  --gpu-layers=99 \
+  --ctx-size=32768 \
+  --port=8080 \
+  --host=127.0.0.1 \
+  --parallel=2
+
+Restart=on-failure
+RestartSec=10
+
+# Don't let OOM killer take us down
+OOMScoreAdjust=-100
+OOMPolicy=continue
+
+# Hard memory limit (16GB; A770 16GB VRAM + CPU overhead)
+MemoryMax=18G
+
+# Logs
+StandardOutput=append:/home/%i/ai-brain-station/logs/llama-server.out.log
+StandardError=append:/home/%i/ai-brain-station/logs/llama-server.err.log
+
+# Environment
+Environment=OLLAMA_HOST=127.0.0.1:11434
+Environment=GGML_VULKAN_DEVICE=0
+
+[Install]
+WantedBy=multi-user.target

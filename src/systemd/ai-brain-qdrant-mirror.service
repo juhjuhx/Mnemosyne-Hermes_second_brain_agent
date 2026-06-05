@@ -1,0 +1,27 @@
+[Unit]
+Description=Personal AI Second Brain — Qdrant (read-only mirror of M1)
+Documentation=https://github.com/juhjuhx/Mnemosyne-Hermes_second_brain_agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/home/%i/ai-brain-station
+
+# Run Qdrant in mirror mode; read-only storage from M1
+ExecStart=/usr/bin/docker run --rm \
+  --name qdrant-mirror \
+  -p 127.0.0.1:6333:6333 \
+  -v /mnt/raid/AISecondBrain/index/qdrant:/qdrant/storage:ro \
+  qdrant/qdrant:v1.16.0
+
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=append:/home/%i/ai-brain-station/logs/qdrant-mirror.out.log
+StandardError=append:/home/%i/ai-brain-station/logs/qdrant-mirror.err.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,96 @@
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Editor
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Node (Open WebUI customization, if any)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Ollama / llama.cpp build artifacts
+src/llama_cpp/build/
+src/llama_cpp/.deps/
+*.o
+*.obj
+*.exe
+
+# Local-only data — DO NOT COMMIT
+data/
+inbox/
+private/
+public/
+shared/
+media/
+_archive/local/
+*.log
+*.pid
+*.sock
+.env
+.env.local
+.env.*.local
+
+# Qdrant snapshots
+*.snapshot
+storage/
+config/local.yaml
+
+# Tailscale state
+tailscale.state
+tskey-*
+
+# Large model files — DO NOT COMMIT
+models/*.gguf
+models/*.bin
+models/*.safetensors
+models/Modelfile.lock
+
+# Eval results (regenerable)
+tests/_results/
+tests/_tmp/
+
+# Backup archives
+*.tar.gz
+*.tar.zst
+*.zip
+*.7z
+
+# v4 plan — large PDFs and reference material
+references/
+!references/.gitkeep
+
+# IDE
+.history/
+*.code-workspace
+
+# Misc
+*.bak
+*.tmp
+*.orig
+*.rej

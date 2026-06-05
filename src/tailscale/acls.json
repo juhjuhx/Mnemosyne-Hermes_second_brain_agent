@@ -1,0 +1,43 @@
+{
+  "_comment": "Tailscale ACL for Personal AI Second Brain v4. Paste into Tailscale admin → Access Controls.",
+  "acls": [
+    {
+      "_comment": "M1 → workstation: llama-server :8080, Qdrant mirror :6333",
+      "action": "accept",
+      "src": ["tag:m1"],
+      "dst": ["tag:station:8080", "tag:station:6333"]
+    },
+    {
+      "_comment": "Workstation → M1: Ollama :11434, Qdrant :6333, Hermes :8642",
+      "action": "accept",
+      "src": ["tag:station"],
+      "dst": ["tag:m1:11434", "tag:m1:6333", "tag:m1:8642"]
+    },
+    {
+      "_comment": "Phone → M1: Open WebUI :3000",
+      "action": "accept",
+      "src": ["tag:phone"],
+      "dst": ["tag:m1:3000"]
+    },
+    {
+      "_comment": "Phone → workstation: blocked by default (no explicit allow)",
+      "action": "accept",
+      "src": ["tag:phone"],
+      "dst": []
+    }
+  ],
+  "tagOwners": {
+    "tag:m1": ["autogroup:admin"],
+    "tag:station": ["autogroup:admin"],
+    "tag:phone": ["autogroup:admin"]
+  },
+  "ssh": [
+    {
+      "_comment": "Allow admin SSH to any tagged machine (for debugging)",
+      "action": "accept",
+      "src": ["autogroup:admin"],
+      "dst": ["autogroup:self"],
+      "users": ["autogroup:nonroot"]
+    }
+  ]
+}

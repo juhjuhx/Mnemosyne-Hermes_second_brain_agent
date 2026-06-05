@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 700" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap');
+      text { font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Noto Sans TC', monospace; }
+    </style>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34d399"/>
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#0f172a"/>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+
+  <text x="30" y="40" fill="white" font-size="18" font-weight="700">Phase 5 — Advanced (Optional Upgrades)</text>
+  <text x="30" y="58" fill="#94a3b8" font-size="10">Month 2+; only after v4 baseline is stable</text>
+
+  <!-- Timeline -->
+  <line x1="100" y1="150" x2="1000" y2="150" stroke="#64748b" stroke-width="2"/>
+
+  <!-- v4 stable -->
+  <ellipse cx="80" cy="150" rx="40" ry="20" fill="#0f172a"/>
+  <ellipse cx="80" cy="150" rx="40" ry="20" fill="rgba(34,197,94,0.3)" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="80" y="155" fill="white" font-size="10" font-weight="600" text-anchor="middle">v4</text>
+
+  <!-- Section: Distributed inference -->
+  <rect x="100" y="100" width="280" height="100" rx="6" fill="#0f172a"/>
+  <rect x="100" y="100" width="280" height="100" rx="6" fill="rgba(6,78,59,0.2)" stroke="#34d399" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="240" y="124" fill="white" font-size="11" font-weight="600" text-anchor="middle">5.1 llama.cpp RPC split</text>
+  <text x="240" y="143" fill="#94a3b8" font-size="9" text-anchor="middle">M1 hosts lower layers</text>
+  <text x="240" y="158" fill="#94a3b8" font-size="9" text-anchor="middle">workstation hosts upper</text>
+  <text x="240" y="173" fill="#34d399" font-size="8" text-anchor="middle">→ 35B-A3B at LAN latency</text>
+  <text x="240" y="187" fill="#94a3b8" font-size="8" text-anchor="middle">when: VRAM tight</text>
+
+  <!-- Section: KTransformers -->
+  <line x1="380" y1="150" x2="430" y2="150" stroke="#64748b" stroke-width="2"/>
+
+  <rect x="430" y="100" width="280" height="100" rx="6" fill="#0f172a"/>
+  <rect x="430" y="100" width="280" height="100" rx="6" fill="rgba(6,78,59,0.2)" stroke="#34d399" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="570" y="124" fill="white" font-size="11" font-weight="600" text-anchor="middle">5.2 KTransformers</text>
+  <text x="570" y="143" fill="#94a3b8" font-size="9" text-anchor="middle">MoE expert offload</text>
+  <text x="570" y="158" fill="#94a3b8" font-size="9" text-anchor="middle">active in VRAM, rest in RAM</text>
+  <text x="570" y="173" fill="#34d399" font-size="8" text-anchor="middle">→ 35B-A3B at 16GB VRAM</text>
+  <text x="570" y="187" fill="#94a3b8" font-size="8" text-anchor="middle">when: 27B underperforms</text>
+
+  <!-- Section: Graphiti -->
+  <line x1="710" y1="150" x2="760" y2="150" stroke="#64748b" stroke-width="2"/>
+
+  <rect x="760" y="100" width="280" height="100" rx="6" fill="#0f172a"/>
+  <rect x="760" y="100" width="280" height="100" rx="6" fill="rgba(120,53,15,0.2)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="900" y="124" fill="white" font-size="11" font-weight="600" text-anchor="middle">5.3 Graphiti</text>
+  <text x="900" y="143" fill="#94a3b8" font-size="9" text-anchor="middle">knowledge graph layer</text>
+  <text x="900" y="158" fill="#94a3b8" font-size="9" text-anchor="middle">on top of Mnemosyne</text>
+  <text x="900" y="173" fill="#fbbf24" font-size="8" text-anchor="middle">→ "X works at Y" queries</text>
+  <text x="900" y="187" fill="#94a3b8" font-size="8" text-anchor="middle">when: structured facts matter</text>
+
+  <!-- Section: Litestream -->
+  <line x1="540" y1="200" x2="540" y2="280" stroke="#64748b" stroke-width="2" stroke-dasharray="3,2"/>
+
+  <rect x="400" y="280" width="280" height="100" rx="6" fill="#0f172a"/>
+  <rect x="400" y="280" width="280" height="100" rx="6" fill="rgba(120,53,15,0.2)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="540" y="304" fill="white" font-size="11" font-weight="600" text-anchor="middle">5.4 Litestream</text>
+  <text x="540" y="323" fill="#94a3b8" font-size="9" text-anchor="middle">SQLite WAL streaming</text>
+  <text x="540" y="338" fill="#94a3b8" font-size="9" text-anchor="middle">→ B2 / NAS replica</text>
+  <text x="540" y="353" fill="#fbbf24" font-size="8" text-anchor="middle">→ &lt; 24h data loss</text>
+  <text x="540" y="367" fill="#94a3b8" font-size="8" text-anchor="middle">when: nightly snapshot insufficient</text>
+
+  <!-- Section: Headscale -->
+  <line x1="280" y1="200" x2="280" y2="280" stroke="#64748b" stroke-width="2" stroke-dasharray="3,2"/>
+
+  <rect x="100" y="280" width="280" height="100" rx="6" fill="#0f172a"/>
+  <rect x="100" y="280" width="280" height="100" rx="6" fill="rgba(120,53,15,0.2)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="240" y="304" fill="white" font-size="11" font-weight="600" text-anchor="middle">5.5 Headscale</text>
+  <text x="240" y="323" fill="#94a3b8" font-size="9" text-anchor="middle">self-hosted Tailscale</text>
+  <text x="240" y="338" fill="#94a3b8" font-size="9" text-anchor="middle">OSS control plane</text>
+  <text x="240" y="353" fill="#fbbf24" font-size="8" text-anchor="middle">→ zero cloud dependency</text>
+  <text x="240" y="367" fill="#94a3b8" font-size="8" text-anchor="middle">when: Tailscale is too cloud</text>
+
+  <!-- Section: Federation -->
+  <line x1="820" y1="200" x2="820" y2="280" stroke="#64748b" stroke-width="2" stroke-dasharray="3,2"/>
+
+  <rect x="700" y="280" width="280" height="100" rx="6" fill="#0f172a"/>
+  <rect x="700" y="280" width="280" height="100" rx="6" fill="rgba(76,29,149,0.2)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="840" y="304" fill="white" font-size="11" font-weight="600" text-anchor="middle">5.6 Federation</text>
+  <text x="840" y="323" fill="#94a3b8" font-size="9" text-anchor="middle">multi-machine Qdrant</text>
+  <text x="840" y="338" fill="#94a3b8" font-size="9" text-anchor="middle">shard by file metadata</text>
+  <text x="840" y="353" fill="#a78bfa" font-size="8" text-anchor="middle">→ 10M+ points</text>
+  <text x="840" y="367" fill="#94a3b8" font-size="8" text-anchor="middle">when: data outgrows 1 server</text>
+
+  <!-- Section: Eval expansion + Active learning -->
+  <line x1="540" y1="380" x2="540" y2="460" stroke="#64748b" stroke-width="2" stroke-dasharray="3,2"/>
+
+  <rect x="100" y="460" width="900" height="100" rx="6" fill="#0f172a"/>
+  <rect x="100" y="460" width="900" height="100" rx="6" fill="rgba(59,130,246,0.1)" stroke="#60a5fa" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="550" y="486" fill="white" font-size="13" font-weight="600" text-anchor="middle">5.7 / 5.8 Eval expansion + Active learning</text>
+  <text x="550" y="510" fill="white" font-size="10" text-anchor="middle">5.7: 100 → 1000 eval set (4x annotation; better statistical power)</text>
+  <text x="550" y="528" fill="white" font-size="10" text-anchor="middle">5.8: LoRA fine-tuning of embedding model from user feedback (≥ 1000 events)</text>
+  <text x="550" y="546" fill="#60a5fa" font-size="8" text-anchor="middle">when: eval marginal OR user feedback accumulates</text>
+
+  <!-- Bottom warning -->
+  <rect x="100" y="600" width="900" height="60" rx="6" fill="rgba(251,113,133,0.1)" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="120" y="620" fill="#fb7185" font-size="11" font-weight="600">⚠ Don't do any Phase 5 work until v4 has been running stable for ≥ 1 month</text>
+  <text x="120" y="640" fill="white" font-size="9">Phase 5 upgrades add complexity. Each can introduce regressions. Validate against the 100-eval suite first.</text>
+  <text x="120" y="654" fill="#94a3b8" font-size="8">Recommended order: 5.1 (RPC) → 5.4 (Litestream) → 5.7 (eval) → 5.2 (KTransformers) → 5.3 (Graphiti) → 5.8 (active learning)</text>
+</svg>

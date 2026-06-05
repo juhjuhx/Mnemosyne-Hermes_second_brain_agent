@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.brain.qdrant</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/docker</string>
+        <string>run</string>
+        <string>--rm</string>
+        <string>--name</string>
+        <string>qdrant</string>
+        <string>-p</string>
+        <string>127.0.0.1:6333:6333</string>
+        <string>-v</string>
+        <string>/Volumes/RAID/AISecondBrain/index/qdrant:/qdrant/storage</string>
+        <string>qdrant/qdrant:v1.16.0</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/Shared/ai-brain/logs/qdrant.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/Shared/ai-brain/logs/qdrant.err.log</string>
+</dict>
+</plist>

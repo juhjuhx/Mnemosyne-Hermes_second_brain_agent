@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap');
+      text { font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Noto Sans TC', monospace; }
+    </style>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34d399"/>
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#0f172a"/>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+
+  <text x="30" y="40" fill="white" font-size="18" font-weight="700">Phase 1 — Service Deployment</text>
+  <text x="30" y="58" fill="#94a3b8" font-size="10">All services running and bound to 127.0.0.1; auto-start on boot</text>
+
+  <!-- Two columns: M1 vs Workstation -->
+  <!-- M1 column -->
+  <rect x="40" y="100" width="380" height="540" rx="8" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="60" y="125" fill="#22d3ee" font-size="13" font-weight="600">M1 Air (macOS)</text>
+
+  <!-- M1 services -->
+  <rect x="60" y="150" width="340" height="55" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="230" y="172" fill="white" font-size="11" font-weight="600" text-anchor="middle">Ollama + Gemma 4 E2B + nomic</text>
+  <text x="230" y="190" fill="#94a3b8" font-size="9" text-anchor="middle">ollama pull ...; ollama create hermes-edge -f Modelfile.gemma4</text>
+  <text x="230" y="200" fill="#34d399" font-size="8" text-anchor="middle">✓ curl localhost:11434/api/tags</text>
+
+  <line x1="230" y1="205" x2="230" y2="230" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+  <rect x="60" y="235" width="340" height="55" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="230" y="257" fill="white" font-size="11" font-weight="600" text-anchor="middle">Qdrant (Docker) + named vectors</text>
+  <text x="230" y="275" fill="#94a3b8" font-size="9" text-anchor="middle">docker run -d -p 127.0.0.1:6333:6333 ...</text>
+  <text x="230" y="285" fill="#a78bfa" font-size="8" text-anchor="middle">✓ curl localhost:6333/collections/second_brain</text>
+
+  <line x1="230" y1="290" x2="230" y2="315" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+  <rect x="60" y="320" width="340" height="55" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="230" y="342" fill="white" font-size="11" font-weight="600" text-anchor="middle">Mnemosyne (SQLite)</text>
+  <text x="230" y="360" fill="#94a3b8" font-size="9" text-anchor="middle">mnemosyne init --path ~/.../mnemosyne.db</text>
+  <text x="230" y="370" fill="#a78bfa" font-size="8" text-anchor="middle">✓ ls mnemosyne.db</text>
+
+  <line x1="230" y1="375" x2="230" y2="400" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+  <rect x="60" y="405" width="340" height="55" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="230" y="427" fill="white" font-size="11" font-weight="600" text-anchor="middle">Hermes Agent</text>
+  <text x="230" y="445" fill="#94a3b8" font-size="9" text-anchor="middle">pip install hermes-agent; config.yaml; :8642</text>
+  <text x="230" y="455" fill="#34d399" font-size="8" text-anchor="middle">✓ curl localhost:8642/v1/models</text>
+
+  <line x1="230" y1="460" x2="230" y2="485" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+  <rect x="60" y="490" width="340" height="55" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="230" y="512" fill="white" font-size="11" font-weight="600" text-anchor="middle">Open WebUI</text>
+  <text x="230" y="530" fill="#94a3b8" font-size="9" text-anchor="middle">pip install open-webui; OPENAI_API_BASE_URLS=...; :3000</text>
+  <text x="230" y="540" fill="#22d3ee" font-size="8" text-anchor="middle">✓ browser: http://127.0.0.1:3000</text>
+
+  <rect x="60" y="555" width="340" height="55" rx="6" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="1.5"/>
+  <text x="230" y="577" fill="white" font-size="11" font-weight="600" text-anchor="middle">launchd (5 plists)</text>
+  <text x="230" y="595" fill="#94a3b8" font-size="9" text-anchor="middle">ai.brain.{ollama,qdrant,hermes,indexer,openwebui}.plist</text>
+
+  <!-- Workstation column -->
+  <rect x="480" y="100" width="380" height="540" rx="8" fill="none" stroke="#34d399" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="500" y="125" fill="#34d399" font-size="13" font-weight="600">Workstation (Linux)</text>
+
+  <rect x="500" y="150" width="340" height="55" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="670" y="172" fill="white" font-size="11" font-weight="600" text-anchor="middle">Build llama.cpp (Vulkan)</text>
+  <text x="670" y="190" fill="#94a3b8" font-size="9" text-anchor="middle">cmake -B build -DGGML_VULKAN=ON ...</text>
+  <text x="670" y="200" fill="#34d399" font-size="8" text-anchor="middle">✓ vulkaninfo | grep A770</text>
+
+  <line x1="670" y1="205" x2="670" y2="230" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+  <rect x="500" y="235" width="340" height="55" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="670" y="257" fill="white" font-size="11" font-weight="600" text-anchor="middle">llama-server (Qwen 27B-PRISM-DQ)</text>
+  <text x="670" y="275" fill="#94a3b8" font-size="9" text-anchor="middle">--speculative-model-draft auto --port 8080</text>
+  <text x="670" y="285" fill="#34d399" font-size="8" text-anchor="middle">✓ curl localhost:8080/v1/models</text>
+
+  <line x1="670" y1="290" x2="670" y2="315" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+  <rect x="500" y="320" width="340" height="55" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="670" y="342" fill="white" font-size="11" font-weight="600" text-anchor="middle">Qdrant mirror (read-only)</text>
+  <text x="670" y="360" fill="#94a3b8" font-size="9" text-anchor="middle">docker run -v ...:ro qdrant/qdrant</text>
+  <text x="670" y="370" fill="#a78bfa" font-size="8" text-anchor="middle">✓ read from M1's storage</text>
+
+  <line x1="670" y1="375" x2="670" y2="400" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+  <rect x="500" y="405" width="340" height="55" rx="6" fill="rgba(120,53,15,0.2)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="670" y="427" fill="#fbbf24" font-size="11" font-weight="600" text-anchor="middle">On-demand: BGE-M3, faster-whisper</text>
+  <text x="670" y="445" fill="#94a3b8" font-size="9" text-anchor="middle">pip install flagembedding faster-whisper</text>
+  <text x="670" y="455" fill="#fbbf24" font-size="8" text-anchor="middle">(loaded only when needed)</text>
+
+  <rect x="500" y="490" width="340" height="55" rx="6" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="1.5"/>
+  <text x="670" y="512" fill="white" font-size="11" font-weight="600" text-anchor="middle">systemd (3 units)</text>
+  <text x="670" y="530" fill="#94a3b8" font-size="9" text-anchor="middle">ai-brain-llama-server.service</text>
+  <text x="670" y="540" fill="#94a3b8" font-size="9" text-anchor="middle">+ qdrant-mirror, tailscaled</text>
+
+  <rect x="500" y="555" width="340" height="55" rx="6" fill="rgba(120,53,15,0.2)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="670" y="577" fill="#fbbf24" font-size="11" font-weight="600" text-anchor="middle">Phase 5: rpc-server</text>
+  <text x="670" y="595" fill="#94a3b8" font-size="9" text-anchor="middle">optional; for distributed 35B</text>
+
+  <!-- Phase 1 completion: smoke test -->
+  <line x1="230" y1="610" x2="450" y2="660" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+  <line x1="670" y1="610" x2="450" y2="660" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+  <rect x="280" y="660" width="340" height="30" rx="6" fill="rgba(34,197,94,0.2)" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="450" y="680" fill="white" font-size="11" font-weight="600" text-anchor="middle">pytest tests/test_smoke_phase1.py → all pass</text>
+</svg>

@@ -1,0 +1,32 @@
+{
+  "name": "qdrant-search",
+  "version": "1.0.0",
+  "description": "Qdrant vector store semantic search",
+  "transport": "stdio",
+  "command": "python",
+  "args": ["-m", "src.mcp_servers.qdrant_server"],
+  "env": {
+    "QDRANT_URL": "http://127.0.0.1:6333",
+    "COLLECTION": "second_brain",
+    "EMBEDDING_MODEL": "nomic-embed-text",
+    "EMBEDDING_URL": "http://127.0.0.1:11434"
+  },
+  "tools": [
+    {
+      "name": "search",
+      "description": "Search for similar documents in Qdrant",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {"type": "string", "minLength": 1},
+          "top_k": {"type": "integer", "default": 10, "minimum": 1, "maximum": 100},
+          "modality": {"type": "string", "enum": ["text", "image", "both"], "default": "both"},
+          "filter": {"type": "object"}
+        },
+        "required": ["query"]
+      }
+    }
+  ],
+  "author": "Personal AI Second Brain Contributors",
+  "license": "MIT"
+}

@@ -1,0 +1,53 @@
+{
+  "name": "filesystem-search",
+  "version": "1.0.0",
+  "description": "Metadata-based file lookup (filename, date, type, tag)",
+  "transport": "stdio",
+  "command": "python",
+  "args": ["-m", "src.mcp_servers.filesystem_server"],
+  "env": {
+    "DB_PATH": "files.db",
+    "ARCHIVE_ROOT": "/Volumes/RAID/AISecondBrain"
+  },
+  "tools": [
+    {
+      "name": "find",
+      "description": "Find files matching metadata criteria",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "filename": {"type": "string"},
+          "type": {"type": "string", "enum": ["text", "image", "video", "audio"]},
+          "from_date": {"type": "string", "format": "date"},
+          "to_date": {"type": "string", "format": "date"},
+          "tag": {"type": "string"},
+          "limit": {"type": "integer", "default": 20, "maximum": 100}
+        }
+      }
+    },
+    {
+      "name": "stat",
+      "description": "Get metadata for a specific file",
+      "input_schema": {
+        "type": "object",
+        "properties": {"file_id": {"type": "string"}},
+        "required": ["file_id"]
+      }
+    },
+    {
+      "name": "tag",
+      "description": "Add, remove, or list tags",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "action": {"type": "string", "enum": ["add", "remove", "list", "list_all"]},
+          "file_id": {"type": "string"},
+          "tag": {"type": "string"}
+        },
+        "required": ["action"]
+      }
+    }
+  ],
+  "author": "Personal AI Second Brain Contributors",
+  "license": "MIT"
+}

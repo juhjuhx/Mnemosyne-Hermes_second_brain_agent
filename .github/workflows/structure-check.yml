@@ -1,0 +1,43 @@
+name: Validate repo structure
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required files
+        run: |
+          for f in \
+            README.md \
+            LICENSE \
+            LICENSE-DOCS \
+            CHANGELOG.md \
+            CONTRIBUTING.md \
+            CODE_OF_CONDUCT.md \
+            SECURITY.md \
+            .gitignore \
+            docs/00_index.md \
+            src/hermes_skills \
+            tests/eval_v2_100.md
+          do
+            if [ ! -e "$f" ]; then
+              echo "::error file=$f::Missing required path: $f"
+              exit 1
+            fi
+          done
+          echo "All required files present."
+
+      - name: Check no Chinese-only filenames (GitHub web UX)
+        run: |
+          # GitHub renders Chinese filenames fine, but warn if any path
+          # contains characters that break older tooling.
+          if find . -name '*[<>:"\\|?*]*' | grep -q .; then
+            echo "::warning::Found path with characters that may break tooling"
+          fi

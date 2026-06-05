@@ -1,0 +1,23 @@
+name: Markdown link check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 0 * * 0"  # weekly
+
+jobs:
+  markdown-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lychee
+        uses: lycheeverse/lychee-action@v2
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          args: --offline --exclude-mail --exclude 'http://localhost.*' --exclude 'http://127.0.0.1.*' --accept 429 --accept 403 docs/ README.md
+          fail: true
