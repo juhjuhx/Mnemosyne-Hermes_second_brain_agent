@@ -141,7 +141,6 @@ def test_filesystem_unknown_tool_returns_error(monkeypatch, tmp_dir):
 
 
 def test_video_slice_missing_file_returns_error_dict(monkeypatch):
-
     request = (
         json.dumps(
             {
