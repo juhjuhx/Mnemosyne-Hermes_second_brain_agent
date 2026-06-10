@@ -7,7 +7,6 @@ and offload report generation for film/video production.
 
 import hashlib
 import json
-import os
 import shutil
 import time
 from datetime import datetime, timezone
@@ -239,14 +238,14 @@ def generate_report(report: dict, output_path: Optional[str] = None) -> str:
     """Generate a human-readable offload report (markdown)."""
     lines = []
     lines.append(f"# Offload Report — {report['job_name']}")
-    lines.append(f"")
+    lines.append("")
     lines.append(f"- **Card**: `{report['card_path']}` ({report['card_name']})")
     lines.append(f"- **Started**: {report['started_at']}")
     lines.append(f"- **Finished**: {report['finished_at']}")
     lines.append(f"- **Total files**: {report['summary']['total_files']}")
     lines.append(f"- **Total size**: {report['summary']['total_size_gb']} GB")
     lines.append(f"- **Verification**: {'✅ ALL PASSED' if report['summary']['all_verified'] else '❌ ERRORS FOUND'}")
-    lines.append(f"")
+    lines.append("")
 
     # Destinations
     lines.append("## Destinations")

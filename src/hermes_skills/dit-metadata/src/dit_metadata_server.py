@@ -6,10 +6,9 @@ Supports ARRI, RED, Blackmagic, Sony, Canon, Panasonic, and ProRes.
 """
 
 import json
-import os
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 # ── ffprobe metadata extraction ──────────────────────────────────────
 
@@ -221,10 +220,10 @@ def generate_dit_report(metadatas: list, job_name: str = "") -> str:
     """Generate a DIT-friendly metadata report (markdown)."""
     lines = []
     lines.append(f"# DIT Metadata Report — {job_name}")
-    lines.append(f"")
-    lines.append(f"- **Generated**: {__import__('datetime').datetime.now().isoformat()}")
+    lines.append("")
+    lines.append(f"- **Generated**: {datetime.now(timezone.utc).isoformat()}")
     lines.append(f"- **Files**: {len(metadatas)}")
-    lines.append(f"")
+    lines.append("")
 
     # Summary
     cameras = {}
@@ -243,7 +242,7 @@ def generate_dit_report(metadatas: list, job_name: str = "") -> str:
     lines.append(f"- **Total duration**: {format_duration(total_duration)}")
     lines.append(f"- **Total size**: {round(total_size / (1024**3), 2)} GB")
     lines.append(f"- **Cameras**: {cameras}")
-    lines.append(f"")
+    lines.append("")
 
     # Per-file detail
     lines.append("## File Details")

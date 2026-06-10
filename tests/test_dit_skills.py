@@ -3,9 +3,7 @@ Tests for dit-offload and dit-metadata MCP skills.
 """
 
 import hashlib
-import json
 import os
-import tempfile
 import shutil
 from pathlib import Path
 
@@ -18,7 +16,7 @@ _base = Path(__file__).parent.parent
 sys.path.insert(0, str(_base / "src" / "hermes_skills" / "dit-offload" / "src"))
 sys.path.insert(0, str(_base / "src" / "hermes_skills" / "dit-metadata" / "src"))
 
-from dit_offload_server import (
+from dit_offload_server import (  # noqa: E402
     compute_md5,
     compute_xxhash,
     compute_checksums,
@@ -26,8 +24,7 @@ from dit_offload_server import (
     offload_file,
     verify_offload,
 )
-from dit_metadata_server import (
-    extract_video_metadata,
+from dit_metadata_server import (  # noqa: E402
     detect_camera,
     eval_fps,
     format_duration,
