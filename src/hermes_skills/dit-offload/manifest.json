@@ -1,0 +1,63 @@
+{
+  "name": "dit-offload",
+  "version": "1.0.0",
+  "description": "DIT data offload with checksum verification, multi-destination backup, and report generation",
+  "transport": "stdio",
+  "command": "python",
+  "args": ["-m", "src.dit_offload_server"],
+  "env": {},
+  "tools": [
+    {
+      "name": "offload_card",
+      "description": "Offload entire camera card to one or more destinations with MD5+xxHash checksum verification",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "card_path": {"type": "string", "description": "Path to camera card root (e.g. /Volumes/CF_A001)"},
+          "destinations": {"type": "array", "items": {"type": "string"}, "description": "Destination directory paths"},
+          "job_name": {"type": "string", "description": "Job/project name for the report"},
+          "verify": {"type": "boolean", "default": true, "description": "Verify checksums after copy"}
+        },
+        "required": ["card_path", "destinations"]
+      }
+    },
+    {
+      "name": "offload_file",
+      "description": "Copy a single file with checksum verification",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "src": {"type": "string", "description": "Source file path"},
+          "dst_dir": {"type": "string", "description": "Destination directory"},
+          "verify": {"type": "boolean", "default": true}
+        },
+        "required": ["src", "dst_dir"]
+      }
+    },
+    {
+      "name": "verify_offload",
+      "description": "Verify an existing offload by comparing checksums between source and destination",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source_dir": {"type": "string", "description": "Original source directory"},
+          "dest_dir": {"type": "string", "description": "Destination to verify against"}
+        },
+        "required": ["source_dir", "dest_dir"]
+      }
+    },
+    {
+      "name": "discover_media",
+      "description": "Discover all camera media files in a directory tree",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "root": {"type": "string", "description": "Root directory to scan"}
+        },
+        "required": ["root"]
+      }
+    }
+  ],
+  "author": "Personal AI Second Brain Contributors",
+  "license": "AGPL-3.0-or-later"
+}

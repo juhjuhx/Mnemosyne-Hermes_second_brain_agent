@@ -1,0 +1,56 @@
+{
+  "name": "dit-metadata",
+  "version": "1.0.0",
+  "description": "Camera metadata extraction for DIT workflow — ARRI, RED, Blackmagic, Sony, Canon, Panasonic",
+  "transport": "stdio",
+  "command": "python",
+  "args": ["-m", "src.dit_metadata_server"],
+  "env": {},
+  "tools": [
+    {
+      "name": "extract_metadata",
+      "description": "Extract comprehensive video metadata (codec, resolution, fps, camera info, color profile)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "filepath": {"type": "string", "description": "Path to video/image file"}
+        },
+        "required": ["filepath"]
+      }
+    },
+    {
+      "name": "batch_metadata",
+      "description": "Extract metadata from multiple files at once",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file_paths": {"type": "array", "items": {"type": "string"}, "description": "List of file paths"}
+        },
+        "required": ["file_paths"]
+      }
+    },
+    {
+      "name": "detect_camera",
+      "description": "Detect camera brand and model from file metadata",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "filepath": {"type": "string", "description": "Path to video/image file"}
+        },
+        "required": ["filepath"]
+      }
+    },
+    {
+      "name": "generate_dit_report",
+      "description": "Generate a DIT-friendly metadata report in markdown",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "job_name": {"type": "string", "description": "Job/project name"}
+        }
+      }
+    }
+  ],
+  "author": "Personal AI Second Brain Contributors",
+  "license": "AGPL-3.0-or-later"
+}
