@@ -12,12 +12,15 @@ from pathlib import Path
 
 # ── ffprobe metadata extraction ──────────────────────────────────────
 
+
 def ffprobe_metadata(filepath: str) -> dict:
     """Extract metadata using ffprobe (works for all video/audio formats)."""
     cmd = [
         "ffprobe",
-        "-v", "quiet",
-        "-print_format", "json",
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
         "-show_format",
         "-show_streams",
         filepath,
@@ -71,7 +74,9 @@ def extract_video_metadata(filepath: str) -> dict:
                 "width": stream.get("width", 0),
                 "height": stream.get("height", 0),
                 "fps": eval_fps(stream.get("r_frame_rate", "0/1")),
-                "bit_rate": int(stream.get("bit_rate", 0)) if stream.get("bit_rate") else None,
+                "bit_rate": int(stream.get("bit_rate", 0))
+                if stream.get("bit_rate")
+                else None,
                 "pix_fmt": stream.get("pix_fmt", ""),
                 "color_space": stream.get("color_space", ""),
                 "color_range": stream.get("color_range", ""),
@@ -92,7 +97,9 @@ def extract_video_metadata(filepath: str) -> dict:
                 "codec": stream.get("codec_name", ""),
                 "sample_rate": int(stream.get("sample_rate", 0)),
                 "channels": stream.get("channels", 0),
-                "bit_rate": int(stream.get("bit_rate", 0)) if stream.get("bit_rate") else None,
+                "bit_rate": int(stream.get("bit_rate", 0))
+                if stream.get("bit_rate")
+                else None,
             }
             break
 
@@ -109,7 +116,9 @@ def eval_fps(fps_str: str) -> float:
     except (ValueError, ZeroDivisionError):
         return 0.0
 
+
 # ── Camera detection ─────────────────────────────────────────────────
+
 
 def detect_camera(tags: dict, streams: list) -> dict:
     """Detect camera brand and model from metadata tags."""
@@ -135,45 +144,70 @@ def detect_camera(tags: dict, streams: list) -> dict:
     # ARRI detection
     if any(k in tag_str for k in ["arriflex", "alexa", "amira", "arrifilename"]):
         camera["brand"] = "ARRI"
-        camera["model"] = _find_tag(all_tags, ["com.apple.quicktime.make", "make", "encoder"])
+        camera["model"] = _find_tag(
+            all_tags, ["com.apple.quicktime.make", "make", "encoder"]
+        )
         camera["serial"] = _find_tag(all_tags, ["com.apple.quicktime.serial", "serial"])
-        camera["recording_format"] = _find_tag(all_tags, ["com.apple.quicktime.version", "encoder"]) or "ProRes/H.265"
-        camera["color_profile"] = _find_tag(all_tags, ["color_profile"]) or "ARRI LogC4 / ARRI Wide Gamut 4"
+        camera["recording_format"] = (
+            _find_tag(all_tags, ["com.apple.quicktime.version", "encoder"])
+            or "ProRes/H.265"
+        )
+        camera["color_profile"] = (
+            _find_tag(all_tags, ["color_profile"]) or "ARRI LogC4 / ARRI Wide Gamut 4"
+        )
 
     # RED detection
     elif any(k in tag_str for k in ["red", "redcode", "r3d"]):
         camera["brand"] = "RED"
-        camera["model"] = _find_tag(all_tags, ["make", "com.apple.quicktime.make"]) or "RED"
+        camera["model"] = (
+            _find_tag(all_tags, ["make", "com.apple.quicktime.make"]) or "RED"
+        )
         camera["recording_format"] = "REDCODE RAW"
-        camera["color_profile"] = _find_tag(all_tags, ["color_profile"]) or "REDWideGamutRGB / Log3G10"
+        camera["color_profile"] = (
+            _find_tag(all_tags, ["color_profile"]) or "REDWideGamutRGB / Log3G10"
+        )
 
     # Blackmagic detection
     elif any(k in tag_str for k in ["blackmagic", "braw", "bmpcc"]):
         camera["brand"] = "Blackmagic Design"
-        camera["model"] = _find_tag(all_tags, ["make", "com.apple.quicktime.make"]) or "Blackmagic"
+        camera["model"] = (
+            _find_tag(all_tags, ["make", "com.apple.quicktime.make"]) or "Blackmagic"
+        )
         camera["recording_format"] = "BRAW" if ".braw" in tag_str else "ProRes"
-        camera["color_profile"] = _find_tag(all_tags, ["color_profile"]) or "Blackmagic Film"
+        camera["color_profile"] = (
+            _find_tag(all_tags, ["color_profile"]) or "Blackmagic Film"
+        )
 
     # Sony detection
     elif any(k in tag_str for k in ["sony", "ilce", "pxw", "fdr"]):
         camera["brand"] = "Sony"
         camera["model"] = _find_tag(all_tags, ["make", "com.apple.quicktime.make"])
         camera["recording_format"] = _find_tag(all_tags, ["recording_format"]) or "XAVC"
-        camera["color_profile"] = _find_tag(all_tags, ["color_profile"]) or "S-Log3 / S-Gamut3.Cine"
+        camera["color_profile"] = (
+            _find_tag(all_tags, ["color_profile"]) or "S-Log3 / S-Gamut3.Cine"
+        )
 
     # Canon detection
     elif any(k in tag_str for k in ["canon", "eos", "c300", "c500", "c70"]):
         camera["brand"] = "Canon"
         camera["model"] = _find_tag(all_tags, ["make", "com.apple.quicktime.make"])
-        camera["recording_format"] = _find_tag(all_tags, ["recording_format"]) or "Cinema RAW Light"
-        camera["color_profile"] = _find_tag(all_tags, ["color_profile"]) or "Canon Log 3"
+        camera["recording_format"] = (
+            _find_tag(all_tags, ["recording_format"]) or "Cinema RAW Light"
+        )
+        camera["color_profile"] = (
+            _find_tag(all_tags, ["color_profile"]) or "Canon Log 3"
+        )
 
     # Panasonic detection
     elif any(k in tag_str for k in ["panasonic", "lumix", "varicam", "eva1"]):
         camera["brand"] = "Panasonic"
         camera["model"] = _find_tag(all_tags, ["make", "com.apple.quicktime.make"])
-        camera["recording_format"] = _find_tag(all_tags, ["recording_format"]) or "ProRes"
-        camera["color_profile"] = _find_tag(all_tags, ["color_profile"]) or "V-Log / V-Gamut"
+        camera["recording_format"] = (
+            _find_tag(all_tags, ["recording_format"]) or "ProRes"
+        )
+        camera["color_profile"] = (
+            _find_tag(all_tags, ["color_profile"]) or "V-Log / V-Gamut"
+        )
 
     # Generic QuickTime
     else:
@@ -183,7 +217,9 @@ def detect_camera(tags: dict, streams: list) -> dict:
             camera["model"] = make
 
     # Common fields
-    camera["lens"] = _find_tag(all_tags, ["lens_model", "lens_make", "com.apple.quicktime.lens.model"])
+    camera["lens"] = _find_tag(
+        all_tags, ["lens_model", "lens_make", "com.apple.quicktime.lens.model"]
+    )
     camera["iso"] = _find_tag(all_tags, ["iso_speed", "iso", "Sensitivity"])
     camera["white_balance"] = _find_tag(all_tags, ["white_balance", "WhiteBalance"])
 
@@ -205,7 +241,9 @@ def _find_tag(tags: dict, keys: list) -> str:
                 return str(tag_val).strip()
     return ""
 
+
 # ── Batch metadata ───────────────────────────────────────────────────
+
 
 def batch_metadata(file_paths: list) -> list:
     """Extract metadata from multiple files."""
@@ -252,20 +290,22 @@ def generate_dit_report(metadatas: list, job_name: str = "") -> str:
 
     for m in metadatas:
         if "error" in m:
-            lines.append(f"| `{Path(m.get('file','?')).name}` | ERROR | - | - | - | - | - |")
+            lines.append(
+                f"| `{Path(m.get('file', '?')).name}` | ERROR | - | - | - | - | - |"
+            )
             continue
         cam = m.get("camera", {})
         vid = m.get("video_stream", {})
         fmt = m.get("format", {})
         size_mb = round(m.get("size_bytes", 0) / (1024**2), 1)
         dur = format_duration(fmt.get("duration_sec", 0))
-        res = f"{vid.get('width',0)}×{vid.get('height',0)}"
+        res = f"{vid.get('width', 0)}×{vid.get('height', 0)}"
         lines.append(
-            f"| `{m.get('filename','?')}` "
-            f"| {cam.get('brand','?')} "
-            f"| {vid.get('codec','?')} "
+            f"| `{m.get('filename', '?')}` "
+            f"| {cam.get('brand', '?')} "
+            f"| {vid.get('codec', '?')} "
             f"| {res} "
-            f"| {vid.get('fps',0)} "
+            f"| {vid.get('fps', 0)} "
             f"| {dur} "
             f"| {size_mb} MB |"
         )
@@ -285,6 +325,7 @@ def format_duration(seconds: float) -> str:
 
 # ── MCP Server ───────────────────────────────────────────────────────
 
+
 def handle_tool(name: str, args: dict) -> str:
     """Route MCP tool calls to implementation functions."""
     if name == "extract_metadata":
@@ -297,7 +338,9 @@ def handle_tool(name: str, args: dict) -> str:
         result = detect_camera(tags, probe.get("streams", []))
     elif name == "generate_dit_report":
         # Needs pre-extracted metadata
-        result = {"error": "generate_dit_report needs metadata list — use batch_metadata first"}
+        result = {
+            "error": "generate_dit_report needs metadata list — use batch_metadata first"
+        }
     else:
         result = {"error": f"Unknown tool: {name}"}
 
@@ -306,6 +349,7 @@ def handle_tool(name: str, args: dict) -> str:
 
 if __name__ == "__main__":
     import sys
+
     for line in sys.stdin:
         try:
             req = json.loads(line.strip())

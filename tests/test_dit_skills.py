@@ -12,6 +12,7 @@ import pytest
 # ── Import modules under test ────────────────────────────────────────
 
 import sys
+
 _base = Path(__file__).parent.parent
 sys.path.insert(0, str(_base / "src" / "hermes_skills" / "dit-offload" / "src"))
 sys.path.insert(0, str(_base / "src" / "hermes_skills" / "dit-metadata" / "src"))
@@ -32,6 +33,7 @@ from dit_metadata_server import (  # noqa: E402
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def tmp_media_dir(tmp_path):
@@ -65,6 +67,7 @@ def tmp_copy_dir(tmp_path):
 
 
 # ── Checksum tests ───────────────────────────────────────────────────
+
 
 class TestChecksums:
     def test_md5_deterministic(self, tmp_path):
@@ -110,6 +113,7 @@ class TestChecksums:
 
 # ── Discover media tests ─────────────────────────────────────────────
 
+
 class TestDiscoverMedia:
     def test_finds_media_files(self, tmp_media_dir):
         """Discovers media files in directory tree."""
@@ -135,6 +139,7 @@ class TestDiscoverMedia:
 
 
 # ── Offload file tests ───────────────────────────────────────────────
+
 
 class TestOffloadFile:
     def test_copy_with_verification(self, tmp_path, tmp_copy_dir):
@@ -168,6 +173,7 @@ class TestOffloadFile:
 
 # ── Verify offload tests ─────────────────────────────────────────────
 
+
 class TestVerifyOffload:
     def test_perfect_copy(self, tmp_media_dir, tmp_copy_dir):
         """Verify passes for perfect copies."""
@@ -193,6 +199,7 @@ class TestVerifyOffload:
 
 
 # ── Metadata tests ───────────────────────────────────────────────────
+
 
 class TestEvalFps:
     def test_fractional_fps(self):

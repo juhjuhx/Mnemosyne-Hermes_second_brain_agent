@@ -15,6 +15,7 @@ from typing import Optional
 
 # ── Checksum algorithms ──────────────────────────────────────────────
 
+
 def compute_md5(filepath: str, chunk_size: int = 8192) -> str:
     """Compute MD5 hash of a file."""
     h = hashlib.md5()
@@ -28,6 +29,7 @@ def compute_xxhash(filepath: str, chunk_size: int = 8192) -> str:
     """Compute xxHash64 of a file. Falls back to MD5 if xxhash unavailable."""
     try:
         import xxhash
+
         h = xxhash.xxh64()
         with open(filepath, "rb") as f:
             while chunk := f.read(chunk_size):
@@ -46,20 +48,46 @@ def compute_checksums(filepath: str) -> dict:
         "xxhash": xxh,
     }
 
+
 # ── File discovery ───────────────────────────────────────────────────
 
 # Common camera media extensions
 CAMERA_EXTENSIONS = {
     # Video
-    ".mov", ".mp4", ".mxf", ".avi", ".mkv", ".m4v",
+    ".mov",
+    ".mp4",
+    ".mxf",
+    ".avi",
+    ".mkv",
+    ".m4v",
     # RAW
-    ".ari", ".ariq", ".r3d", ".raw", ".braw", ".crm",
+    ".ari",
+    ".ariq",
+    ".r3d",
+    ".raw",
+    ".braw",
+    ".crm",
     # Image
-    ".jpg", ".jpeg", ".tif", ".tiff", ".dng", ".png", ".exr", ".hdr",
+    ".jpg",
+    ".jpeg",
+    ".tif",
+    ".tiff",
+    ".dng",
+    ".png",
+    ".exr",
+    ".hdr",
     # Audio
-    ".wav", ".bwav", ".mp3", ".aac", ".m4a",
+    ".wav",
+    ".bwav",
+    ".mp3",
+    ".aac",
+    ".m4a",
     # Metadata / sidecar
-    ".xml", ".sidecar", ".md", ".txt", ".log",
+    ".xml",
+    ".sidecar",
+    ".md",
+    ".txt",
+    ".log",
 }
 
 
@@ -76,7 +104,9 @@ def discover_media(root: str, extensions: Optional[set] = None) -> list:
             files.append(str(f))
     return files
 
+
 # ── Offload engine ───────────────────────────────────────────────────
+
 
 def offload_file(
     src: str,
@@ -195,29 +225,35 @@ def offload_card(
                 dest_results["files_verified"] += 1
                 verified_count += 1
             elif result.get("verified") is False:
-                dest_results["errors"].append({
-                    "file": filepath,
-                    "error": "CHECKSUM_MISMATCH",
-                    "source_md5": result["source_checksums"]["md5"],
-                    "dest_md5": result["dest_checksums"]["md5"],
-                })
+                dest_results["errors"].append(
+                    {
+                        "file": filepath,
+                        "error": "CHECKSUM_MISMATCH",
+                        "source_md5": result["source_checksums"]["md5"],
+                        "dest_md5": result["dest_checksums"]["md5"],
+                    }
+                )
                 total_errors += 1
 
             dest_results["files_copied"] += 1
 
             # Add to per-file report (only once, from first destination)
             if dest == destinations[0]:
-                report["files"].append({
-                    "source": filepath,
-                    "filename": Path(filepath).name,
-                    "size_bytes": result["size_bytes"],
-                    "md5": result.get("source_checksums", {}).get("md5"),
-                    "xxhash": result.get("source_checksums", {}).get("xxhash"),
-                })
+                report["files"].append(
+                    {
+                        "source": filepath,
+                        "filename": Path(filepath).name,
+                        "size_bytes": result["size_bytes"],
+                        "md5": result.get("source_checksums", {}).get("md5"),
+                        "xxhash": result.get("source_checksums", {}).get("xxhash"),
+                    }
+                )
 
         dest_results["copy_speed_mbps"] = round(
             dest_results["total_bytes"] / (dest_results["total_time_sec"] * 1024 * 1024)
-            if dest_results["total_time_sec"] > 0 else 0, 2
+            if dest_results["total_time_sec"] > 0
+            else 0,
+            2,
         )
         report["destinations_result"][dest] = dest_results
 
@@ -244,7 +280,9 @@ def generate_report(report: dict, output_path: Optional[str] = None) -> str:
     lines.append(f"- **Finished**: {report['finished_at']}")
     lines.append(f"- **Total files**: {report['summary']['total_files']}")
     lines.append(f"- **Total size**: {report['summary']['total_size_gb']} GB")
-    lines.append(f"- **Verification**: {'✅ ALL PASSED' if report['summary']['all_verified'] else '❌ ERRORS FOUND'}")
+    lines.append(
+        f"- **Verification**: {'✅ ALL PASSED' if report['summary']['all_verified'] else '❌ ERRORS FOUND'}"
+    )
     lines.append("")
 
     # Destinations
@@ -283,6 +321,7 @@ def generate_report(report: dict, output_path: Optional[str] = None) -> str:
 
 # ── Quick verify (check existing offload) ────────────────────────────
 
+
 def verify_offload(
     source_dir: str,
     dest_dir: str,
@@ -317,11 +356,13 @@ def verify_offload(
         if src_md5 == dst_md5:
             verified.append(name)
         else:
-            checksum_mismatches.append({
-                "filename": name,
-                "source_md5": src_md5,
-                "dest_md5": dst_md5,
-            })
+            checksum_mismatches.append(
+                {
+                    "filename": name,
+                    "source_md5": src_md5,
+                    "dest_md5": dst_md5,
+                }
+            )
 
     return {
         "source_dir": source_dir,
@@ -336,6 +377,7 @@ def verify_offload(
 
 
 # ── MCP Server ───────────────────────────────────────────────────────
+
 
 def handle_tool(name: str, args: dict) -> str:
     """Route MCP tool calls to implementation functions."""
@@ -371,6 +413,7 @@ def handle_tool(name: str, args: dict) -> str:
 
 if __name__ == "__main__":
     import sys
+
     # Simple stdio MCP server
     for line in sys.stdin:
         try:
