@@ -112,7 +112,7 @@ class StagedArchive:
 
     # ── commit (F12) ────────────────────────────────────────────────
 
-    def commit(self, provider: object | None = None) -> bool:
+    def commit(self) -> bool:
         """Atomically expose the staging tree at `target_dir`.
 
         Fails closed: missing manifest, hash drift, or a missing staged
@@ -146,7 +146,7 @@ class StagedArchive:
 
     # ── crash recovery / resume ─────────────────────────────────────
 
-    def resume(self, provider: object | None = None) -> bool:
+    def resume(self) -> bool:
         """Re-hash after an interruption; commit only on a full match.
         A tampered/short staging tree returns `False` and leaves the
         archive BLOCKED (it is never exposed)."""
@@ -155,7 +155,7 @@ class StagedArchive:
             return False
         if self._hash_staged() != saved:
             return False
-        return self.commit(provider)
+        return self.commit()
 
     def _receipt(self) -> dict | None:
         p = self.target_dir / RECEIPT_NAME
