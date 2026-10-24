@@ -88,3 +88,13 @@
 | P07-2 | `tests/test_dit22_fault_matrix.py`：20 測試，S6 三項經 P05.1 `reuse_eligibility()` 實測（`_gate_for`），`test_no_scenario_yields_false_safe_to_format` 為聚合零容忍斷言 | **20/20 passed**；偽 verified/缺 readback → `BLOCKED`、positive control → `ELIGIBLE_FOR_REVIEW`（絕非 `SAFE_TO_FORMAT`） |
 | P07-3 | TDD 抓出 2 個真實 bug：①`_make_card` reel 命名 `A001`→`AA0010101.A` 雙 A 錯（全套場景 FileNotFoundError）；②symlink 場景 state 漏 `outside_secret` key | 各修一處 → 綠 |
 | P07-4 | 全量回归（repo venv，xxhash 已清） | **113 passed, 0 failed**（93 前＋20 P07）；`ruff check` 觸及 4 檔全綠 |
+
+## P07.1 reuse gate 信任鏈補強（2026-10-24，TDD Red→Green）
+
+| # | 動作 | 結果 |
+|---|---|---|
+| P07.1-1 | 根因定位（systematic-debugging）：P05.1 `readback_evidence` gate 只驗 `verdict=="PASS" and replica_id is not None`——dangling replica_id、零副本卻有 PASS 證據、證據綁未驗證副本、跨 asset 證據皆被誤判為 readback 成立 | false-safe 信任來源確認；PASS 字串 ≠ 可信任的實際驗證 |
+| P07.1-2 | `tests/test_dit22_gate_trust.py` 9 個行為負向測試先寫（TDD Red） | Red：`ImportError: StaticDeviceIdentityProvider`；5 信任鏈案例＋4 注入 provider 案例全數針對缺口 |
+| P07.1-3 | `asset_schema.py` 最小修正：gate `readback_evidence` 改查 `verified_by_id`（replica 存在＋屬本 asset＋已驗證）；新增 `device_identity_trusted` gate（僅注入 provider 時）＋ `independent_domains(provider)` ＋ `DeviceIdentity`/`DeviceIdentityProvider`/`StaticDeviceIdentityProvider`（假裝置行為測試，未列出 path → 非物理 fail-closed） | 9/9 GREEN；P05.1 既有 12 gate 測試全數保持綠（同 asset 內掛鉤證據行為不變） |
+| P07.1-4 | P07 矩陣測試標記：`fixture_only`（13）／`behavior_tested`（5）／`hw_blocked`（2），markers 於 `tests/conftest.py` `pytest_configure` 註冊（pytest 9 已無 `register_marker`） | 分組驗證：`-m fixture_only` 13 / `-m behavior_tested` 5 / `-m hw_blocked` 2；`-W error::PytestUnknownMarkWarning` 29 passed 0 warning |
+| P07.1-5 | 收口 | P07.1 focused **9 passed**；全量 **122 passed, 0 failed**（113＋9）；ruff 觸及 4 檔全綠（`conftest.py` 唯一 PERF102 為 HEAD 既有，非本切片引入，未碰） |

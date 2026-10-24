@@ -19,6 +19,7 @@
 ## 第三輪（P06–P09，Offload A/B 差分）
 - [x] P06：ProofCat（pinned 29c06a2）vs offloader（pinned e01a0eb）源碼稽核、功能/授權/失敗矩陣 → `docs/engineering/spec/P06-differential-engine-audit.md`（S1–S7 逐項判定＋源碼行號＋可重現證據；cargo 131 passed／offloader 306 passed 實跑）
 - [x] P07：故障注入 fixture（`tests/fixtures/dit22/fault_matrix.py` 16 場景×四值分類 + `tests/test_dit22_fault_matrix.py` 20 測試，synthetic、零真實素材、false-SAFE 零容忍）
+- [x] P07.1：reuse gate 信任鏈補強（dangling/跨 asset/未驗證 replica 證據不可信；可注入 device-identity provider；P07 測試按 fixture_only/behavior_tested/hw_blocked 標記）→ `tests/test_dit22_gate_trust.py`（9 測試）+ `asset_schema.py` gate 修正
 - [ ] P08：NAS mirror≠backup 語意测试 + staging atomic commit 合約
 - [ ] P09：durable job queue 幂等/lease 設計（不動 v4 indexer）
 

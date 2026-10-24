@@ -13,12 +13,22 @@ Classification legend (see fault_matrix.CLASSIFICATIONS):
 
 Nothing here touches a camera card, a NAS, or the A770. All data is
 synthetic and generated under the caller's temp dir.
+
+P07.1 coverage taxonomy (markers registered in tests/conftest.py):
+  @fixture_only      — only verifies a synthetic scenario builds; it does
+                       NOT prove engine/adapter behavior.
+  @behavior_tested   — calls the DIT 2.2 gate/adapter and asserts the
+                       actual accept/reject outcome.
+  @hw_blocked        — real hardware absent on host; scenario state +
+                       contract asserts only, no fabricated result.
 """
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+
+import pytest
 
 _SRC = Path(__file__).resolve().parent.parent / "src" / "mnemosyne_dit"
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "dit22"
@@ -53,11 +63,13 @@ def _classify(name: str) -> str:
 # ── matrix integrity ─────────────────────────────────────────────────
 
 
+@pytest.mark.fixture_only
 def test_matrix_classifications_are_valid():
     for sc in SCENARIOS:
         assert sc.classification in CLASSIFICATIONS, sc.name
 
 
+@pytest.mark.fixture_only
 def test_matrix_builds_every_scenario_cleanly(tmp_path):
     states = run_all(tmp_path)
     assert len(states) == len(SCENARIOS)
@@ -69,6 +81,7 @@ def test_matrix_builds_every_scenario_cleanly(tmp_path):
 # ── S1 source-immutability contract (adapter guard) ─────────────────
 
 
+@pytest.mark.fixture_only
 def test_source_is_destination_rejected(tmp_path):
     st = run_all(tmp_path)["S1 source==destination"]
     assert st["source"] == st["destination"], "scenario must alias the source"
@@ -77,6 +90,7 @@ def test_source_is_destination_rejected(tmp_path):
     assert st["source"].resolve() == st["destination"].resolve()
 
 
+@pytest.mark.fixture_only
 def test_destination_inside_source_rejected(tmp_path):
     st = run_all(tmp_path)["S1 destination inside source"]
     src, dst = st["source"], st["destination"]
@@ -87,6 +101,7 @@ def test_destination_inside_source_rejected(tmp_path):
             assert f.stat().st_size > 0
 
 
+@pytest.mark.fixture_only
 def test_symlink_traversal_never_followed(tmp_path):
     st = run_all(tmp_path)["S1 symlink traversal"]
     link = st["symlink"]
@@ -99,6 +114,7 @@ def test_symlink_traversal_never_followed(tmp_path):
 # ── S2 independent failure domain (contract, no real devices) ──────
 
 
+@pytest.mark.fixture_only
 def test_two_paths_one_device_not_independent(tmp_path):
     st = run_all(tmp_path)["S2 two paths one device"]
     # The *contract*: two DISTINCT mount paths reporting the SAME device
@@ -108,6 +124,7 @@ def test_two_paths_one_device_not_independent(tmp_path):
     assert isinstance(st["device_serial_same"], str) and st["device_serial_same"]
 
 
+@pytest.mark.hw_blocked
 def test_two_nas_shares_is_hw_blocked(tmp_path):
     st = run_all(tmp_path)["S2 two NAS shares one appliance"]
     assert _classify("S2 two NAS shares one appliance") == "HW_BLOCKED"
@@ -119,6 +136,7 @@ def test_two_nas_shares_is_hw_blocked(tmp_path):
 # ── S3/S4 interruption, disk full, kill/resume (mock simulation) ───
 
 
+@pytest.mark.fixture_only
 def test_partial_copy_detected_not_verified(tmp_path):
     st = run_all(tmp_path)["S3 destination write interrupted"]
     partial = st["partial"]
@@ -127,6 +145,7 @@ def test_partial_copy_detected_not_verified(tmp_path):
     assert partial.stat().st_size != st["expected_size"]
 
 
+@pytest.mark.fixture_only
 def test_disk_full_preflight_no_verdict(tmp_path):
     st = run_all(tmp_path)["S3 disk full"]
     assert st["free_bytes"] == 0
@@ -134,6 +153,7 @@ def test_disk_full_preflight_no_verdict(tmp_path):
     assert st["free_bytes"] < 1
 
 
+@pytest.mark.fixture_only
 def test_kill_resume_checkpoint_converges(tmp_path):
     st = run_all(tmp_path)["S4 process kill + resume"]
     data = st["checkpoint"].read_text()
@@ -145,6 +165,7 @@ def test_kill_resume_checkpoint_converges(tmp_path):
 # ── source replaced mid-run ─────────────────────────────────────────
 
 
+@pytest.mark.fixture_only
 def test_source_replaced_digest_drift_detected(tmp_path):
     st = run_all(tmp_path)["S1 source replaced between pre-read and copy-read"]
     assert st["pre_digest"] != st["post_digest"], "swap must change the digest"
@@ -155,6 +176,7 @@ def test_source_replaced_digest_drift_detected(tmp_path):
 # ── re-run must not damage a good verified replica ─────────────────
 
 
+@pytest.mark.fixture_only
 def test_rerun_preserves_good_replica(tmp_path):
     st = run_all(tmp_path)["S4 re-run with verified replica present"]
     src, good = st["source"], st["good_replica"]
@@ -170,6 +192,7 @@ def test_rerun_preserves_good_replica(tmp_path):
 # ── device identity change on reconnect (HW BLOCKED) ───────────────
 
 
+@pytest.mark.hw_blocked
 def test_device_reconnect_identity_change_is_blocked(tmp_path):
     st = run_all(tmp_path)["S2 device identity change on reconnect"]
     assert st["old_identity"]["serial"] != st["new_identity"]["serial"]
@@ -179,6 +202,7 @@ def test_device_reconnect_identity_change_is_blocked(tmp_path):
 # ── S5 ASC MHL tamper (engine native) ──────────────────────────────
 
 
+@pytest.mark.fixture_only
 def test_mhl_tamper_detected_by_digest(tmp_path):
     st = run_all(tmp_path)["S5 ASC MHL manifest tamper"]
     import hashlib
@@ -193,6 +217,7 @@ def test_mhl_tamper_detected_by_digest(tmp_path):
 # ── S7 edge names ──────────────────────────────────────────────────
 
 
+@pytest.mark.fixture_only
 def test_edge_names_generated(tmp_path):
     st = run_all(tmp_path)["S7 edge names: 0-byte/Unicode/case/Windows-reserved"]
     for key in (
@@ -248,6 +273,7 @@ def _gate_for(tmp_path: Path, seed: int, domain: str, with_evidence: bool) -> Re
         cat.close()
 
 
+@pytest.mark.behavior_tested
 def test_forged_verified_flag_without_readback_is_blocked(tmp_path):
     """S6 forged verified flag: two 'verified' replicas but zero readback
     evidence → BLOCKED. This is the zero-tolerance false-SAFE line."""
@@ -258,6 +284,7 @@ def test_forged_verified_flag_without_readback_is_blocked(tmp_path):
     assert gate.gates["readback_evidence"] is False
 
 
+@pytest.mark.behavior_tested
 def test_forged_failure_domain_is_blocked(tmp_path):
     """S6 forged failure_domain: claim an independent domain you cannot prove.
     An 'unknown' domain is not counted → the trusted-device gate fails."""
@@ -267,6 +294,7 @@ def test_forged_failure_domain_is_blocked(tmp_path):
     assert gate.gates["no_untrusted_device_identity"] is False
 
 
+@pytest.mark.behavior_tested
 def test_missing_readback_despite_two_replicas_blocked(tmp_path):
     """S6: two verified replicas across two trusted domains, but no readback
     evidence at all → BLOCKED (replica count alone never grants reuse)."""
@@ -275,6 +303,7 @@ def test_missing_readback_despite_two_replicas_blocked(tmp_path):
     assert gate.gates["readback_evidence"] is False
 
 
+@pytest.mark.behavior_tested
 def test_full_evidence_chain_is_eligible(tmp_path):
     """Positive control: the same chain WITH readback evidence on both
     replicas and trusted domains → ELIGIBLE_FOR_REVIEW (still not
@@ -288,6 +317,7 @@ def test_full_evidence_chain_is_eligible(tmp_path):
 # ── zero-tolerance aggregate assertion ─────────────────────────────
 
 
+@pytest.mark.behavior_tested
 def test_no_scenario_yields_false_safe_to_format(tmp_path):
     """The whole matrix must contain NO scenario that yields a false
     SAFE_TO_FORMAT. Every S6 guard case must be BLOCKED; every positive

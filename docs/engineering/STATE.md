@@ -38,10 +38,14 @@
   - TDD 抓出 2 bug：reel 雙 A 命名（全場景 FileNotFoundError）、symlink 場景 state 漏 key；各修一處 → 20/20 GREEN
   - HW_BLOCKED 項（真 NAS／真 SD 重連指紋／斷電）只建 scenario 狀態＋contract assert，不填假數據
 - **P06/P07 收口**：全量回归 **113 passed, 0 failed**（93＋20）；ruff 觸及 4 檔全綠；skills ledger 37 條純 JSONL（0 bad）
-- **P00–P02 獨立重驗（P03-T04）：venv 73 passed exit 0；Draft PR #1 head `bbd6ff7`==local；Addy on-disk=24（修正先前 25，上游 README 數）**
+- **P07.1：reuse gate 信任鏈補強（TDD Red→Green）→ `tests/test_dit22_gate_trust.py`（9 負向測試）+ `asset_schema.py` gate 修正**：
+  - 根因（systematic-debugging）：P05.1 `readback_evidence` 只驗 `verdict=="PASS" and replica_id is not None`——dangling replica、零副本＋PASS、證據綁未驗證副本、跨 asset 錯誤 replica 皆可偽造 readback → false-safe
+  - 修正：gate 改查 `verified_by_id`（該 replica 存在 + 屬本 asset + 已驗證），PASS 字串本身不再是信任來源；新增 `device_identity_trusted` gate（僅當注入 provider 時）＋ `independent_domains(provider)` 可注入 device-identity probe（`StaticDeviceIdentityProvider` 假裝置做行為測試，真硬體維持 HW_BLOCKED）
+  - P07 矩陣測試按 `fixture_only`（13）／`behavior_tested`（5）／`hw_blocked`（2）標記（markers 於 `tests/conftest.py` `pytest_configure` 註冊）
+  - 收口：P07.1 focused 9 passed；全量 **122 passed**；marker 分組 13/5/2 正確；`PytestUnknownMarkWarning`=0；PERF102 為 HEAD 既有（非本切片引入，未碰）
 
 ## 正在做
-- P06/P07 commit + push（加入 Draft PR #1），然後 P08/P09 依依賴順序推進
+- P07.1 commit + push（加入 Draft PR #1）；然後 P08：NAS mirror≠backup、故障域判斷、staging atomic commit、crash recovery、fail-closed 驗收
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。

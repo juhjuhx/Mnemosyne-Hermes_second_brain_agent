@@ -183,6 +183,43 @@ class ReuseEligibility:
     gates: dict = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class DeviceIdentity:
+    """Result of probing a mount path for its underlying physical device."""
+
+    device_id: str
+    is_physical: bool
+    device_type: str = "unknown"
+
+
+class DeviceIdentityProvider:
+    """Injectable probe: mount path → physical device identity.
+
+    Real implementations consult OS volume APIs (P06 audit: ProofCat
+    `volume.rs` serial fingerprint; offloader has no equivalent). The
+    interface keeps the catalog engine-agnostic; a static fake makes
+    "two mount paths of one device" a *behavior* test instead of a
+    string comparison. Real hardware probing stays HARDWARE_BLOCKED.
+    """
+
+    def identity_for(self, path: str) -> DeviceIdentity:
+        raise NotImplementedError
+
+
+class StaticDeviceIdentityProvider(DeviceIdentityProvider):
+    """Deterministic fake for tests: explicit path→identity mapping; any
+    unlisted path resolves to an unknown, NON-physical device
+    (fail-closed)."""
+
+    def __init__(self, mapping: dict[str, DeviceIdentity]):
+        self._mapping = mapping
+
+    def identity_for(self, path: str) -> DeviceIdentity:
+        return self._mapping.get(
+            path, DeviceIdentity("unknown", False, "unknown")
+        )
+
+
 class Dit22Catalog:
     """New-namespace SQLite catalog. Isolated from v4 `files.db`/Qdrant."""
 
@@ -362,38 +399,80 @@ class Dit22Catalog:
             for r in cur.fetchall()
         ]
 
-    # ── fail-closed reuse gate (S6) ──────────────────────────────────
-    def reuse_eligibility(self, asset_id: str) -> ReuseEligibility:
+    # ── fail-closed reuse gate (S6, P07.1 trust-source hardened) ────
+    def reuse_eligibility(
+        self, asset_id: str, provider: DeviceIdentityProvider | None = None
+    ) -> ReuseEligibility:
         """Fail-closed gate: may this asset's replicas be re-used as working
         material? ALL gates must pass; any failure (or missing evidence)
         yields `BLOCKED`. This gate never says `SAFE_TO_FORMAT`.
 
         Gates:
-        - readback_evidence: at least one PASS readback evidence row bound to
-          a replica of this asset.
-        - no_untrusted_device_identity: every verified replica must carry a
-          known (non-`unknown`) failure_domain. An `unknown` domain is
-          treated as non-independent (fail-closed).
+        - readback_evidence (P07.1 trust-source rule): at least one
+          `PASS` evidence row whose `replica_id` references an EXISTING
+          replica that BELONGS to this asset and is itself VERIFIED.
+          A stored PASS string alone is NOT trusted — a dangling,
+          cross-asset, or unverified-replica evidence row is a record,
+          not a verification.
+        - no_untrusted_device_identity: every verified replica must carry
+          a known (non-`unknown`) failure_domain. `unknown` is treated
+          as non-independent (fail-closed).
+        - device_identity_trusted (only when a `provider` is given):
+          every verified replica's path must resolve, via the provider,
+          to a PHYSICAL device. Non-physical (e.g. network share) or
+          unknown devices fail this gate.
         """
         reps = self.replicas_for(asset_id)
         evs = self.evidence_for(asset_id)
 
-        readback = any(
-            e.verdict == "PASS" and e.replica_id is not None for e in evs
+        verified_by_id = {r.replica_id: r for r in reps if r.verified}
+        trusted_readback = any(
+            e.verdict == "PASS"
+            and e.replica_id is not None
+            and e.replica_id in verified_by_id
+            and verified_by_id[e.replica_id].asset_id == asset_id
+            for e in evs
         )
         verified = [r for r in reps if r.verified]
-        untrusted = any(r.failure_domain == "unknown" for r in verified)
+        untrusted_domain = any(
+            r.failure_domain == "unknown" for r in verified
+        )
 
-        gates = {
-            "readback_evidence": readback,
-            "no_untrusted_device_identity": not untrusted,
+        gates: dict = {
+            "readback_evidence": trusted_readback,
+            "no_untrusted_device_identity": not untrusted_domain,
         }
+        if provider is not None:
+            untrusted_device = any(
+                not provider.identity_for(r.path).is_physical for r in verified
+            )
+            gates["device_identity_trusted"] = not untrusted_device
+
         ok = all(gates.values())
         return ReuseEligibility(
             verdict="ELIGIBLE_FOR_REVIEW" if ok else "BLOCKED",
             is_eligible=ok,
             gates=gates,
         )
+
+    def independent_domains(
+        self, asset_id: str, provider: DeviceIdentityProvider
+    ) -> int:
+        """Count physically-independent failure domains, decided by the
+        INJECTED device-identity probe (not by path or string comparison):
+        a domain counts only if its replicas resolve — via `provider` —
+        to a physical device; replicas resolving to the same physical
+        `device_id` collapse to one domain. Fail-closed: an unlisted or
+        non-physical path contributes nothing.
+        """
+        seen: set[str] = set()
+        for rep in self.replicas_for(asset_id):
+            if not rep.verified:
+                continue
+            ident = provider.identity_for(rep.path)
+            if ident.is_physical:
+                seen.add(ident.device_id)
+        return len(seen)
 
     # ── lifecycle ─────────────────────────────────────────────────────
     def close(self) -> None:

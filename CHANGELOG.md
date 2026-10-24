@@ -154,6 +154,33 @@ v4 behavior change, no cloud, no hardware claims**.
   power-loss) build the scenario state + contract asserts only — no
   fabricated device or benchmark data.
 
+### Fixed — DIT 2.2 P07.1 reuse-gate trust-source hardening (2026-10-24)
+
+- Root cause (TDD red→green): the P05.1 `readback_evidence` gate trusted any
+  stored `verdict == "PASS"` row with a non-null `replica_id`. A dangling
+  `replica_id`, PASS evidence with zero replicas, evidence bound to an
+  unverified replica, or evidence pointing at another asset's replica were
+  all (incorrectly) counted as readback. A stored PASS string is a record,
+  not a verification.
+- `src/mnemosyne_dit/asset_schema.py` — minimal fix:
+  - `reuse_eligibility` now resolves `readback_evidence` against
+    `verified_by_id`: the referenced replica must EXIST, BELONG to this
+    asset, and be VERIFIED.
+  - New `device_identity_trusted` gate (active only when a
+    `DeviceIdentityProvider` is injected): every verified replica's path
+    must resolve to a PHYSICAL device; network/unknown devices fail-closed.
+  - New `independent_domains(asset_id, provider)` + `DeviceIdentity` /
+    `DeviceIdentityProvider` / `StaticDeviceIdentityProvider` (a
+    deterministic fake for behavior-testing "two mount paths of one
+    device"; unlisted paths resolve to a non-physical unknown).
+- `tests/test_dit22_gate_trust.py` — 9 behavior tests, all green.
+- P07 matrix tests now carry explicit coverage taxonomy
+  (`@fixture_only` 13 / `@behavior_tested` 5 / `@hw_blocked` 2), markers
+  registered in `tests/conftest.py` via `pytest_configure` (pytest ≥ 4).
+- Full regression now **122 passed, 0 failed** (113 prior + 9 new).
+  v4 / real media / cloud untouched; A770 + real NAS/SD remain
+  HARDWARE_BLOCKED.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan
