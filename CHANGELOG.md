@@ -33,6 +33,21 @@ v4 behavior change, no cloud, no hardware claims**.
   `_archive/2026-06-05-v4-plan/verify.py` → exit 1 on main itself
   (44/105 files changed since the 2026-06-05 freeze; see ADR-DIT2-005)
 
+### Added — DIT 2.2 P03 requirements map (2026-10-24)
+
+- `docs/engineering/spec/F01-F52-requirements-map.md` — F01–F52
+  requirements map grounded in the **actual repo source** (not docs):
+  `indexer.py` (7 invariants), the naive `dit-offload` / `dit-metadata`
+  MCP servers, and the `tests/fixtures/dit22/` synthetic generator. Each
+  feature is tagged `repo_now` (DONE/PARTIAL/NAIVE/GAP) + a `test_spec`.
+  Tallies: DONE 0 / PARTIAL 4 (F21,F31,F38,F49) / NAIVE 2 (F02,F05) /
+  GAP 43 / HARDWARE_BLOCKED F42 (A770 not on host).
+- P03 also independently re-verified the P00–P02 handoff (venv 73
+  passed, Draft PR #1 head `bbd6ff7`) and corrected the Addy Osmani
+  on-disk count to **24** (was recorded as 25 from the upstream README
+  claim; this marketplace clone `13e43f2` installs 24). No v4 behavior
+  change, no cloud call, no real-media touch.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan

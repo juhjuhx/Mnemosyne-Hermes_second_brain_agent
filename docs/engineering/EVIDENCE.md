@@ -27,3 +27,15 @@
 - 真實素材/相機卡/NAS：**未接觸**（本輪全部 synthetic/文件/上游元資料）
 - 第三方授權：arkiv＝C 類（競品限制，僅黑箱參考）；無授權檔來源＝C 類不入 `src/`；GPL（sift-video）＝B 類需分目錄
 - v4 七項 invariant：**全數維持**（未改 Qdrant schema、未動 indexer、未開雲端、未自動搬移檔案）
+
+## P03 獨立重驗與校訂（2026-10-24，本輪新執行）
+
+| # | 命令 | 結果 |
+|---|---|---|
+| P03-1 | `…/mnemosyne-venv/bin/python -m pytest tests/ -q`（獨立重跑） | **73 passed, 0 failed, exit 0**（證實 P00–P02 證據） |
+| P03-2 | `gh pr view 1 … --json headRefOid` vs `git rev-parse HEAD` | 皆 `bbd6ff71439fd9920998eed1d8f9696128ab5851`，Draft PR #1 真實存在且與 local 同步 |
+| P03-3 | `ls -d ~/.claude/skills/addyosmani-* \| wc -l` + `ls …/addy-agent-skills/skills \| wc -l` | **24 / 24**（修正先前記錄「25」；25 為上游 README 宣稱，本 marketplace 克隆 `13e43f2` 實裝 24） |
+| P03-4 | `python3 -c "import torch; …xpu.is_available()"`（host M1） | `torch 2.13.0`，**xpu avail False** → F42/A770 標 HARDWARE_BLOCKED，不填 GPU 成績 |
+| P03-5 | 讀 `src/hermes_skills/dit-offload/dit_metadata_server.py` | 定位 naive 安全缺口（collision=改名、無 source guard/MHL/fingerprint/狀態機）→ 寫入 `spec/F01-F52-requirements-map.md` repo_now 欄 |
+
+**記錄校訂**：Addy Osmani 宿主實裝數 = **24**（先前 P00–P02 記「25」，以上游 README 為準；本輪改以檔案證據為準，兩處 ledger 已同步修正）。
