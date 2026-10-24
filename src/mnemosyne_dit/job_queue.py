@@ -84,6 +84,12 @@ class DurableJobQueue:
         self.db_path = Path(db_path)
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.conn.execute("PRAGMA journal_mode=WAL")
+        # Two concurrent writers (separate worker processes on one DB file)
+        # must wait on each other's write lock rather than raising
+        # "database is locked" — the CAS lease arbitration (see lease())
+        # relies on the loser re-evaluating its WHERE against the winner's
+        # committed row.
+        self.conn.execute("PRAGMA busy_timeout=5000")
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.executescript(_SCHEMA)
         self.conn.commit()
@@ -158,12 +164,32 @@ class DurableJobQueue:
                 f"{row['lease_expires_at']}"
             )
         # PENDING, PAUSED, or an expired lease: take it.
+        #
+        # CAS arbitration: the UPDATE's WHERE re-checks takeability *at write
+        # time*, so two racers on the same PENDING/expired job cannot both win
+        # — the first to commit flips state to an unexpired LEASED, the second's
+        # WHERE no longer matches and rowcount is 0 => it loses. (SQLite's
+        # WAL write lock serializes the two UPDATEs, so the loser re-evaluates
+        # against the winner's committed row.) Cross-process fairness beyond
+        # this lock remains deferred to ADR-DIT2-003.
         token = str(uuid.uuid4())
-        self.conn.execute(
+        cur = self.conn.execute(
             "UPDATE dit22_job SET state='LEASED', lease_token=?, lease_worker=?,"
-            " lease_expires_at=?, attempt=attempt+1 WHERE job_id=?",
-            (token, worker, now + ttl_seconds, job_id),
+            " lease_expires_at=?, attempt=attempt+1 WHERE job_id=? AND ("
+            "   state IN ('PENDING','PAUSED')"
+            "   OR (state='LEASED' AND (lease_expires_at IS NULL"
+            "       OR lease_expires_at <= ?))"
+            " )",
+            (token, worker, now + ttl_seconds, job_id, now),
         )
+        if cur.rowcount == 0:
+            # Lost the CAS: someone else already took it (or it moved to a
+            # terminal state) between our read and this write.
+            fresh = self._row(job_id)
+            raise LeaseHeldError(
+                f"job {job_id} lease race lost (state={fresh['state']}, "
+                f"holder={fresh['lease_worker']!r})"
+            )
         self.conn.commit()
         return token
 

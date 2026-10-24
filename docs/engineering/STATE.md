@@ -59,9 +59,10 @@
   - 優先級：claim 按 priority desc、同級 FIFO（`seq`）
   - TDD 抓出 1 真實 bug：`verify_manifest` 對已 JSON-decode 的 dict 再 `json.loads` → 雙重解碼
   - 收口：focused **13 passed**；全量 **147 passed, 0 failed**（134＋13）；ruff 全綠；本 module 零 indexer 邏輯（多 worker 不違反舊 indexer 由靜態 import 可證）
+  - **P09 CAS addendum（獨立審查 `deleg_5a3282cb` 7/7 PASS 後，封閉其 flag 的雙重 live lease 路徑）**：`lease()` 取租 UPDATE 加 WHERE 條件（只許 `PENDING/PAUSED` 或「已過期的 LEASED」勝出）＋ `rowcount==0` 時敗者丟 `LeaseHeldError`；connection 加 `busy_timeout=5000`；釘 2 確定性測試（同取租 UPDATE 連發 2 次第 2 次必敗、跨連線過期接管 attempt 只 +1）→ P09 focused **15 passed**、全量 **149 passed**、ruff 全綠。多過程公平仲裁維持 spec §2.6 延後 ADR-DIT2-003
 
 ## 正在做
-- P09 commit + push（加入 Draft PR #1）＋獨立審查；之後 P10：media probe / proxy 生成（依 SSOT 第四輪）
+- P09 CAS 硬化 commit + push（加入 Draft PR #1）；之後 P10：media probe / proxy 生成（依 SSOT 第四輪）
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P08/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。

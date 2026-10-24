@@ -254,6 +254,27 @@ v4 behavior change, no cloud, no hardware claims**.
 - Full regression now **147 passed, 0 failed** (134 prior + 13 new).
   ruff clean. No v4 / media / cloud touch.
 
+### Added — DIT 2.2 P09 CAS lease hardening (2026-10-24)
+
+- P09 independent review (`deleg_5a3282cb`, 7/7 PASS) flagged one
+  concrete race the slice deliberately left to ADR-DIT2-003: the
+  read-then-unconditional-UPDATE in `lease()` could let two processes
+  both commit a live lease on one PENDING / expired job. Hardened it
+  without expanding scope:
+  - the take-lease `UPDATE` now re-checks takeability *at write time*
+    (`WHERE ... state IN ('PENDING','PAUSED') OR (state='LEASED' AND
+    expired)`); `rowcount == 0` means the writer lost the race and
+    `LeaseHeldError` is raised instead of a second lease being set;
+  - `PRAGMA busy_timeout=5000` so a losing writer waits for the
+    winner's committed row instead of raising "database is locked".
+- Two deterministic tests pin the behavior
+  (`test_cas_second_stale_take_lease_cannot_win`,
+  `test_expired_takeover_via_second_connection_bumps_attempt_once`).
+- Cross-process fairness beyond this lock stays deferred to
+  ADR-DIT2-003 (still PROPOSED, pending user approval).
+- P09 focused suite now **15 passed**; full regression **149 passed,
+  0 failed** (147 prior + 2 new). ruff clean.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan

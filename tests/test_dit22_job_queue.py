@@ -86,6 +86,65 @@ def test_re_lease_own_valid_lease_is_noop(tmp_path):
     assert st["attempt"] == 1, "re-owning an unexpired lease must not add attempts"
 
 
+@pytest.mark.behavior_tested
+def test_cas_second_stale_take_lease_cannot_win(tmp_path):
+    """The P09 review flagged the read-then-update lease path: two
+    processes that both believe a PENDING job is free could each commit
+    a live lease. `lease()` now ends with a CAS UPDATE whose WHERE
+    re-checks takeability *at write time*. Fire that exact UPDATE twice
+    back-to-back: the FIRST must match (row is PENDING), the SECOND
+    must not (row is now LEASED-unexpired) => only one live lease is
+    ever set, and `attempt` increments once, not twice.
+
+    Run on a single connection so the ordering is deterministic: the
+    second UPDATE sees the first's committed-in-transaction state.
+    """
+    import time
+
+    q = _q(tmp_path)
+    job = q.enqueue("x", idempotency_key="k")
+    now = time.time()
+    # The exact take-lease UPDATE that lease() issues.
+    sql = (
+        "UPDATE dit22_job SET state='LEASED', lease_token=?, lease_worker=?,"
+        " lease_expires_at=?, attempt=attempt+1 WHERE job_id=? AND ("
+        "   state IN ('PENDING','PAUSED')"
+        "   OR (state='LEASED' AND (lease_expires_at IS NULL"
+        "       OR lease_expires_at <= ?))"
+        " )"
+    )
+    first = q.conn.execute(sql, ("tok-A", "wA", now + 300, job["job_id"], now))
+    second = q.conn.execute(sql, ("tok-B", "wB", now + 300, job["job_id"], now))
+    q.conn.commit()
+    assert first.rowcount == 1, "the PENDING take must match"
+    assert second.rowcount == 0, "a stale second take must NOT match"
+    st = q.job_state(job["job_id"])
+    assert st["state"] == "LEASED"
+    assert st["lease_worker"] == "wA", "the first writer is the sole holder"
+    assert st["attempt"] == 1, "a lost race must not add a second attempt"
+
+
+@pytest.mark.behavior_tested
+def test_expired_takeover_via_second_connection_bumps_attempt_once(tmp_path):
+    """A worker crash (expired lease) is takeable across connections,
+    and the takeover increments `attempt` exactly once. A second
+    DurableJobQueue on the same file proves state survives the first
+    process going away."""
+    db = tmp_path / "q.db"
+    q1 = DurableJobQueue(db)
+    job = q1.enqueue("x", idempotency_key="k")
+    q1.lease(job["job_id"], worker="crashed", ttl_seconds=0)  # expires now
+    q1.close()
+
+    q2 = DurableJobQueue(db)  # a fresh process reconnecting
+    tok = q2.lease(job["job_id"], worker="recoverer")
+    assert tok is not None
+    st = q2.job_state(job["job_id"])
+    assert st["state"] == "LEASED"
+    assert st["lease_worker"] == "recoverer"
+    assert st["attempt"] == 2, "crash takeover = the second lease of this job"
+
+
 # ── 3. checkpoint + pause/resume ───────────────────────────────────
 
 
