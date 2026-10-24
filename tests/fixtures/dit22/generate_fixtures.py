@@ -37,18 +37,24 @@ def generate(output_dir: Path) -> dict[str, str]:
     manifest: dict[str, str] = {}
 
     # Normal footage files (small, deterministic)
-    for i, (reel, size) in enumerate([("A001", 256 * 1024), ("A002", 128 * 1024), ("B001", 64 * 1024)]):
+    for i, (reel, size) in enumerate(
+        [("A001", 256 * 1024), ("A002", 128 * 1024), ("B001", 64 * 1024)]
+    ):
         rel = f"DCIM/CAM_{reel}/A{reel[-4:]}0101.A"
         manifest[rel] = _make_file(output_dir / rel, size, seed=1000 + i)
 
     # Edge cases for fault/safety tests
-    manifest["DCIM/CAM_A001/zero-byte.A"] = _make_file(output_dir / "DCIM/CAM_A001/zero-byte.A", 0, 0)
+    manifest["DCIM/CAM_A001/zero-byte.A"] = _make_file(
+        output_dir / "DCIM/CAM_A001/zero-byte.A", 0, 0
+    )
     manifest["DCIM/CAM_A001/故報緣名サンプル.A"] = _make_file(
         output_dir / "DCIM/CAM_A001/故報緣名サンプル.A", 1024, 7
     )
 
     # Sidecar files
-    manifest["DCIM/CAM_A001/A0010101.SRT"] = _make_file(output_dir / "DCIM/CAM_A001/A0010101.SRT", 256, 42)
+    manifest["DCIM/CAM_A001/A0010101.SRT"] = _make_file(
+        output_dir / "DCIM/CAM_A001/A0010101.SRT", 256, 42
+    )
     return manifest
 
 

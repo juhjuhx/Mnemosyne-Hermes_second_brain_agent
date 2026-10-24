@@ -3,11 +3,9 @@
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parent.parent / "fixtures" / "dit22"))
 
-import generate_fixtures  # noqa: E402
+import generate_fixtures
 
 
 def test_fixtures_are_deterministic(tmp_path: Path) -> None:
@@ -29,7 +27,7 @@ def test_fixture_tree_is_writable_copy_target(tmp_path: Path) -> None:
     src = tmp_path / "card"
     dest = tmp_path / "dest"
     m = generate_fixtures.generate(src)
-    for rel, _ in m.items():
+    for rel in m:
         data = (src / rel).read_bytes()
         target = dest / rel
         target.parent.mkdir(parents=True, exist_ok=True)
