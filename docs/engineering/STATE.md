@@ -1,13 +1,12 @@
-# STATE｜Mnemosyne DIT 2.2（更新：2026-10-24 P05 完成時）
+# STATE｜Mnemosyne DIT 2.2（更新：2026-10-24 P05.1 完成時）
 
 ## 目標
-依 SSOT 完成 P00–P19；當前進度＝P00–P05 + GitHub 交接（Draft PR #1）。
+依 SSOT 完成 P00–P19；當前進度＝P00–P05.1 + GitHub 交接（Draft PR #1）。
 
-## Repo 真況（接手時，已記錄）
-- `main` HEAD：`ddd79552fde8a1dbc25621dedb0ee8198e772ca6`（2026-06-10，與 SSOT 基線一致）
-- `git status`（main worktree）：clean；remote 無 `research/*` 同名分支（collision-safe 檢查通過）
-- `_archive/2026-06-05-v4-plan/verify.py`：exit 1（61 OK / 44 CHANGED / 0 MISSING）——**main 自身**已不合 2026-06-05 manifest（v4 freeze 後授權等 commit 改動所致，最後修改 2026-06-05）；本分支不原地改 manifest，記錄於 `dit22-architecture-decisions.md` ADR-DIT2-005
-- 既有測試：venv `pytest tests/ -q` → 初輪 **70 passed**（exit 0）；新增 `tests/fixtures/dit22/` 3 測試後全量 **73 passed, 0 failed**（P03 獨立重跑確認，exit 0）；system python 3.14 缺 `qdrant_client`/`watchdog` → 39 failed（環境問題，非程式回歸）
+## 本輪重新驗證（不信任上輪數字）
+- 接手重驗：branch `research/dit22-multimodal-handoff-20261024` @ `b8fb0bc`，tree clean，與 origin 同步
+- 本輪 fresh full regression：venv `pytest tests/ -q` → **93 passed**（P05 前 81 + P05.1 新增 12，0 failed，本輪自己重跑，非引用上輪 81）
+- ruff：P05.1 觸及檔案全綠（`All checks passed`）
 
 ## 已完成
 - 隔離 worktree + 分支：`research/dit22-multimodal-handoff-20261024` @ `ddd7955`（現 HEAD `bbd6ff7`）
@@ -20,10 +19,19 @@
 - **P03：F01–F52 需求 map + 測試規格 → `docs/engineering/spec/F01-F52-requirements-map.md`（grounded in real source：indexer.py / naive dit-offload / dit-metadata / dit22 fixtures；DONE 0 / PARTIAL 4 / NAIVE 2 / GAP 43 / HARDWARE_BLOCKED F42）**
 - **P04：clean-room REA 功能契約 → `docs/engineering/spec/P04-clean-room-contracts.md`（§0 三面隔離 + §1 ingest-safety S1–S7 + §2 asset-schema + §3 provider-interface + §4 mcp-tools 三層 + §5 收斂判決；TDD test_spec 落 P07/P16，本輪標 spec-only 不造假 GREEN）**
 - **P05：canonical asset/observation/replica 資料模型可執行垂直切片 → `src/mnemosyne_dit/asset_schema.py` + `tests/test_dit22_asset_schema.py`（8 tests PASSED；asset_id=content 與 path 解耦、獨立 dit22.db 不碰 v4、unknown failure-domain 不計獨立備份；TDD 抓出並修 asset-seeding clobber bug）→ 全量 81 passed、ruff clean**
+- **P05.1：安全模型補強（獨立審查負向測試）→ `tests/test_dit22_asset_schema_hardening.py`（12 negative tests）+ `src/mnemosyne_dit/asset_schema.py` 最小修補**：
+  - `independent_replicas()` 純 advisory，module 無 `SAFE_TO_FORMAT` surface；新增 fail-closed `reuse_eligibility()` gate（readback 證據 + 無 untrusted device，缺任一 → `BLOCKED`）
+  - `add_evidence()` 由 `INSERT OR REPLACE` 改 append-only：同 id 同值 = 冪等 no-op；不同值 raise `EvidenceConflictError`（首錄 verdict 權威，不可翻案）
+  - `upsert_asset()` 改 `COALESCE` gap-fill：已知 card_id/reel 絕不被後續 NULL 覆寫
+  - `PRAGMA foreign_keys=ON`（SQLite 預設 OFF，先前 REFERENCES 未強制）
+  - `add_replica()` 同 id 異值 raise `ReplicaConflictError`（阻擋 S5 篡改路徑）
+  - TDD：先 Red（collection ImportError 確認缺 3 符號）→ 最小修正 → 12/12 Green；全量 93 passed 無迴歸、ruff 全綠
+  - **未動 v4 索引契約**（獨立 `dit22` namespace；`PRAGMA foreign_keys`/`COALESCE`/gate 全在 P05 `asset_schema.py` 內）
+- **P05.1：`dit22-skill-execution-ledger.jsonl` 拆純 JSONL**：27 機器記錄留 `.jsonl`（逐行可 parse，0 bad），14 行混入之 markdown 綜合拆至新增 `dit22-skill-execution-report.md`（人類可讀）
 - **P00–P02 獨立重驗（P03-T04）：venv 73 passed exit 0；Draft PR #1 head `bbd6ff7`==local；Addy on-disk=24（修正先前 25，上游 README 數）**
 
 ## 正在做
-- P05 切片 commit + push（加入 Draft PR #1）
+- P05.1 commit + push（加入 Draft PR #1），然後 P06 兩引擎稽核 → P07 故障注入 harness
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。

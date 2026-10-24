@@ -79,6 +79,34 @@ v4 behavior change, no cloud, no hardware claims**.
   **81 passed** (73 prior + 8 new, no regression); ruff clean.
 - No v4 behavior change, no cloud call, no real-media touch.
 
+### Added — DIT 2.2 P05.1 security-model hardening (independent-review negative tests, 2026-10-24)
+
+- `tests/test_dit22_asset_schema_hardening.py` — 12 negative contract tests
+  (written FIRST, Red confirmed via collection ImportError) covering the five
+  independent-review findings: advisory replica count, append-only evidence,
+  upsert clobber, foreign-key enforcement, re-entry consistency.
+- `src/mnemosyne_dit/asset_schema.py` — minimal hardening (dit22 namespace
+  only; v4 index contracts untouched):
+  - `PRAGMA foreign_keys=ON` at open (SQLite default is OFF; prior
+    `REFERENCES` were declared but never enforced)
+  - `upsert_asset` conflict path now `COALESCE` gap-fill — a known
+    `card_id`/`reel` is never overwritten by a later NULL-carrying upsert
+  - `add_evidence` is append-only: identical re-entry is a no-op (resume-safe),
+    any value change under the same `evidence_id` raises
+    `EvidenceConflictError` (first recorded verdict is authoritative)
+  - `add_replica` identical re-entry is a no-op; a value change under the same
+    `replica_id` (e.g. swapped `failure_domain`) raises `ReplicaConflictError`
+  - new fail-closed `reuse_eligibility()` gate — requires PASS readback
+    evidence bound to a replica AND all verified replicas on trusted
+    (non-`unknown`) failure domains; missing any → `BLOCKED`. The module
+    exposes no `SAFE_TO_FORMAT` surface anywhere.
+- `docs/engineering/dit22-skill-execution-ledger.jsonl` split: machine
+  records kept as pure JSONL (every line parseable); the 14 interleaved
+  markdown synthesis lines moved to a new human-readable
+  `docs/engineering/dit22-skill-execution-report.md`.
+- Fresh full regression this session: **93 passed, 0 failed** (81 prior +
+  12 new); `ruff check` clean on all touched files.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan

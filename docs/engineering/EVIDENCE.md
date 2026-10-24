@@ -58,3 +58,14 @@
 | P05-3 | TDD 根因修補：初版 `add_*` 用 `upsert_asset` 把 richer row 的 `reel/card_id` 覆成 default | 改 `_seed_asset`（`INSERT OR IGNORE` 只补缺不覆）→ `test_catalog_persists_across_reopen` 綠 |
 | P05-4 | fail-closed 語意：`independent_replicas` 把 `unknown` failure_domain 當**非獨立**備份（鏡 ADR-DIT2-004/F13） | `test_unknown_failure_domain_is_not_independent` 綠 |
 | P05-5 | ruff（CI 對齊） | `ruff check src/mnemosyne_dit tests/test_dit22_asset_schema.py` → All checks passed；`ruff format` 2 檔整理 |
+
+## P05.1 安全模型補強（2026-10-24，獨立審查負向測試 → 最小修補）
+
+| # | 動作 | 結果 |
+|---|---|---|
+| P05.1-0 | 接手重新驗證（**不信任上輪 81**） | branch @ `b8fb0bc` clean、與 origin 同步；fresh full regression **93 passed** 前（81 基線＋12 新增）；本輪重跑數字為依據 |
+| P05.1-1 | 獨立審查 5 風險 → `tests/test_dit22_asset_schema_hardening.py`（12 negative tests，先寫） | Red：collection `ImportError`（`EvidenceConflictError`/`ReplicaConflictError`/`reuse_eligibility` 不存在於 module）→ 確立契約缺口 |
+| P05.1-2 | 最小修補 `asset_schema.py`（僅 dit22 namespace，v4 零接觸） | `PRAGMA foreign_keys=ON`（前為 SQLite 預設 OFF，REFERENCES 未強制）；`upsert_asset` 改 `COALESCE` gap-fill（已知 card/reel 不被 NULL 覆）；`add_evidence` append-only（同值冪等／異值 `EvidenceConflictError`）；`add_replica` 同 id 異值 `ReplicaConflictError`；新增 fail-closed `reuse_eligibility()`（readback＋trusted-device，缺任一→`BLOCKED`，絕不吐 `SAFE_TO_FORMAT`） |
+| P05.1-3 | 負向測試收口 | **12/12 passed**；全量 regression **93 passed, 0 failed**（本輪自己重跑，非引用上輪 81） |
+| P05.1-4 | `ruff check` 觸及 3 檔（src＋2 test） | All checks passed（import 排序／blind-exception／SIM117 各 1 修正） |
+| P05.1-5 | ledger 純 JSONL 化 | `dit22-skill-execution-ledger.jsonl` 拆純 JSONL（27 記錄＋4 本輪新增＝31，逐行可 parse 0 bad）；14 行混入 markdown 綜合 → 拆至新增 `dit22-skill-execution-report.md` |
