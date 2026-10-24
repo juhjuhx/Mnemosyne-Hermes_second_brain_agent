@@ -275,7 +275,7 @@ v4 behavior change, no cloud, no hardware claims**.
 - P09 focused suite now **15 passed**; full regression **149 passed,
   0 failed** (147 prior + 2 new). ruff clean.
 
-### Added — DIT 2.2 P09.1 lease fencing (2026-10-24)
+### Added — DIT 2.2 P09.1 lease fencing + P10 FFprobe media probe (2026-10-24)
 
 - P09.1 (spec addendum §4, writing-plans): every lease-protected state
   update (`update_checkpoint` / `pause` / `fail` / `complete`) becomes a
@@ -306,6 +306,37 @@ v4 behavior change, no cloud, no hardware claims**.
 - No ADR-DIT2-003 scope expansion: this is DB-layer hardening only.
 - P09.1 focused suite (9 new + 15 P09) **24 passed**; full regression
   **158 passed, 0 failed** (149 prior + 9 new). ruff clean.
+  Independent review `deleg_e2e10053`: **8/8 PASS** (the one residual
+  note — same-name + same-token no-op — is P09's documented no-op
+  contract, not a P09.1 gap).
+- `docs/engineering/spec/P10-media-probe.md` — spec-first (writing-
+  plans): 13-scenario test matrix for a read-only FFprobe probe.
+- `src/mnemosyne_dit/media_probe.py` — `MediaProbe` + `probe()`:
+  - exact rational FPS (`Fraction`; "30000/1001" never rounded),
+    time_base, per-frame PTS → VFR (`cfr` / `vfr-likely` / `unknown`
+    — degrades, never assumes cfr);
+  - drop-frame vs non-drop timecode by FPS family;
+  - codec / pix_fmt / color primaries / transfer / HDR (conservative
+    `sdr` / `hdr-sdr` / `unknown`); rotation (display-matrix side data +
+    tags); multi-audio streams with per-stream sample_rate / layout;
+  - sidecar association (read-only dir scan), source SHA256, and a
+    reconstructable evidence blob (`to_evidence_json()` carries binary
+    version + argv + the raw ffprobe JSON);
+  - safety: shell-free argv, network-URL refusal BEFORE any subprocess
+    (verified by a spy that asserts zero ffprobe runs), timeout, a 50MB
+    output cap, empty-file refusal without invoking ffprobe, corrupt /
+    unknown formats → `ProbeError` with a stderr summary, CJK unicode
+    paths, strictly read-only, zero v4 imports.
+- `tests/test_dit22_media_probe.py` — 19 tests (10 `@behavior_tested`
+  on real ffmpeg-generated synthetic fixtures; 9 `@fixture_only` on the
+  classifier / parser layer). Camera families with no real sample
+  (Sony BRAW, X-OCN, CinemaDNG, RED) are pinned `verified=False`
+  (UNVERIFIED); this host's ffmpeg 9.0.2 does not carry a
+  display-matrix / HDR transfer into an MP4 stream, so that path is
+  verified against a crafted ffprobe JSON at the parser level —
+  honest, no fabricated data.
+- Full regression now **177 passed, 0 failed** (158 prior + 19 new).
+  ruff clean. No v4 / real-media / cloud touch.
 
 ### Added — v4 dual-machine landing plan (2026-06-05)
 

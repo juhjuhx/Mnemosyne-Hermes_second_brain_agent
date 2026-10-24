@@ -66,17 +66,24 @@
   - 外部副作用評估（spec §4.3）：**DB 層 CAS 不等於外部檔案寫入的完整防護**——外部產物由目的地自己的原子契約 fencing（P08 receipt shape）；P11 proxy publish 必須沿用該 shape 並在 receipt 記 `job_id`＋`lease_token`，使被竊 lease 的寫入者產物可偵測可清除
   - 測試矩陣 6 情境全實測：stale token 三寫入全 fenced、同名重啟舊 incarnation 拒／新 token 收、跨連線 stale complete fenced、valid token 下 drift→FAILED 與 happy path 回歸不變
   - 收口：P09.1 focused（fencing 9＋job_queue 15）**24 passed**；全量 **158 passed, 0 failed**（149＋9）；ruff 全綠；未擴大 ADR-DIT2-003 多 worker 部署權限
+  - **P09.1 獨立審查 `deleg_e2e10053` 8/8 PASS**（reviewer residual note＝P09 既有 no-op 契約，非缺口）→ commit `6cf03cd`、push
+- **P10：FFprobe 唯讀媒體探測（TDD 垂直切片）→ `src/mnemosyne_dit/media_probe.py`＋`tests/test_dit22_media_probe.py`（19 測試）＋spec `docs/engineering/spec/P10-media-probe.md`**：
+  - 介面：`probe(path, sidecar_dir=, sha256=, full_fps=, timeout_s=, ffprobe_bin=)`；精確 Rational FPS（`Fraction`，`"30000/1001"` 不約簡成 float）、time_base 原文、逐幀 PTS→VFR（`cfr`／`vfr-likely`／`unknown` 降級絕不假設 cfr）、drop/non-drop 家系 timecode、codec/pix_fmt/color/HDR（`sdr`／`hdr-sdr`／`unknown` 保守判定）、rotation（display-matrix side data＋tags）、多音軌獨立 sample_rate/layout、sidecar 唯讀掃描、來源 SHA256、`to_evidence_json()` 可重建證據（binary 版本＋argv＋原始 ffprobe JSON）
+  - 安全契約：argv 無 shell、URL 在原始字串階段拒絕（subprocess 不執行）、timeout、50MB 輸出上限、空檔不呼叫 ffprobe、損壞/未知格式→`ProbeError` 含 stderr 摘要、Unicode 路徑實測、唯讀（無寫入句柄）、零 v4 import
+  - TDD 實測證據：24p `r_frame_rate=="24/1"`、29.97 精確字串＋drop 家系、VFR concat（`-fps_mode vfr`）→`vfr-likely`、雙音軌 32k/48k、CJK 路徑、URL spy 零 subprocess、malformed JSON 用 fake ffprobe、camera family 無樣本一律 `verified=False`（Sony BRAW/CinemaDNG/RED 標 UNVERIFIED，不偽稱實測）；本機 ffmpeg 9.0.2 不帶 display-matrix/HDR 進 MP4 stream → 該路徑改以 crafted ffprobe JSON 於 parser 層驗證（honest、不填假數據）
+  - 收口：focused **19 passed**；全量 **177 passed, 0 failed**（158＋19）；ruff 全綠
 
 ## 正在做
-- P09 CAS 硬化 commit + push（加入 Draft PR #1）；之後 P10：media probe / proxy 生成（依 SSOT 第四輪）
+- P10 收口文件 → 獨立 commit + push（加入 Draft PR #1）；之後 P11：proxy 生成（CPU FFmpeg 最小 golden fixture，staging→verify→atomic publish 沿用 P08 receipt shape＋P09.1 `job_id`/`lease_token`）
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P08/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。
 - P09 本切片只落 **狀態儲存**（queue 不跑活）；多 worker 並行執行（ADR-DIT2-003 佇列並行）仍 PROPOSED 待使用者核准，本輪未啟 daemon。
+- P10 真 camera family（Sony BRAW／X-OCN／CinemaDNG／RED）無樣本 → classifier 標 `verified=False`（UNVERIFIED）；本機 ffmpeg 9.0.2 不帶 display-matrix/HDR 進 MP4 stream → 該路徑以 crafted ffprobe JSON 於 parser 層驗證，不填假數據。
 
 ## 雲端 Gemini：0 呼叫、0 費用（v4 local-only 未獲 ADR 核准，維持不變）。
 
 ## 下一步
-1. P09 獨立審查收口 → P10：media probe / proxy 生成垂直切片（FFprobe 路徑，不碰原始素材，non-destructive）
+1. P10 文件收口 → 獨立 commit + push → P10 獨立審查；然後 P11：proxy 生成最小可播放 MVP（CPU FFmpeg H.264/ProRes，staging→verify→atomic publish，receipt 記 `job_id`+`lease_token`；Proxy 完成絕不自動提高 DIT Archive Safety Verdict）
 2. 第四輪 P10–P13（media probe / proxy / 切鏡 / 語義分割）依序推進
 3. ADR 四案仍 PROPOSED 待使用者核准（雲端 opt-in／向量 profile 隔離／佇列並行／安全狀態機）

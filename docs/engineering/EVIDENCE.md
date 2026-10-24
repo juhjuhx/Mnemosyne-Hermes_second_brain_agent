@@ -121,3 +121,13 @@
 | P09.1-2 | `job_queue.py`：新增 `LeaseFencedError`＋`_fenced_update()`（單一 conditional UPDATE 把完整 fence 塞進 WHERE）；`update_checkpoint`/`pause`/`fail`/`complete` 改 `token=` 必填並經 fenced write；`_assert_leased_to` 加 token 快查（advisory，權威判定在 write 時） | **TDD Red→Green**：9 個 fenced 測試先 Red（P09 只比名稱 → stale 寫入成功）→ 修後 Green |
 | P09.1-3 | 關鍵實測證據（`tests/test_dit22_lease_fencing.py`，9 測試全 `@behavior_tested`） | stale token（過期被 w2 接管後 w1 舊 token）對 checkpoint/pause/fail 全 raise `LeaseFencedError` 且 w2 狀態 untouched；同名重啟：新 token 收、舊 token 拒、`attempt`=2；跨連線 stale complete fenced（job 仍 LEASED to w2、`fail_reason` 空）；valid token 下 drift→`FAILED` 與 DONE happy path 不變；fenced 呼叫絕不靜默成功（DONE/FAILED 上連原本有效的 token 也 fenced） |
 | P09.1-4 | 收口 | P09.1 focused（fencing 9＋job_queue 15）**24 passed**；全量 **158 passed, 0 failed**（149＋9）；ruff 全綠；v4/媒體/雲端未碰；ADR-DIT2-003 多 worker 部署權限未動 |
+| P09.1-r | P09.1 獨立審查（deleg_e2e10053）8 項全 PASS；fence 五條件齊備（job_id/state/lease_token/lease_worker/unexpired-now 同句）、四 API 全經 `_fenced_update`、rowcount=0 一律 raise；stale-token/同名重啟/跨連線/expired-complete 全 fenced；drift/DONE 回歸不變；無 silent-success 洞；diff 零 v4/qdrant/indexer/secret 命中；spec §4 明言 DB fence 不覆蓋外部檔案寫入＋P11 receipt 須記 job_id+lease_token； reviewer 唯一 residual（同名同 token no-op）＝P09 既有契約非缺口 | commit `6cf03cd`；reviewer 自跑 **158 passed**＋ruff 全綠（未裝任何套件進 venv） |
+
+## P10 FFprobe 媒體探測（2026-10-24）
+
+| # | 動作 | 結果 |
+|---|---|---|
+| P10-1 | spec `docs/engineering/spec/P10-media-probe.md`（writing-plans 先定 13 類測試矩陣：精確 Rational FPS／VFR 降級／drop-non-drop TC／color-HDR-rotation／多音軌／損壞-空-未知格式／Unicode／URL 拒絕／sidecar／證據可重建／無樣本 camera family UNVERIFIED／malformed JSON） | 落定；synthetic ffmpeg fixtures、零真實素材、零隱式 URL、唯讀 |
+| P10-2 | `src/mnemosyne_dit/media_probe.py`（`MediaProbe`＋`probe()`）＋ `tests/test_dit22_media_probe.py`（19 測試：10 `@behavior_tested` 真 ffmpeg fixture＋9 `@fixture_only` classifier/parser 層） | **19/19 passed**；全量 **177 passed, 0 failed**（158＋19）；ruff 全綠 |
+| P10-3 | 關鍵實測證據 | 24p `r_frame_rate=="24/1"` 精確字串、VFR 逐幀 PTS 非等距→`vfr-likely`（`-fps_mode vfr` concat fixture）、29.97 drop 家系、雙音軌 32k/48k 獨立、CJK 路徑 probe 成功、URL 在 subprocess 前被 spy 抓出未執行、空檔零 ffprobe 呼叫、malformed JSON 以 fake ffprobe 落 `ProbeError`、camera family 無樣本全 `verified=False`；本機 ffmpeg 9.0.2 不帶 display-matrix/HDR 進 MP4 stream→該路徑改 crafted ffprobe JSON 於 parser 層驗證（不填假數據） |
+| P10-r | P10 獨立審查（deleg_6ca7f297）10 項全 PASS；零 write-path／零 URL→subprocess／VFR-HDR-family 全降級未猜值／零偽樣本宣稱；reviewer 兩個 minor flag 已收：(a) `.x-ocn` 未進 UNVERIFIED 循環→補測試；(b) spec 文書漂移（VFR 門檻 0.5%→實作 5%、HDR 判定比 spec 保守）→spec erratum 落定（VFR 任一正 delta 偏離中位差 >5%；HDR 只認 PQ/HLG transfer 家族＋SDR 需 dual-family，不依 primaries bt2020 單判） | 補正後全量 **177 passed**、ruff 全綠；commit 待 P10 獨立切片 |

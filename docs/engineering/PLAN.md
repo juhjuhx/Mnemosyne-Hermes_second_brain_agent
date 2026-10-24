@@ -22,7 +22,8 @@
 - [x] P07.1：reuse gate 信任鏈補強（dangling/跨 asset/未驗證 replica 證據不可信；可注入 device-identity provider；P07 測試按 fixture_only/behavior_tested/hw_blocked 標記）→ `tests/test_dit22_gate_trust.py`（9 測試）+ `asset_schema.py` gate 修正
 - [x] P08：NAS mirror≠backup 語意测试 + staging atomic commit 合約 → `src/mnemosyne_dit/staging.py`（`StagedArchive` 狀態機＋`independence_report`）+ `tests/test_dit22_staging.py`（11 測試）+ spec `P08-staging-atomic-commit.md`
 - [x] P09：durable job queue 冪等/lease 設計（不動 v4 indexer）→ `src/mnemosyne_dit/job_queue.py`（`DurableJobQueue`）+ `tests/test_dit22_job_queue.py`（15 測試）+ spec `P09-durable-job-queue.md`
-- [x] P09.1：lease fencing 完整性（fenced conditional write on checkpoint/pause/fail/complete；`LeaseFencedError` fail-closed；外部副作用 fencing 評估落 spec §4）→ `tests/test_dit22_lease_fencing.py`（9 測試）
+- [x] P09.1：lease fencing 完整性（fenced conditional write on checkpoint/pause/fail/complete；`LeaseFencedError` fail-closed；外部副作用 fencing 評估落 spec §4）→ `tests/test_dit22_lease_fencing.py`（9 測試）；獨立審查 `deleg_e2e10053` 8/8 PASS → commit `6cf03cd`
+- [x] P10：FFprobe 唯讀媒體探測（精確 Rational FPS、VFR 降級、drop/non-drop TC、color/HDR、rotation、多音軌、sidecar、SHA256、可重建證據；安全 argv/URL/timeout/空檔/Unicode/唯讀；無樣本 camera family 標 UNVERIFIED）→ `src/mnemosyne_dit/media_probe.py`＋`tests/test_dit22_media_probe.py`（19 測試）＋spec `P10-media-probe.md`
 
 ## 第四輪（P10–P13）media probe / proxy / 切鏡 / 語義分割（依序，各切片獨立 commit）
 
