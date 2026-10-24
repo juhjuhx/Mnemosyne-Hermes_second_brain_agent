@@ -233,3 +233,30 @@ def test_untrusted_device_blocks_reuse_when_provider_given(tmp_path):
         assert gate.gates.get("device_identity_trusted") is False
     finally:
         cat.close()
+
+
+@pytest.mark.behavior_tested
+def test_unlisted_path_is_fail_closed_non_physical(tmp_path):
+    """P07.1 reviewer addendum: a replica whose path the provider does NOT
+    know about must resolve to the fail-closed non-physical default —
+    not a trusted physical domain. Pins StaticDeviceIdentityProvider's
+    default behavior, so a future 'lookup miss => physical' change fails
+    this test instead of silently opening a false-safe path."""
+    aid = _aid(0x7B)
+    cat = _cat(tmp_path, 0x7B)
+    prov = _provider({})  # provider knows NOTHING
+    try:
+        cat.add_replica(Replica("r1", aid, "s1", "fd-1", "/some/unlisted/mount",
+                                verified=True))
+        cat.add_evidence(
+            VerificationEvidence("e1", aid, "a.mov", "sha256", "11" * 32,
+                                 "dev", "PASS", replica_id="r1")
+        )
+        # Gate: unlisted path => non-physical => device gate fails, BLOCKED.
+        gate = cat.reuse_eligibility(aid, provider=prov)
+        assert gate.is_eligible is False
+        assert gate.gates.get("device_identity_trusted") is False
+        # Domain count: an unlisted replica contributes nothing.
+        assert cat.independent_domains(aid, prov) == 0
+    finally:
+        cat.close()
