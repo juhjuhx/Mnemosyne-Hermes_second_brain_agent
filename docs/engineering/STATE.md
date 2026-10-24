@@ -28,10 +28,20 @@
   - TDD：先 Red（collection ImportError 確認缺 3 符號）→ 最小修正 → 12/12 Green；全量 93 passed 無迴歸、ruff 全綠
   - **未動 v4 索引契約**（獨立 `dit22` namespace；`PRAGMA foreign_keys`/`COALESCE`/gate 全在 P05 `asset_schema.py` 內）
 - **P05.1：`dit22-skill-execution-ledger.jsonl` 拆純 JSONL**：27 機器記錄留 `.jsonl`（逐行可 parse，0 bad），14 行混入之 markdown 綜合拆至新增 `dit22-skill-execution-report.md`（人類可讀）
+- **P06：兩引擎獨立稽核 → `docs/engineering/spec/P06-differential-engine-audit.md`（S1–S7 差分矩陣＋源碼路徑/行號＋可重現證據）**：
+  - Pinned 克隆 ProofCat `29c06a2`／offloader `e01a0eb` 至 workspace `refs/`（不入 repo）
+  - ProofCat `cargo test -p offload-core` → **131 passed**（本輪實跑）；offloader（專屬 `venv-engines`）→ **306 passed, 13 skipped**
+  - 判定：PC 強於 S2（device 序列號指紋）/S4（job checkpoint）/S6（8 欄 SafetyGate）；offloader 強於 S1 never-write／S7 負向測試範本；offloader 缺 S2 序列號、S4 job re-entry、S6 狀態機、Windows reserved name（`MISSING`）
+  - 污染事件：誤裝 offloader→xxhash 進 repo venv 致 1 既有測試假陽性 → `pip uninstall` 清理，repo venv 重跑 113 passed 恢復；引擎測試 thereafter 一律 `venv-engines`
+- **P07：故障注入差分 harness → `tests/fixtures/dit22/fault_matrix.py`（16 場景×四值分類）+ `tests/test_dit22_fault_matrix.py`（20 測試）**：
+  - 四值分類：ENGINE_NATIVE／DIT_ADAPTER_GUARD／MOCK_SIMULATION／HW_BLOCKED；false `SAFE_TO_FORMAT` 零容忍由 `test_no_scenario_yields_false_safe_to_format` 聚合斷言（偽 verified flag／偽 failure_domain／缺 readback 全 `BLOCKED`，經 P05.1 `reuse_eligibility()` 實測）
+  - TDD 抓出 2 bug：reel 雙 A 命名（全場景 FileNotFoundError）、symlink 場景 state 漏 key；各修一處 → 20/20 GREEN
+  - HW_BLOCKED 項（真 NAS／真 SD 重連指紋／斷電）只建 scenario 狀態＋contract assert，不填假數據
+- **P06/P07 收口**：全量回归 **113 passed, 0 failed**（93＋20）；ruff 觸及 4 檔全綠；skills ledger 37 條純 JSONL（0 bad）
 - **P00–P02 獨立重驗（P03-T04）：venv 73 passed exit 0；Draft PR #1 head `bbd6ff7`==local；Addy on-disk=24（修正先前 25，上游 README 數）**
 
 ## 正在做
-- P05.1 commit + push（加入 Draft PR #1），然後 P06 兩引擎稽核 → P07 故障注入 harness
+- P06/P07 commit + push（加入 Draft PR #1），然後 P08/P09 依依賴順序推進
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。

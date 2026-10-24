@@ -107,6 +107,53 @@ v4 behavior change, no cloud, no hardware claims**.
 - Fresh full regression this session: **93 passed, 0 failed** (81 prior +
   12 new); `ruff check` clean on all touched files.
 
+### Added — DIT 2.2 P06 differential engine audit (S1–S7, source-grounded, 2026-10-24)
+
+- Pinned clones of both engines at the exact SSOT SHAs (workspace `refs/`,
+  NOT committed to the repo):
+  - ProofCat `29c06a2` → `cargo test -p offload-core` → **131 passed**
+    (this session; Tauri-independent engine crate). Full-Tauri `process-kill-resume.sh`
+    binary NOT built → that one item is `IMPLEMENTED_NOT_TESTED`.
+  - offloader `e01a0eb` → dedicated `venv-engines` (with `hypothesis`)
+    `pytest tests/` → **306 passed, 13 skipped** (skips are Windows-only
+    paths). Engine tests never installed into the repo venv.
+- `docs/engineering/spec/P06-differential-engine-audit.md` — S1–S7
+  differential matrix. Every verdict carries a source path + line/function +
+  a reproducible command. Notable: ProofCat leads on S2 (device serial
+  fingerprint), S4 (job checkpoint / WAL resume), S6 (8-field
+  `SafetyGate`); offloader leads S1 never-write and S7 negative-test style;
+  offloader lacks S2 serial, S4 job re-entry, S6 state machine, and Windows
+  reserved names (`MISSING`).
+- Contamination incident (recorded, not hidden): offloader's `xxhash` was
+  accidentally installed into the repo venv, flipping
+  `test_xxhash_fallback_to_md5` to a false failure; resolved with
+  `pip uninstall offloader xxhash reportlab` and a clean repo-venv rerun
+  (113 passed). Engine suites now run only in `venv-engines`.
+
+### Added — DIT 2.2 P07 fault-injection differential harness (2026-10-24)
+
+- `tests/fixtures/dit22/fault_matrix.py` — 16 deterministic synthetic
+  scenarios, each tagged with one of four classifications
+  (`ENGINE_NATIVE` / `DIT_ADAPTER_GUARD` / `MOCK_SIMULATION` / `HW_BLOCKED`)
+  so the report can separate native engine behavior, adapter-added
+  protection, pure mock/simulation, and untested-on-real-hardware cases.
+- `tests/test_dit22_fault_matrix.py` — 20 tests. The S6 guard cases drive
+  the P05.1 `reuse_eligibility()` gate directly: a forged `verified=True`
+  with no readback evidence, a forged failure_domain, and missing readback
+  all come back `BLOCKED`; the positive control is
+  `ELIGIBLE_FOR_REVIEW` (never `SAFE_TO_FORMAT`).
+  `test_no_scenario_yields_false_safe_to_format` is the aggregate
+  zero-tolerance assertion.
+- TDD caught 2 real bugs while going red→green: a double-`A` reel-name
+  bug (`A001`→`AA0010101.A`) that made every scenario raise
+  `FileNotFoundError`, and a missing `outside_secret` key in the symlink
+  scenario state. Both fixed minimally → 20/20 green.
+- Full regression now **113 passed, 0 failed** (93 prior + 20 new);
+  `ruff check` clean on all four touched files.
+- `HARDWARE_BLOCKED` items (real NAS / real SD re-connect identity /
+  power-loss) build the scenario state + contract asserts only — no
+  fabricated device or benchmark data.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan

@@ -69,3 +69,22 @@
 | P05.1-3 | 負向測試收口 | **12/12 passed**；全量 regression **93 passed, 0 failed**（本輪自己重跑，非引用上輪 81） |
 | P05.1-4 | `ruff check` 觸及 3 檔（src＋2 test） | All checks passed（import 排序／blind-exception／SIM117 各 1 修正） |
 | P05.1-5 | ledger 純 JSONL 化 | `dit22-skill-execution-ledger.jsonl` 拆純 JSONL（27 記錄＋4 本輪新增＝31，逐行可 parse 0 bad）；14 行混入 markdown 綜合 → 拆至新增 `dit22-skill-execution-report.md` |
+
+## P06 兩引擎獨立稽核（2026-10-24，S1–S7 差分，實跑證據）
+
+| # | 動作 | 結果 |
+|---|---|---|
+| P06-1 | Pinned 克隆 ProofCat `29c06a2` / offloader `e01a0eb` 至 `refs/`（workspace 外，不入 repo） | 兩 SHA 逐一 `git checkout` 確認 |
+| P06-2 | `cargo test -p offload-core`（ProofCat 引擎，Tauri-independent） | **131 passed, 0 failed, 0 ignored**（35.7s）——fault-matrix 具名測試（`chaos.rs`/`orchestrator.rs`）全數跑通；全量 Tauri binary（`process-kill-resume.sh`）未編譯 → 該項 `IMPLEMENTED_NOT_TESTED` |
+| P06-3 | offloader 引擎測試（專屬 `venv-engines`，含 `hypothesis`，**不裝入 repo venv**） | `pytest refs/offloader/tests -q` → **306 passed, 13 skipped**（skipped＝Windows-only）；`test_data_safety.py` 全綠 |
+| P06-4 | 污染復發與清理：誤將 offloader `xxhash` 裝入 repo venv → `test_xxhash_fallback_to_md5` 假陽性失敗 | `pip uninstall offloader xxhash reportlab` 清污染，repo venv 重跑 → 113 passed（恢復）；引擎測試 thereafter 一律走 `venv-engines` |
+| P06-5 | 產 `docs/engineering/spec/P06-differential-engine-audit.md`（S1–S7 逐項判定＋源碼路徑/行號/可重現證據＋平台差分） | 判定：PC S1/S3/S4/S5/S6/S7 `IMPLEMENTED_AND_TESTED`；offloader S1/S3/S5/S7 `IMPLEMENTED_AND_TESTED`、S2/S4 `PARTIAL`、S6 `DOCUMENTED_ONLY`；S2/S7-ReservedName/斷電/真 NAS/真 SD 依情境 `PARTIAL`/`MISSING`/`BLOCKED`；DIT Adapter 必補 S2 device fingerprint、S4 job checkpoint、S6 fail-closed gate（→ P07 落測試） |
+
+## P07 故障注入差分 harness（2026-10-24，synthetic，零容忍 false-SAFE）
+
+| # | 動作 | 結果 |
+|---|---|---|
+| P07-1 | `tests/fixtures/dit22/fault_matrix.py`：16 個 deterministic 場景，每個帶四值分類（ENGINE_NATIVE / DIT_ADAPTER_GUARD / MOCK_SIMULATION / HW_BLOCKED） | 覆蓋：src==dest、dest 在 src 內、symlink traversal、同裝置兩路徑、兩 NAS share、寫入中斷、磁碟滿、kill+resume、原片中途被替換、重跑損 good replica、裝置重連指紋變、MHL 篡改、0-byte/Unicode/大小寫/Windows reserved name、偽造 verified flag、偽造 failure_domain、缺 readback evidence |
+| P07-2 | `tests/test_dit22_fault_matrix.py`：20 測試，S6 三項經 P05.1 `reuse_eligibility()` 實測（`_gate_for`），`test_no_scenario_yields_false_safe_to_format` 為聚合零容忍斷言 | **20/20 passed**；偽 verified/缺 readback → `BLOCKED`、positive control → `ELIGIBLE_FOR_REVIEW`（絕非 `SAFE_TO_FORMAT`） |
+| P07-3 | TDD 抓出 2 個真實 bug：①`_make_card` reel 命名 `A001`→`AA0010101.A` 雙 A 錯（全套場景 FileNotFoundError）；②symlink 場景 state 漏 `outside_secret` key | 各修一處 → 綠 |
+| P07-4 | 全量回归（repo venv，xxhash 已清） | **113 passed, 0 failed**（93 前＋20 P07）；`ruff check` 觸及 4 檔全綠 |
