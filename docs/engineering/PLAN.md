@@ -13,7 +13,7 @@
 - [x] P03：F01–F52 需求 map 對照 repo 現況 + 測試規格 → `docs/engineering/spec/F01-F52-requirements-map.md`（DONE0/PARTIAL4/NAIVE2/GAP43/BLOCKED-F42）
 - [ ] P03：ADR 四案（雲端 opt-in / 向量 profile 隔離 / 佇列並行 / 安全狀態機）已於 `dit22-architecture-decisions.md` 提出 PROPOSED 狀態，待使用者核准
 - [x] P04：clean-room REA 功能契約 → `docs/engineering/spec/P04-clean-room-contracts.md`（§0 隔離邊界 + 4 契約 + 收斂判決；TDD test_spec 落 P07/P16）
-- [ ] P05：canonical ID / 資料模型 schema 草圖（不改 v4 DB，新 `dit22` namespace）
+- [x] P05：canonical ID / 資料模型 schema 草圖（不改 v4 DB，新 `dit22` namespace）→ `src/mnemosyne_dit/asset_schema.py` + `tests/test_dit22_asset_schema.py`（8 tests PASSED；asset_id=content 與 path 解耦、new-namespace 隔離、multi-path observation、unknown failure-domain 不計獨立備份、evidence ledger、重開重建；TDD 抓出並修 asset-seeding clobber reel 的 bug）
 
 ## 第三輪（P06–P09，Offload A/B 差分）
 - [ ] P06：ProofCat（pinned 29c06a2）vs offloader（pinned e01a0eb）源碼稽核、功能/授權/失敗矩陣

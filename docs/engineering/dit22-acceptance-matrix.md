@@ -14,6 +14,7 @@
 | 獨立審查（安全敏感切片） | **PASSED** | subagent（claude）複核 pin/授權/worktree/測試/secret 掃描（結果併 STATE.md） | — |
 | P03 F01–F52 需求 map + 測試規格 | **PASSED（grounded in source）** | 讀真實 `indexer.py` / `dit_offload_server.py` / `dit_metadata_server.py` / `tests/fixtures/dit22/` 後產 `docs/engineering/spec/F01-F52-requirements-map.md`；DONE0/PARTIAL4/NAIVE2/GAP43/BLOCKED-F42；P0 閉環邊界定於 F01–F15 | 為「需求規格」非部署聲明；升 PASSED 需 fresh log/test（SSOT §7） |
 | P04 clean-room REA 功能契約 | **PARTIAL（spec-only，測試未跑）** | 產 `docs/engineering/spec/P04-clean-room-contracts.md`：§0 三面隔離 + 4 契約（ingest-safety S1–S7 / asset-schema / provider-interface / mcp-tools 三層）+ §5 收斂判決；TDD test_spec 列於文件，具名測試落 P07/P16 | 合約文件非實作；S1–S7 升 PASS 需 P07 故障注入 + 獨立 code review |
+| P05 canonical asset schema（可執行垂直切片） | **PASSED（unit）** | `src/mnemosyne_dit/asset_schema.py` + `tests/test_dit22_asset_schema.py`；8 契約測試全綠（asset_id=content 解耦、獨立 dit22.db 不碰 v4、multi-path obs、unknown 非獨立備份、evidence、重開重建）；TDD 修 `_seed_asset` clobber bug；全量 **81 passed**、ruff clean | 為 unit/合約層；NAS 實體 fault-domain 判別仍待 P07 故障注入實測（HARDWARE_BLOCKED） |
 | A770 benchmark | **BLOCKED（HARDWARE_BLOCKED）** | host M1，`torch 2.13.0 xpu.is_available()=False`；A770 主機不在本機；未執行任何 GPU 測試 | P14/P15 以 deterministic fixture + device-log 合約推進；無數據不填成績 |
 | Gemini 雲端 POC | **NOT_TESTED（未授權前禁測）** | `cloud.enabled=false`（v4 invariant 6 未變）；本輪 0 呼叫 0 費用 | 需 ADR-DIT2-001 核准 + synthetic fixture + 使用者明示核准 |
 | 故障注入（P07） | **NOT_TESTED** | 實體 SD/NAS 不在本機 | 依 SSOT：以 `tests/fixtures/dit22/` synthetic + 合約測試先行，標 INCONCLUSIVE（不宣稱硬體通過） |

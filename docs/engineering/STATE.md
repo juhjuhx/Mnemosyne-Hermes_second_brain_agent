@@ -1,7 +1,7 @@
-# STATE｜Mnemosyne DIT 2.2（更新：2026-10-24 P04 完成時）
+# STATE｜Mnemosyne DIT 2.2（更新：2026-10-24 P05 完成時）
 
 ## 目標
-依 SSOT 完成 P00–P19；當前進度＝P00–P04 + GitHub 交接（Draft PR #1）。
+依 SSOT 完成 P00–P19；當前進度＝P00–P05 + GitHub 交接（Draft PR #1）。
 
 ## Repo 真況（接手時，已記錄）
 - `main` HEAD：`ddd79552fde8a1dbc25621dedb0ee8198e772ca6`（2026-06-10，與 SSOT 基線一致）
@@ -19,16 +19,17 @@
 - 獨立 subagent 複核：授權結論、pin SHA、worktree 狀態、venv 測試、secret 掃描
 - **P03：F01–F52 需求 map + 測試規格 → `docs/engineering/spec/F01-F52-requirements-map.md`（grounded in real source：indexer.py / naive dit-offload / dit-metadata / dit22 fixtures；DONE 0 / PARTIAL 4 / NAIVE 2 / GAP 43 / HARDWARE_BLOCKED F42）**
 - **P04：clean-room REA 功能契約 → `docs/engineering/spec/P04-clean-room-contracts.md`（§0 三面隔離 + §1 ingest-safety S1–S7 + §2 asset-schema + §3 provider-interface + §4 mcp-tools 三層 + §5 收斂判決；TDD test_spec 落 P07/P16，本輪標 spec-only 不造假 GREEN）**
+- **P05：canonical asset/observation/replica 資料模型可執行垂直切片 → `src/mnemosyne_dit/asset_schema.py` + `tests/test_dit22_asset_schema.py`（8 tests PASSED；asset_id=content 與 path 解耦、獨立 dit22.db 不碰 v4、unknown failure-domain 不計獨立備份；TDD 抓出並修 asset-seeding clobber bug）→ 全量 81 passed、ruff clean**
 - **P00–P02 獨立重驗（P03-T04）：venv 73 passed exit 0；Draft PR #1 head `bbd6ff7`==local；Addy on-disk=24（修正先前 25，上游 README 數）**
 
 ## 正在做
-- P04 切片 commit + push（加入 Draft PR #1）
+- P05 切片 commit + push（加入 Draft PR #1）
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。
 - 雲端 Gemini：0 呼叫、0 費用（v4 local-only 未獲 ADR 核准，維持不變）。
 
 ## 下一步
-1. P04：clean-room REA 功能契約（`docs/engineering/spec/`：ingest-safety-contract、asset-schema、provider-interface、mcp-tools）；naive dit-offload 缺口（F04/F06/F08/F09/F10/F11）作為 safe-core 契約
-2. P05：`dit22` 資料模型 schema 草圖（新 namespace，v4 DB 只讀）
-3. 故障注入 fixture 建檔（`tests/fixtures/dit22/`，synthetic only）
+1. P06：ProofCat（pinned 29c06a2）vs offloader（pinned e01a0eb）源碼稽核、功能/授權/失敗矩陣；以 P04 S1–S7 安全契約作差分基準
+2. P07：以 S1–S7 落 `tests/fixtures/dit22/` 故障注入 fixture（synthetic）+ 兩引擎差分 harness
+3. P09：durable job queue 幂等/lease 設計（用 P05 `dit22` catalog 存 job，不碰 v4 indexer）

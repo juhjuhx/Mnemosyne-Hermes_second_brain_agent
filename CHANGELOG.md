@@ -63,6 +63,22 @@ v4 behavior change, no cloud, no hardware claims**.
   counter-examples + `test_spec` for later TDD slices (P07/P16).
   Marked PARTIAL/spec-only: contracts only, tests not yet run.
 
+### Added — DIT 2.2 P05 canonical asset schema (executable slice, 2026-10-24)
+
+- `src/mnemosyne_dit/asset_schema.py` — new-namespace SQLite catalog
+  (`Dit22Catalog`, 4 `dit22_*` tables) implementing the P04 §2 data model:
+  `asset_id` is a **content identity** (sha256 of bytes), fully decoupled
+  from filesystem path; path observations and replicas are append records
+  that never move/rename/delete a source; `independent_replicas()` treats a
+  `unknown` failure domain as **non-independent** (fail-closed, mirrors
+  ADR-DIT2-004 / F13). Lives in its own `dit22.db`; does not open the v4
+  `files.db` or Qdrant named vectors.
+- `tests/test_dit22_asset_schema.py` — 8 contract tests (path-decoupled
+  identity, new-namespace isolation, multi-path observation, unknown
+  failure-domain, evidence ledger, persistence/rebuild). Full suite now
+  **81 passed** (73 prior + 8 new, no regression); ruff clean.
+- No v4 behavior change, no cloud call, no real-media touch.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan

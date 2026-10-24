@@ -48,3 +48,13 @@
 | P04-2 | TDD test_spec 落點 | S1–S7 安全契約 / asset_id 解耦 / provider device-truth / MCP denied-tools 皆列規格；具名測試檔落 P07/P16，**本輪未跑**（`NOT_TESTED(spec-only)`，不造假 GREEN） |
 | P04-3 | clean-room 授權邊界 | arkiv 只做黑箱行為對照（PolyForm 競品限制守住）；ProofCat/offloader MIT 依 LICENSE 複用；GPL 元件分目錄；無授權檔（offloadmaster/gemini-multimodal-search/mhl-spec 範例 code）不入 `src/` |
 | P04-4 | 收口檢查 | `git diff` 僅 docs；venv `pytest` 73 passed（P04 不改 code）；main 未動；無雲端呼叫 |
+
+## P05 canonical asset schema（2026-10-24，可執行垂直切片）
+
+| # | 動作 | 結果 |
+|---|---|---|
+| P05-1 | 產 `src/mnemosyne_dit/asset_schema.py`（`Dit22Catalog`，4 表全 `dit22_` 前綴，獨立 `dit22.db`） | PASS；asset_id=content sha256 與 path 解耦；**不碰** v4 `files.db`/Qdrant `text_vec(768)/image_vec(512)`（invariant 1/2/3 維持） |
+| P05-2 | `tests/test_dit22_asset_schema.py` 8 契約測試 | **8 passed**；全量 **81 passed**（73 既有 + 8 新，無迴歸） |
+| P05-3 | TDD 根因修補：初版 `add_*` 用 `upsert_asset` 把 richer row 的 `reel/card_id` 覆成 default | 改 `_seed_asset`（`INSERT OR IGNORE` 只补缺不覆）→ `test_catalog_persists_across_reopen` 綠 |
+| P05-4 | fail-closed 語意：`independent_replicas` 把 `unknown` failure_domain 當**非獨立**備份（鏡 ADR-DIT2-004/F13） | `test_unknown_failure_domain_is_not_independent` 綠 |
+| P05-5 | ruff（CI 對齊） | `ruff check src/mnemosyne_dit tests/test_dit22_asset_schema.py` → All checks passed；`ruff format` 2 檔整理 |
