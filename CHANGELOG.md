@@ -181,6 +181,42 @@ v4 behavior change, no cloud, no hardware claims**.
   v4 / real media / cloud untouched; A770 + real NAS/SD remain
   HARDWARE_BLOCKED.
 
+### Added — DIT 2.2 P07.1 addendum + P08 NAS staging atomic commit (2026-10-24)
+
+- P07.1 addendum (from independent review `deleg_af24866c`): pinned the
+  untested-by-test fail-closed default — a replica whose path the
+  `StaticDeviceIdentityProvider` does not know about resolves to a
+  non-physical unknown and contributes 0 to `independent_domains`
+  (`test_unlisted_path_is_fail_closed_non_physical`). Full suite:
+  **123 passed**.
+- `docs/engineering/spec/P08-staging-atomic-commit.md` — spec-first
+  (writing-plans): Mirror≠backup semantics table, fail-closed
+  PENDING→STAGING→HASHED→COMMITTED / INTERRUPTED→resume / BLOCKED state
+  machine, F12/F13/F14 interface, test taxonomy via the P07.1 markers.
+- `src/mnemosyne_dit/staging.py` — `StagedArchive`:
+  - F12 staging atomic commit: target exposure only after full re-hash
+    + LAST-WRITE receipt (`receipt.json` via `os.replace`); no receipt,
+    no committed archive; a partial staging tree is never visible to the
+    processing queue (zero-tolerance).
+  - Crash recovery: `recovery_state()` is derived from directory contents
+    (no journal file needed): resume re-hashes everything and commits
+    only on a full match; any drift → `BLOCKED` (a recorded safety
+    state, never retried as success).
+  - Idempotent re-entry + tamper: `reentry_check()` is a no-op on a
+    valid receipt; receipt/manifest drift raises `StagingConflictError`
+    and marks the archive `BLOCKED` (S5 audit path, P05.1).
+  - F13/F14 independence: `independence_report(provider)` trusts ONLY
+    the injected device-identity probe — same `device_id` across mount
+    points folds to one domain ("availability, not backup"), network
+    shares / unlisted paths count 0 (fail-closed).
+- `tests/test_dit22_staging.py` — 11 tests (10 `@behavior_tested`,
+  1 `@hw_blocked` ZFS drill contract with `result: None`, no fabricated
+  restore data). TDD red→green caught a real bug (the hw_blocked test
+  wrote `str(dict)` into a JSON file → `json.dumps`).
+- Full regression now **134 passed, 0 failed** (123 prior + 11 new).
+  No v4 / real-NAS / cloud touch; ZFS/SMB snapshots remain
+  HARDWARE_BLOCKED (contract-only drill record).
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan

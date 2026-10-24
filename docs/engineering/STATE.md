@@ -43,15 +43,23 @@
   - 修正：gate 改查 `verified_by_id`（該 replica 存在 + 屬本 asset + 已驗證），PASS 字串本身不再是信任來源；新增 `device_identity_trusted` gate（僅當注入 provider 時）＋ `independent_domains(provider)` 可注入 device-identity probe（`StaticDeviceIdentityProvider` 假裝置做行為測試，真硬體維持 HW_BLOCKED）
   - P07 矩陣測試按 `fixture_only`（13）／`behavior_tested`（5）／`hw_blocked`（2）標記（markers 於 `tests/conftest.py` `pytest_configure` 註冊）
   - 收口：P07.1 focused 9 passed；全量 **122 passed**；marker 分組 13/5/2 正確；`PytestUnknownMarkWarning`=0；PERF102 為 HEAD 既有（非本切片引入，未碰）
+  - P07.1 addendum（獨立審查 `deleg_af24866c` 建議）：補 `test_unlisted_path_is_fail_closed_non_physical` 釘住 provider 未列出 path＝非物理 fail-closed 預設（commit `8f9dadb`；全量 **123 passed**）
+- **P08：NAS 資料保全 staging atomic commit（F12/F13/F14 垂直切片）→ `src/mnemosyne_dit/staging.py`（`StagedArchive`）+ `tests/test_dit22_staging.py`（11 測試）+ spec `docs/engineering/spec/P08-staging-atomic-commit.md`**：
+  - 狀態機 PENDING→STAGING→HASHED→COMMITTED／INTERRUPTED→resume／BLOCKED，state **由目錄內容推導**（無 journal 檔，崩潰安全）；partial 絕不暴露至 target；receipt 最後原子寫入，缺 receipt＝非 committed archive
+  - Mirror≠backup（F13）：`independence_report(provider)` 只信注入 device 指紋——同 `device_id` 多掛載點折 1 域、NAS share／未列出 path 記 0，report 明言 "availability, not backup"
+  - 冪等重入＋篡改偵測：`reentry_check()` receipt 與 target 漂移 → `StagingConflictError`＋`BLOCKED`
+  - TDD 抓出 1 真實 bug：hw_blocked 測試把 `str(dict)` 寫進 JSON 檔 → 改 `json.dumps`
+  - 收口：focused **11 passed**；全量 **134 passed, 0 failed**（123＋11）；ruff 全綠；真 ZFS/NAS/斷電 restore 演練只落 contract（`@hw_blocked`，`result: None` 不填假數據）
+- **P00–P02 獨立重驗（P03-T04）：venv 73 passed exit 0；Draft PR #1 head `bbd6ff7`==local；Addy on-disk=24（修正先前 25，上游 README 數）**
 
 ## 正在做
-- P07.1 commit + push（加入 Draft PR #1）；然後 P08：NAS mirror≠backup、故障域判斷、staging atomic commit、crash recovery、fail-closed 驗收
+- P08 commit + push（加入 Draft PR #1）＋獨立審查；然後 P09：durable job queue 冪等/lease 設計
 
 ## 失敗/阻塞
-- 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。
+- 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P08/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。
 - 雲端 Gemini：0 呼叫、0 費用（v4 local-only 未獲 ADR 核准，維持不變）。
 
 ## 下一步
-1. P06：ProofCat（pinned 29c06a2）vs offloader（pinned e01a0eb）源碼稽核、功能/授權/失敗矩陣；以 P04 S1–S7 安全契約作差分基準
-2. P07：以 S1–S7 落 `tests/fixtures/dit22/` 故障注入 fixture（synthetic）+ 兩引擎差分 harness
-3. P09：durable job queue 幂等/lease 設計（用 P05 `dit22` catalog 存 job，不碰 v4 indexer）
+1. P08 獨立審查收口 → P09：durable job queue 幂等/lease 設計（用 P05 `dit22` catalog 存 job，不碰 v4 indexer）
+2. 第四輪 P10–P13（media probe / proxy / 切鏡 / 語義分割）依序推進
+3. ADR 四案仍 PROPOSED 待使用者核准（雲端 opt-in／向量 profile 隔離／佇列並行／安全狀態機）

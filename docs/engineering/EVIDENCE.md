@@ -98,3 +98,12 @@
 | P07.1-3 | `asset_schema.py` 最小修正：gate `readback_evidence` 改查 `verified_by_id`（replica 存在＋屬本 asset＋已驗證）；新增 `device_identity_trusted` gate（僅注入 provider 時）＋ `independent_domains(provider)` ＋ `DeviceIdentity`/`DeviceIdentityProvider`/`StaticDeviceIdentityProvider`（假裝置行為測試，未列出 path → 非物理 fail-closed） | 9/9 GREEN；P05.1 既有 12 gate 測試全數保持綠（同 asset 內掛鉤證據行為不變） |
 | P07.1-4 | P07 矩陣測試標記：`fixture_only`（13）／`behavior_tested`（5）／`hw_blocked`（2），markers 於 `tests/conftest.py` `pytest_configure` 註冊（pytest 9 已無 `register_marker`） | 分組驗證：`-m fixture_only` 13 / `-m behavior_tested` 5 / `-m hw_blocked` 2；`-W error::PytestUnknownMarkWarning` 29 passed 0 warning |
 | P07.1-5 | 收口 | P07.1 focused **9 passed**；全量 **122 passed, 0 failed**（113＋9）；ruff 觸及 4 檔全綠（`conftest.py` 唯一 PERF102 為 HEAD 既有，非本切片引入，未碰） |
+
+## P07.1 addendum + P08 NAS staging atomic commit（2026-10-24）
+
+| # | 動作 | 結果 |
+|---|---|---|
+| P07.1-a | 獨立審查（deleg_af24866c）6 項全 PASS；其建議「unlisted-path fail-closed 只有代碼保證、無測試釘住」→ 補 `test_unlisted_path_is_fail_closed_non_physical` | commit `8f9dadb`；全量 **123 passed** |
+| P08-1 | spec `docs/engineering/spec/P08-staging-atomic-commit.md`（writing-plans 先定契約：mirror≠backup 語意表、fail-closed 狀態機、F12/F13/F14 界面、測試分層 markers） | 落定，未動真實 NAS |
+| P08-2 | `src/mnemosyne_dit/staging.py`（`StagedArchive`）+ `tests/test_dit22_staging.py`（11 測試，TDD：Red `ModuleNotFoundError` → Green；抓到 1 真實 bug＝hw_blocked 測試把 `str(dict)` 寫進 JSON） | **11/11 passed**；全量 **134 passed, 0 failed**（123＋11）；ruff 全綠 |
+| P08-3 | 關鍵語意實測證據 | partial 絕不暴露至 target（crash 零容忍）；receipt 最後原子寫入（缺 receipt＝非 committed）；re-hash 不符→`BLOCKED` 不重試；同 `device_id` 多掛載點折 1 域＋「availability, not backup」註記；NAS share/未列出 path 記 0；receipt 篡改→`StagingConflictError`；冪等重入 no-op |
