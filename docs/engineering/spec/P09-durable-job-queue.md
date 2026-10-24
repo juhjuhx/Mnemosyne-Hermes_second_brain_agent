@@ -35,3 +35,79 @@
 - v4 隔離：行為測試中注入 fake v4 路徑，斷言 queue 對其零接觸。
 
 **驗收**：12 測試全綠；全量回歸無 regress；多 worker 不違反舊 indexer＝queue 完全不含 indexer 邏輯（零耦合，靜態 import 審查可證）。
+
+## 4. P09.1 addendum — lease fencing（2026-10-24）
+
+P09's `lease()` is CAS-armed, but the lease-protected state updates
+(`update_checkpoint` / `pause` / `fail` / `complete`) are still
+read-check-write: they only compare the worker *name*, never the
+`lease_token`. Two exploitable shapes:
+
+- **stale token**: a worker whose lease was taken over (crash → expiry →
+  re-lease) still believes it holds the job and writes checkpoint /
+  completes with its old token;
+- **same worker name, two incarnations**: a restarted worker re-leases
+  under the *same name*; the old process (or a stale connection) can
+  overwrite the new incarnation's state, because the check is
+  name-based and name is not a fencing token.
+
+## Contract
+
+Every lease-protected state update becomes a **single conditional UPDATE**
+whose WHERE clause re-checks the full fence at write time:
+
+```
+WHERE job_id = ?
+  AND state = 'LEASED'
+  AND lease_token = ?      -- the exact token the caller holds
+  AND lease_worker = ?     -- name consistency (diagnostics)
+  AND lease_expires_at IS NOT NULL
+  AND lease_expires_at > ? -- still unexpired at write time (now)
+```
+
+`rowcount = 0` ⇒ **fail-closed**: raise `LeaseFencedError`. Never silent,
+never a partial success, never a re-read retry loop (the caller must
+re-lease to act again).
+
+- API: `update_checkpoint(job_id, worker, checkpoint, token)`,
+  `pause(job_id, worker, token)`, `fail(job_id, worker, token, reason)`,
+  `complete(job_id, worker, actual_manifest, token)` — the token is
+  mandatory; the P09 PENDING/PAUSED retry path is unchanged.
+- `complete()` drift path is fenced the same way: only the current holder
+  may mark the job FAILED for manifest drift.
+
+## External side-effect fencing (required to evaluate, not silently assume)
+
+DB-level CAS protects **queue state only**. A worker that writes external
+artifacts (files to a target dir, staged proxies, NAS uploads) between
+lease and complete has a hole: it can crash *after* writing external files
+but *before* the DB commit, or have its lease stolen and keep writing.
+The P09.1 answer for this project:
+
+- **Do NOT** treat the DB CAS as a complete guard for external writes.
+- External writes must be fenced by the *destination's* own atomic
+  contract: P08's `StagedArchive` already does this (staging dir →
+  verify → LAST-WRITE receipt; no receipt = not committed). P11 proxy
+  publishing MUST reuse that shape: a proxy file only counts once its
+  receipt matches, and the receipt records the `job_id` + `lease_token`
+  so a stolen-lease writer's artifacts are detectable and discardable.
+- Workers SHOULD record their `lease_token` in any external "in-progress"
+  marker they write (e.g. the staging dir name or an `<out>.intent.json`
+  sidecar), so recovery can attribute pre-commit artifacts to a dead
+  lease and clean them without touching the target.
+
+Scope: this is a DB-layer hardening of P09 + a documented evaluation of
+the external boundary. It does **not** open multi-worker deployment
+(ADR-DIT2-003 remains PROPOSED).
+
+## P09.1 test matrix (all `@behavior_tested`)
+
+| # | scenario | expectation |
+|---|---|---|
+| 1 | expired lease taken over by w2; w1's stale token does checkpoint/pause/fail | all raise `LeaseFencedError`; w2's state untouched |
+| 2 | same worker NAME re-leases after its own expiry (restart); old token writes | old token rejected, new token accepted, `attempt`=2 |
+| 3 | two `DurableJobQueue` handles on one file; q1 stale token after q2 takeover | q1 fail-closed, q2 intact |
+| 4 | complete() after expiry by the old holder | `LeaseFencedError`, job stays LEASED to w2 |
+| 5 | complete() drift with a *valid* token | regression: `False` + FAILED |
+| 6 | checkpoint/pause/fail with a valid token | happy paths unchanged (regression) |
+

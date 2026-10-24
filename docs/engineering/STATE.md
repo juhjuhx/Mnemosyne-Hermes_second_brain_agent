@@ -60,6 +60,12 @@
   - TDD 抓出 1 真實 bug：`verify_manifest` 對已 JSON-decode 的 dict 再 `json.loads` → 雙重解碼
   - 收口：focused **13 passed**；全量 **147 passed, 0 failed**（134＋13）；ruff 全綠；本 module 零 indexer 邏輯（多 worker 不違反舊 indexer 由靜態 import 可證）
   - **P09 CAS addendum（獨立審查 `deleg_5a3282cb` 7/7 PASS 後，封閉其 flag 的雙重 live lease 路徑）**：`lease()` 取租 UPDATE 加 WHERE 條件（只許 `PENDING/PAUSED` 或「已過期的 LEASED」勝出）＋ `rowcount==0` 時敗者丟 `LeaseHeldError`；connection 加 `busy_timeout=5000`；釘 2 確定性測試（同取租 UPDATE 連發 2 次第 2 次必敗、跨連線過期接管 attempt 只 +1）→ P09 focused **15 passed**、全量 **149 passed**、ruff 全綠。多過程公平仲裁維持 spec §2.6 延後 ADR-DIT2-003
+- **P09.1：lease fencing 完整性（TDD Red→Green）→ `tests/test_dit22_lease_fencing.py`（9 測試）+ `job_queue.py` fenced conditional write + spec §4 addendum**：
+  - 根因：P09 的 `update_checkpoint`／`pause`／`fail`／`complete` 仍是 read-check-write 且只比 worker **名稱**、未強制 `lease_token` → 舊 token（過期被接管後）或同名重啟 worker 可覆寫新持有者狀態
+  - 修正：新增 `LeaseFencedError`；`_fenced_update()` 把完整 fence（`job_id`＋`state='LEASED'`＋`lease_token`＋`lease_worker`＋`lease_expires_at > now`）塞進單一 conditional UPDATE 的 WHERE；`rowcount=0` 一律 fail-closed raise（不靜默、不重讀重試）；四 API 簽名改 `token=` 必填（`fail` 的 `reason` 維持位置參數兼容）
+  - 外部副作用評估（spec §4.3）：**DB 層 CAS 不等於外部檔案寫入的完整防護**——外部產物由目的地自己的原子契約 fencing（P08 receipt shape）；P11 proxy publish 必須沿用該 shape 並在 receipt 記 `job_id`＋`lease_token`，使被竊 lease 的寫入者產物可偵測可清除
+  - 測試矩陣 6 情境全實測：stale token 三寫入全 fenced、同名重啟舊 incarnation 拒／新 token 收、跨連線 stale complete fenced、valid token 下 drift→FAILED 與 happy path 回歸不變
+  - 收口：P09.1 focused（fencing 9＋job_queue 15）**24 passed**；全量 **158 passed, 0 failed**（149＋9）；ruff 全綠；未擴大 ADR-DIT2-003 多 worker 部署權限
 
 ## 正在做
 - P09 CAS 硬化 commit + push（加入 Draft PR #1）；之後 P10：media probe / proxy 生成（依 SSOT 第四輪）

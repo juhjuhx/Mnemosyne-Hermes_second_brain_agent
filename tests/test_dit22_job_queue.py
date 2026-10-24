@@ -152,10 +152,11 @@ def test_expired_takeover_via_second_connection_bumps_attempt_once(tmp_path):
 def test_checkpoint_survives_pause_resume(tmp_path):
     q = _q(tmp_path)
     job = q.enqueue("x", idempotency_key="k")
-    q.lease(job["job_id"], worker="w")
+    tok = q.lease(job["job_id"], worker="w")
     q.update_checkpoint(job["job_id"], worker="w",
-                        checkpoint={"done": ["a.mov"], "next": "b.mov"})
-    q.pause(job["job_id"], worker="w")
+                        checkpoint={"done": ["a.mov"], "next": "b.mov"},
+                        token=tok)
+    q.pause(job["job_id"], worker="w", token=tok)
     st = q.job_state(job["job_id"])
     assert st["state"] == "PAUSED"
     q.lease(job["job_id"], worker="w2")
@@ -171,10 +172,10 @@ def test_checkpoint_survives_pause_resume(tmp_path):
 def test_complete_with_drifted_manifest_fails_job(tmp_path):
     q = _q(tmp_path)
     job = q.enqueue("x", {"a": "11" * 32}, idempotency_key="k")
-    q.lease(job["job_id"], worker="w")
+    tok = q.lease(job["job_id"], worker="w")
     # The input snapshot on disk no longer matches what was enqueued:
     ok = q.complete(job["job_id"], worker="w",
-                    actual_manifest={"a": "22" * 32})
+                    actual_manifest={"a": "22" * 32}, token=tok)
     assert ok is False
     assert q.job_state(job["job_id"])["state"] == "FAILED"
 
@@ -183,9 +184,9 @@ def test_complete_with_drifted_manifest_fails_job(tmp_path):
 def test_complete_with_matching_manifest_done(tmp_path):
     q = _q(tmp_path)
     job = q.enqueue("x", {"a": "11" * 32}, idempotency_key="k")
-    q.lease(job["job_id"], worker="w")
+    tok = q.lease(job["job_id"], worker="w")
     assert q.complete(job["job_id"], worker="w",
-                     actual_manifest={"a": "11" * 32}) is True
+                     actual_manifest={"a": "11" * 32}, token=tok) is True
     assert q.job_state(job["job_id"])["state"] == "DONE"
 
 
@@ -196,8 +197,8 @@ def test_complete_with_matching_manifest_done(tmp_path):
 def test_irreversible_failed_job_refuses_retry(tmp_path):
     q = _q(tmp_path)
     job = q.enqueue("x", idempotency_key="k", reversible=False)
-    q.lease(job["job_id"], worker="w")
-    q.fail(job["job_id"], worker="w", reason="hardware loss")
+    tok = q.lease(job["job_id"], worker="w")
+    q.fail(job["job_id"], worker="w", token=tok, reason="hardware loss")
     assert q.job_state(job["job_id"])["state"] == "FAILED"
     with pytest.raises(IrreversibleRetryError):
         q.retry(job["job_id"], authorize_manual=False)
@@ -211,8 +212,8 @@ def test_irreversible_job_can_be_restarted_only_with_new_key(tmp_path):
     not to rewriting history."""
     q = _q(tmp_path)
     job = q.enqueue("x", idempotency_key="k", reversible=False)
-    q.lease(job["job_id"], worker="w")
-    q.fail(job["job_id"], worker="w", reason="x")
+    tok = q.lease(job["job_id"], worker="w")
+    q.fail(job["job_id"], worker="w", token=tok, reason="x")
     with pytest.raises(IrreversibleRetryError):
         q.retry(job["job_id"], authorize_manual=True)
     # Fresh, distinct work:
@@ -225,8 +226,8 @@ def test_irreversible_job_can_be_restarted_only_with_new_key(tmp_path):
 def test_reversible_failed_job_can_retry(tmp_path):
     q = _q(tmp_path)
     job = q.enqueue("x", idempotency_key="k")  # reversible default
-    q.lease(job["job_id"], worker="w")
-    q.fail(job["job_id"], worker="w", reason="transient")
+    tok = q.lease(job["job_id"], worker="w")
+    q.fail(job["job_id"], worker="w", token=tok, reason="transient")
     assert q.retry(job["job_id"]) is True
     assert q.job_state(job["job_id"])["state"] == "PENDING"
 

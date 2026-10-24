@@ -275,6 +275,38 @@ v4 behavior change, no cloud, no hardware claims**.
 - P09 focused suite now **15 passed**; full regression **149 passed,
   0 failed** (147 prior + 2 new). ruff clean.
 
+### Added — DIT 2.2 P09.1 lease fencing (2026-10-24)
+
+- P09.1 (spec addendum §4, writing-plans): every lease-protected state
+  update (`update_checkpoint` / `pause` / `fail` / `complete`) becomes a
+  single **fenced conditional UPDATE** — the WHERE clause re-checks
+  `job_id` + `state='LEASED'` + the caller's exact `lease_token` +
+  `lease_worker` + "still unexpired at write time". `rowcount=0` is
+  fail-closed: it raises the new `LeaseFencedError`, writes nothing, and
+  never silently no-ops or retries in place.
+- API change: the token is now mandatory on the four methods
+  (`token=` keyword; `fail()` keeps `reason` positional for
+  compatibility). P09's PENDING/PAUSED retry path is unchanged.
+- What this closes: a stale token from a taken-over lease, and a
+  worker that *restarts under the same name* (name is not a fencing
+  token — the lease_token is). Same-name restart now bumps `attempt`,
+  old incarnation's writes are refused.
+- **External side-effect evaluation (spec §4.3)**: the DB fence
+  protects queue state only. External artifacts written between lease
+  and complete must be fenced by the *destination's* atomic contract —
+  P08 `StagedArchive` receipt shape; P11 proxy publishing MUST reuse it
+  and record `job_id` + `lease_token` in its receipt so stolen-lease
+  artifacts are detectable and discardable. The queue's CAS alone is
+  explicitly NOT treated as complete protection for external writes.
+- `tests/test_dit22_lease_fencing.py` — 9 `@behavior_tested` tests
+  covering the six spec scenarios (stale-token checkpoint/pause/fail,
+  same-name restart, two-connection takeover, expired complete,
+  valid-token drift regression, valid-token happy paths, no-silent-
+  success). P09's 15 tests migrated to the new token signatures.
+- No ADR-DIT2-003 scope expansion: this is DB-layer hardening only.
+- P09.1 focused suite (9 new + 15 P09) **24 passed**; full regression
+  **158 passed, 0 failed** (149 prior + 9 new). ruff clean.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan

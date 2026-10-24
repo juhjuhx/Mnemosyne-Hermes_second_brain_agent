@@ -21,6 +21,20 @@ or writes the v4 `files.db`). Implements the P09 spec
   may be re-queued.
 - **Priority + FIFO**: claims are ordered by priority desc, then
   enqueue order within the same priority.
+- **P09.1 lease fencing**: every lease-protected state update
+  (`update_checkpoint` / `pause` / `fail` / `complete`) is a single
+  conditional UPDATE that re-checks the full fence at write time —
+  `job_id`, `state='LEASED'`, the caller's exact `lease_token`,
+  `lease_worker`, and that the lease is still unexpired. `rowcount=0`
+  is fail-closed: it raises `LeaseFencedError` and nothing is written.
+  A worker that restarts under the same name, or a stale process whose
+  lease was taken over, cannot overwrite the current holder's state.
+
+P09.1 scope note (spec §4): the DB fence protects queue state only.
+External artifacts written by a worker between lease and complete are
+fenced by the *destination's* atomic contract (P08 `StagedArchive`
+receipt shape; P11 proxies must reuse it and record `job_id` +
+`lease_token` in their receipt), never by the queue's CAS alone.
 
 This module stores state; it does not run work. A consumer (worker
 pool / orchestrator, P09+ follow-on) calls lease/update_checkpoint/
@@ -71,6 +85,18 @@ class IrreversibleRetryError(Exception):
 class InputManifestDriftError(Exception):
     """The input snapshot no longer matches what was enqueued — the job
     cannot safely continue or complete."""
+
+
+class LeaseFencedError(Exception):
+    """P09.1: a lease-protected state update was fenced out.
+
+    The caller's (job_id, lease_token, lease_worker, unexpired) fence no
+    longer matches the row at write time — the lease was taken over,
+    expired, or the job moved to a terminal state. Fail-closed: nothing
+    was written. The caller must re-lease (or accept the outcome) before
+    acting again; a fenced call is never a silent no-op and never
+    retried in place.
+    """
 
 
 def _now() -> float:
@@ -193,37 +219,81 @@ class DurableJobQueue:
         self.conn.commit()
         return token
 
-    # ── checkpoint / lifecycle ───────────────────────────────────────
+    # ── checkpoint / lifecycle (P09.1: fenced conditional writes) ───
+
+    # The shared fence: at write time the row must still be LEASED to
+    # this exact (token, worker) pair and still unexpired. `now` is
+    # bound as the last parameter so the expiry check happens in the
+    # same statement as the write.
+    _FENCE_WHERE = (
+        "WHERE job_id=? AND state='LEASED'"
+        " AND lease_token=? AND lease_worker=?"
+        " AND lease_expires_at IS NOT NULL AND lease_expires_at > ?"
+    )
+
+    def _fenced_update(
+        self,
+        job_id: str,
+        worker: str,
+        token: str,
+        set_clause: str,
+        set_params: tuple,
+    ) -> int:
+        """One conditional UPDATE carrying the full fence in its WHERE.
+        Returns the rowcount; raises `LeaseFencedError` when 0 rows
+        matched (fail-closed — the caller's fence is stale and NOTHING
+        was written)."""
+        cur = self.conn.execute(
+            f"UPDATE dit22_job SET {set_clause} {self._FENCE_WHERE}",
+            set_params + (job_id, token, worker, _now()),
+        )
+        if cur.rowcount == 0:
+            fresh = self._row(job_id)
+            raise LeaseFencedError(
+                f"job {job_id}: lease fence failed — expected holder "
+                f"{worker!r} with an unexpired lease matching the caller's "
+                f"token, but the row is now state={fresh['state']!r}, "
+                f"holder={fresh['lease_worker']!r}. Nothing was written; "
+                f"re-lease before acting again."
+            )
+        return cur.rowcount
 
     def update_checkpoint(
-        self, job_id: str, worker: str, checkpoint: dict[str, Any]
+        self,
+        job_id: str,
+        worker: str,
+        checkpoint: dict[str, Any],
+        *,
+        token: str,
     ) -> None:
         row = self._row(job_id)
-        self._assert_leased_to(row, worker)
-        self.conn.execute(
-            "UPDATE dit22_job SET checkpoint=? WHERE job_id=?",
-            (json.dumps(checkpoint), job_id),
+        self._assert_leased_to(row, worker, token)
+        self._fenced_update(
+            job_id, worker, token,
+            "checkpoint=?",
+            (json.dumps(checkpoint),),
         )
         self.conn.commit()
 
-    def pause(self, job_id: str, worker: str) -> None:
+    def pause(self, job_id: str, worker: str, *, token: str) -> None:
         row = self._row(job_id)
-        self._assert_leased_to(row, worker)
-        self.conn.execute(
-            "UPDATE dit22_job SET state='PAUSED', lease_token=NULL,"
-            " lease_worker=NULL, lease_expires_at=NULL WHERE job_id=?",
-            (job_id,),
+        self._assert_leased_to(row, worker, token)
+        self._fenced_update(
+            job_id, worker, token,
+            "state='PAUSED', lease_token=NULL, lease_worker=NULL,"
+            " lease_expires_at=NULL",
+            (),
         )
         self.conn.commit()
 
-    def fail(self, job_id: str, worker: str, reason: str) -> None:
+    def fail(self, job_id: str, worker: str, reason: str, *, token: str) -> None:
         row = self._row(job_id)
-        self._assert_leased_to(row, worker)
-        self.conn.execute(
-            "UPDATE dit22_job SET state='FAILED', fail_reason=?,"
-            " lease_token=NULL, lease_worker=NULL, lease_expires_at=NULL"
-            " WHERE job_id=?",
-            (reason, job_id),
+        self._assert_leased_to(row, worker, token)
+        self._fenced_update(
+            job_id, worker, token,
+            "state='FAILED', fail_reason=?,"
+            " lease_token=NULL, lease_worker=NULL, lease_expires_at=NULL",
+            (reason,),
         )
         self.conn.commit()
 
@@ -237,27 +307,36 @@ class DurableJobQueue:
                 f"(enqueued {expected} != actual {actual})"
             )
 
-    def complete(self, job_id: str, worker: str, actual_manifest: dict[str, str]) -> bool:
+    def complete(
+        self,
+        job_id: str,
+        worker: str,
+        actual_manifest: dict[str, str],
+        *,
+        token: str,
+    ) -> bool:
         """Finish the job after re-checking the input snapshot.
-        Drift => FAILED + False (never 'done' on changed inputs)."""
+        Both outcomes are fenced: only the current lease holder may
+        record DONE — or record FAILED for drift. Drift => `False` +
+        FAILED (never 'done' on changed inputs)."""
         row = self._row(job_id)
-        self._assert_leased_to(row, worker)
+        self._assert_leased_to(row, worker, token)
         try:
             self.verify_manifest(job_id, actual_manifest)
         except InputManifestDriftError:
-            self.conn.execute(
-                "UPDATE dit22_job SET state='FAILED',"
-                " fail_reason='input manifest drift',"
-                " lease_token=NULL, lease_worker=NULL, lease_expires_at=NULL"
-                " WHERE job_id=?",
-                (job_id,),
+            self._fenced_update(
+                job_id, worker, token,
+                "state='FAILED', fail_reason='input manifest drift', "
+                "lease_token=NULL, lease_worker=NULL, lease_expires_at=NULL",
+                (),
             )
             self.conn.commit()
             return False
-        self.conn.execute(
-            "UPDATE dit22_job SET state='DONE', lease_token=NULL,"
-            " lease_worker=NULL, lease_expires_at=NULL WHERE job_id=?",
-            (job_id,),
+        self._fenced_update(
+            job_id, worker, token,
+            "state='DONE', lease_token=NULL, lease_worker=NULL,"
+            " lease_expires_at=NULL",
+            (),
         )
         self.conn.commit()
         return True
@@ -343,13 +422,28 @@ class DurableJobQueue:
             "seq": r[13],
         }
 
-    def _assert_leased_to(self, row: dict[str, Any], worker: str) -> None:
+    def _assert_leased_to(self, row: dict[str, Any], worker: str, token: str) -> None:
+        """Advisory pre-check of the full fence, raising `LeaseFencedError`
+        on ANY miss (terminal state, holder change, expiry, or token
+        mismatch) with an accurate diagnostic. The authoritative
+        protection is the conditional UPDATE in `_fenced_update` — its
+        WHERE re-checks the fence atomically at write time, so a state
+        change between this read and the write is still fenced. A miss
+        here is fail-closed: nothing is written and the caller must
+        re-lease before acting again."""
         now = _now()
         unexpired = (
             row["lease_expires_at"] is not None and now < row["lease_expires_at"]
         )
-        if row["state"] != "LEASED" or not unexpired or row["lease_worker"] != worker:
-            raise LeaseHeldError(
+        if row["state"] != "LEASED" or row["lease_worker"] != worker or not unexpired:
+            raise LeaseFencedError(
                 f"job {row['job_id']} is not leased to {worker!r} "
-                f"(state={row['state']}, holder={row['lease_worker']!r})"
+                f"(state={row['state']}, holder={row['lease_worker']!r}); "
+                f"fence check failed, nothing will be written"
+            )
+        if row["lease_token"] != token:
+            raise LeaseFencedError(
+                f"job {row['job_id']}: caller token does not match the held "
+                f"lease (holder={row['lease_worker']!r}); re-lease before "
+                f"acting again"
             )
