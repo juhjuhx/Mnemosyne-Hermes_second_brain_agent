@@ -142,6 +142,23 @@ The "what was the v4 plan at this exact moment" snapshots.
 | `src/llama_cpp/README.md` | llama.cpp build flags + server flags for PRISM-DQ 27B and Carnice 35B-A3B |
 | `docs/07_更新日誌/README.md` | Phase-end summary folder (reserved for use after deployment) |
 
+## 9b. DIT 2.2 research branch docs (`docs/research/` + `docs/engineering/`)
+
+> Added by `research/dit22-multimodal-handoff-20261024` (2026-10-24).
+> **Research & handoff only — not part of the v4 plan-freeze snapshot.**
+
+| Path | What |
+|---|---|
+| `docs/research/Mnemosyne_DIT_2_2_CONSOLIDATED_MASTER_2026-10-24.md` | DIT 2.2 one-piece research SSOT (appends DIT 2.0/2.1 full text) |
+| `docs/research/Mnemosyne_DIT_2_2_CLAUDE_CODE_AUTONOMOUS_PROMPT_2026-10-24.md` | Autonomous Claude Code engineering prompt |
+| `docs/research/dit22-source-ledger.md` | Pinned upstream repos + licenses + reuse verdicts |
+| `docs/research/dit22-licence-matrix.md` | A/B/C license tiering |
+| `docs/research/dit22-architecture-decisions.md` | PROPOSED ADRs (DIT 2.2) |
+| `docs/engineering/TASK.md`, `PLAN.md`, `STATE.md`, `EVIDENCE.md` | Engineering task / plan / state / evidence logs |
+| `docs/engineering/dit22-skill-execution-ledger.jsonl` | Per-phase skill activation evidence log |
+| `docs/engineering/dit22-acceptance-matrix.md` | Phase gate acceptance matrix |
+| `tests/fixtures/dit22/` | Synthetic fixture generator + contract tests |
+
 ## 10. Repo-wide counts (at snapshot)
 
 | Category | Count |

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — DIT 2.2 multimodal research consolidation & Claude Code handoff (2026-10-24)
+
+Research-only branch `research/dit22-multimodal-handoff-20261024`; **no
+v4 behavior change, no cloud, no hardware claims**.
+
+- `docs/research/Mnemosyne_DIT_2_2_CONSOLIDATED_MASTER_2026-10-24.md` —
+  one-piece research SSOT (DIT 2.0/2.1/2.2 consolidated, appendices
+  preserved verbatim)
+- `docs/research/Mnemosyne_DIT_2_2_CLAUDE_CODE_AUTONOMOUS_PROMPT_2026-10-24.md` —
+  copyable autonomous engineering prompt with source URLs
+- `docs/research/dit22-source-ledger.md` — 19 upstream repos pinned to
+  exact commits + license status + reuse verdicts
+- `docs/research/dit22-licence-matrix.md` — A/B/C license tiering
+- `docs/research/dit22-architecture-decisions.md` — 5 PROPOSED ADRs
+  (cloud opt-in, vector profile isolation, queue parallelism, DIT
+  safety state machine, frozen-archive verify.py drift)
+- `docs/engineering/{TASK,PLAN,STATE,EVIDENCE}.md`,
+  `dit22-skill-execution-ledger.jsonl`, `dit22-acceptance-matrix.md`
+- `tests/fixtures/dit22/` — deterministic synthetic camera-card fixture
+  generator + 3 contract tests (synthetic data only; verifies
+  determinism, hash readback, copy-to-destination; no real media, no
+  binaries in git)
+- Baseline recorded: `pytest tests/` → 73 passed (venv, Python 3.14.5);
+  `_archive/2026-06-05-v4-plan/verify.py` → exit 1 on main itself
+  (44/105 files changed since the 2026-06-05 freeze; see ADR-DIT2-005)
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan
