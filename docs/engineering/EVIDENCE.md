@@ -107,3 +107,12 @@
 | P08-1 | spec `docs/engineering/spec/P08-staging-atomic-commit.md`（writing-plans 先定契約：mirror≠backup 語意表、fail-closed 狀態機、F12/F13/F14 界面、測試分層 markers） | 落定，未動真實 NAS |
 | P08-2 | `src/mnemosyne_dit/staging.py`（`StagedArchive`）+ `tests/test_dit22_staging.py`（11 測試，TDD：Red `ModuleNotFoundError` → Green；抓到 1 真實 bug＝hw_blocked 測試把 `str(dict)` 寫進 JSON） | **11/11 passed**；全量 **134 passed, 0 failed**（123＋11）；ruff 全綠 |
 | P08-3 | 關鍵語意實測證據 | partial 絕不暴露至 target（crash 零容忍）；receipt 最後原子寫入（缺 receipt＝非 committed）；re-hash 不符→`BLOCKED` 不重試；同 `device_id` 多掛載點折 1 域＋「availability, not backup」註記；NAS share/未列出 path 記 0；receipt 篡改→`StagingConflictError`；冪等重入 no-op |
+
+## P08 addendum + P09 durable job control（2026-10-24）
+
+| # | 動作 | 結果 |
+|---|---|---|
+| P08-r | P08 獨立審查（deleg_c9de4a9a）6 項全 PASS；非阻塞觀察「commit()/resume() 帶未使用的 provider 參數」→ 移除 dead surface | commit `cf349de`；staging focused **11 passed**、ruff 全綠 |
+| P09-1 | spec `docs/engineering/spec/P09-durable-job-queue.md`（writing-plans 先定 F17 契約：冪等 enqueue、lease 排他＋過期接管、checkpoint 重入、input manifest 漂移、不可逆輸入絕不自動重試、多 worker 不違反舊 indexer） | 落定，純 stdlib SQLite，獨立 `dit22_jobs.db` |
+| P09-2 | `src/mnemosyne_dit/job_queue.py`（`DurableJobQueue`）+ `tests/test_dit22_job_queue.py`（13 測試，TDD：Red `ImportError` → Green；抓到 1 真實 bug＝`verify_manifest` 對已 JSON-decode 的 dict 再 `json.loads`） | **13/13 passed**；全量 **147 passed, 0 failed**（134＋13）；ruff 全綠 |
+| P09-3 | 關鍵語意實測證據 | 同 `idempotency_key` 重入回同 job_id 不增列；未過期他人 lease→`LeaseHeldError`、過期接管 attempt+1、同 worker 重 lease 自己 no-op；manifest 漂移→`FAILED`；`reversible=False` FAILED 後 `retry()`（含 `authorize_manual=True`）→`IrreversibleRetryError`，唯一出路開新 key；v4 隔離＝monkeypatch `sqlite3.connect` spy 斷言零開啟 v4 路徑 |

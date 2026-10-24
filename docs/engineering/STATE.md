@@ -1,7 +1,7 @@
-# STATE｜Mnemosyne DIT 2.2（更新：2026-10-24 P05.1 完成時）
+# STATE｜Mnemosyne DIT 2.2（更新：2026-10-24 P09 完成時）
 
 ## 目標
-依 SSOT 完成 P00–P19；當前進度＝P00–P05.1 + GitHub 交接（Draft PR #1）。
+依 SSOT 完成 P00–P19；當前進度＝P00–P09 + GitHub 交接（Draft PR #1）。
 
 ## 本輪重新驗證（不信任上輪數字）
 - 接手重驗：branch `research/dit22-multimodal-handoff-20261024` @ `b8fb0bc`，tree clean，與 origin 同步
@@ -50,16 +50,26 @@
   - 冪等重入＋篡改偵測：`reentry_check()` receipt 與 target 漂移 → `StagingConflictError`＋`BLOCKED`
   - TDD 抓出 1 真實 bug：hw_blocked 測試把 `str(dict)` 寫進 JSON 檔 → 改 `json.dumps`
   - 收口：focused **11 passed**；全量 **134 passed, 0 failed**（123＋11）；ruff 全綠；真 ZFS/NAS/斷電 restore 演練只落 contract（`@hw_blocked`，`result: None` 不填假數據）
+- **P08 addendum（獨立審查 `deleg_c9de4a9a` 6/6 PASS 後）：移除 `commit()`／`resume()` 的 dead `provider` 參數（只有 `independence_report` 用 device probe），避免誤導 API**（commit `cf349de`；focused 11 passed、ruff 全綠）
 - **P00–P02 獨立重驗（P03-T04）：venv 73 passed exit 0；Draft PR #1 head `bbd6ff7`==local；Addy on-disk=24（修正先前 25，上游 README 數）**
+- **P09：durable job control（F17，TDD 垂直切片）→ `src/mnemosyne_dit/job_queue.py`（`DurableJobQueue`）+ `tests/test_dit22_job_queue.py`（13 測試）+ spec `docs/engineering/spec/P09-durable-job-queue.md`**：
+  - 純 stdlib SQLite、獨立 `dit22_jobs.db`（caller 指定路徑；**絕不開啟/寫入 v4 `files.db`**，monkeypatch `sqlite3.connect` 偵測證明零接觸）
+  - F17 全欄位：`job_id`／`idempotency_key`（同 key＝冪等 no-op）／`input_manifest`（resume/complete 前重驗，漂移→FAILED）／`lease_token`＋`lease_expires_at`（未過期他人 lease→`LeaseHeldError`；過期可接管 attempt+1；同 worker 重 lease 自己＝no-op）／`checkpoint`（pause→resume 保留進度）／`reversible`
+  - **不可逆規則**：`reversible=False` 進 FAILED 後 `retry()` 一律 `IrreversibleRetryError`（含 `authorize_manual=True`）；唯一出路＝人工開新 key 新 job
+  - 優先級：claim 按 priority desc、同級 FIFO（`seq`）
+  - TDD 抓出 1 真實 bug：`verify_manifest` 對已 JSON-decode 的 dict 再 `json.loads` → 雙重解碼
+  - 收口：focused **13 passed**；全量 **147 passed, 0 failed**（134＋13）；ruff 全綠；本 module 零 indexer 邏輯（多 worker 不違反舊 indexer 由靜態 import 可證）
 
 ## 正在做
-- P08 commit + push（加入 Draft PR #1）＋獨立審查；然後 P09：durable job queue 冪等/lease 設計
+- P09 commit + push（加入 Draft PR #1）＋獨立審查；之後 P10：media probe / proxy 生成（依 SSOT 第四輪）
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P08/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。
-- 雲端 Gemini：0 呼叫、0 費用（v4 local-only 未獲 ADR 核准，維持不變）。
+- P09 本切片只落 **狀態儲存**（queue 不跑活）；多 worker 並行執行（ADR-DIT2-003 佇列並行）仍 PROPOSED 待使用者核准，本輪未啟 daemon。
+
+## 雲端 Gemini：0 呼叫、0 費用（v4 local-only 未獲 ADR 核准，維持不變）。
 
 ## 下一步
-1. P08 獨立審查收口 → P09：durable job queue 幂等/lease 設計（用 P05 `dit22` catalog 存 job，不碰 v4 indexer）
+1. P09 獨立審查收口 → P10：media probe / proxy 生成垂直切片（FFprobe 路徑，不碰原始素材，non-destructive）
 2. 第四輪 P10–P13（media probe / proxy / 切鏡 / 語義分割）依序推進
 3. ADR 四案仍 PROPOSED 待使用者核准（雲端 opt-in／向量 profile 隔離／佇列並行／安全狀態機）

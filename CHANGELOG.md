@@ -217,6 +217,43 @@ v4 behavior change, no cloud, no hardware claims**.
   No v4 / real-NAS / cloud touch; ZFS/SMB snapshots remain
   HARDWARE_BLOCKED (contract-only drill record).
 
+### Added — DIT 2.2 P08 addendum + P09 durable job control (F17, 2026-10-24)
+
+- P08 addendum (independent review `deleg_c9de4a9a`, 6/6 PASS): removed
+  the unused `provider` parameter from `StagedArchive.commit()` /
+  `resume()` — only `independence_report()` consumes the device-identity
+  probe, so the dead surface was misleading the API. Focused
+  `tests/test_dit22_staging.py`: **11 passed**, ruff clean.
+- `docs/engineering/spec/P09-durable-job-queue.md` — spec-first
+  (writing-plans): F17 fields (job_id / idempotency_key / input_manifest /
+  lease / attempt / checkpoint / reversible), the irreversibility rule,
+  and the "multi-worker must not violate the old indexer" acceptance
+  clause (queue carries zero indexer logic — proven by static import
+  review, not by running the indexer).
+- `src/mnemosyne_dit/job_queue.py` — `DurableJobQueue` (pure stdlib
+  SQLite, caller-supplied `dit22_jobs.db`, never opens the v4
+  `files.db`):
+  - idempotent enqueue: same `idempotency_key` reuses the job row;
+  - exclusive lease: unexpired foreign lease → `LeaseHeldError`;
+    expired lease is takeable (crash recovery), takeover bumps `attempt`;
+    re-owning your own unexpired lease is a no-op;
+  - checkpoint durability across pause/resume;
+  - input-manifest drift at complete() → job FAILED (never "done" on
+    changed inputs);
+  - irreversibility: `reversible=False` jobs REFUSE every retry after
+    FAILED (even `authorize_manual=True` — the manual path is a fresh
+    job under a new key, not a rewrite of history);
+  - priority + FIFO claim ordering (priority desc, `seq` asc within).
+- `tests/test_dit22_job_queue.py` — 13 tests (`@behavior_tested`),
+  incl. a `sqlite3.connect` monkeypatch spy proving the queue never
+  opens a v4 database path. TDD red→green caught a real bug
+  (`verify_manifest` double-decoding an already-decoded manifest).
+- Scope boundary: this slice stores job state only; no daemon, no
+  worker pool — parallel execution (ADR-DIT2-003) stays PROPOSED
+  pending user approval.
+- Full regression now **147 passed, 0 failed** (134 prior + 13 new).
+  ruff clean. No v4 / media / cloud touch.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan
