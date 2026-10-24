@@ -12,7 +12,7 @@
 ## 第二輪（P03–P05，下一切片）
 - [x] P03：F01–F52 需求 map 對照 repo 現況 + 測試規格 → `docs/engineering/spec/F01-F52-requirements-map.md`（DONE0/PARTIAL4/NAIVE2/GAP43/BLOCKED-F42）
 - [ ] P03：ADR 四案（雲端 opt-in / 向量 profile 隔離 / 佇列並行 / 安全狀態機）已於 `dit22-architecture-decisions.md` 提出 PROPOSED 狀態，待使用者核准
-- [ ] P04：clean-room REA 功能契約（`docs/engineering/spec/`：ingest-safety-contract、asset-schema、provider-interface、mcp-tools）；以 F04/F06/F08/F09/F10/F11 缺口為 safe-core 契約
+- [x] P04：clean-room REA 功能契約 → `docs/engineering/spec/P04-clean-room-contracts.md`（§0 隔離邊界 + 4 契約 + 收斂判決；TDD test_spec 落 P07/P16）
 - [ ] P05：canonical ID / 資料模型 schema 草圖（不改 v4 DB，新 `dit22` namespace）
 
 ## 第三輪（P06–P09，Offload A/B 差分）

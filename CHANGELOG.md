@@ -48,6 +48,21 @@ v4 behavior change, no cloud, no hardware claims**.
   claim; this marketplace clone `13e43f2` installs 24). No v4 behavior
   change, no cloud call, no real-media touch.
 
+### Added — DIT 2.2 P04 clean-room functional contracts (2026-10-24)
+
+- `docs/engineering/spec/P04-clean-room-contracts.md` — four
+  clean-room REA functional contracts + clean-room isolation boundary
+  (`P04 §0`): `ingest-safety-contract` (S1–S7: source-readonly,
+  independent-device fingerprint, staging atomic commit, idempotent
+  resume, ASC MHL interop, fail-closed safety state machine, 0-byte /
+  Unicode edge), `asset-schema` (asset_id decoupled from path),
+  `provider-interface` (device-truth probe, no cross-model cosine,
+  Gemini 0-call until ADR), `mcp-tools` (read-only / guarded / denied
+  three-layer; `format_card`/`delete_original`/`purge_backup` never
+  exposed to the agent). Each contract carries observable behavior +
+  counter-examples + `test_spec` for later TDD slices (P07/P16).
+  Marked PARTIAL/spec-only: contracts only, tests not yet run.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan

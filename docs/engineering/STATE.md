@@ -1,7 +1,7 @@
-# STATE｜Mnemosyne DIT 2.2（更新：2026-10-24 P03 完成時）
+# STATE｜Mnemosyne DIT 2.2（更新：2026-10-24 P04 完成時）
 
 ## 目標
-依 SSOT 完成 P00–P19；當前進度＝P00–P03 + GitHub 交接（Draft PR #1）。
+依 SSOT 完成 P00–P19；當前進度＝P00–P04 + GitHub 交接（Draft PR #1）。
 
 ## Repo 真況（接手時，已記錄）
 - `main` HEAD：`ddd79552fde8a1dbc25621dedb0ee8198e772ca6`（2026-06-10，與 SSOT 基線一致）
@@ -18,10 +18,11 @@
 - ledger → `docs/engineering/dit22-skill-execution-ledger.jsonl`
 - 獨立 subagent 複核：授權結論、pin SHA、worktree 狀態、venv 測試、secret 掃描
 - **P03：F01–F52 需求 map + 測試規格 → `docs/engineering/spec/F01-F52-requirements-map.md`（grounded in real source：indexer.py / naive dit-offload / dit-metadata / dit22 fixtures；DONE 0 / PARTIAL 4 / NAIVE 2 / GAP 43 / HARDWARE_BLOCKED F42）**
+- **P04：clean-room REA 功能契約 → `docs/engineering/spec/P04-clean-room-contracts.md`（§0 三面隔離 + §1 ingest-safety S1–S7 + §2 asset-schema + §3 provider-interface + §4 mcp-tools 三層 + §5 收斂判決；TDD test_spec 落 P07/P16，本輪標 spec-only 不造假 GREEN）**
 - **P00–P02 獨立重驗（P03-T04）：venv 73 passed exit 0；Draft PR #1 head `bbd6ff7`==local；Addy on-disk=24（修正先前 25，上游 README 數）**
 
 ## 正在做
-- P03 切片 commit + push（加入 Draft PR #1）
+- P04 切片 commit + push（加入 Draft PR #1）
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。

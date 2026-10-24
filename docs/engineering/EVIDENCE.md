@@ -39,3 +39,12 @@
 | P03-5 | 讀 `src/hermes_skills/dit-offload/dit_metadata_server.py` | 定位 naive 安全缺口（collision=改名、無 source guard/MHL/fingerprint/狀態機）→ 寫入 `spec/F01-F52-requirements-map.md` repo_now 欄 |
 
 **記錄校訂**：Addy Osmani 宿主實裝數 = **24**（先前 P00–P02 記「25」，以上游 README 為準；本輪改以檔案證據為準，兩處 ledger 已同步修正）。
+
+## P04 clean-room 契約（2026-10-24）
+
+| # | 動作 | 結果 |
+|---|---|---|
+| P04-1 | 產 `docs/engineering/spec/P04-clean-room-contracts.md`（§0 隔離邊界 + §1–§4 四契約 + §5 收斂判決） | PASS（docs only）；每契約含「可觀察行為 + 反例 + test_spec」 |
+| P04-2 | TDD test_spec 落點 | S1–S7 安全契約 / asset_id 解耦 / provider device-truth / MCP denied-tools 皆列規格；具名測試檔落 P07/P16，**本輪未跑**（`NOT_TESTED(spec-only)`，不造假 GREEN） |
+| P04-3 | clean-room 授權邊界 | arkiv 只做黑箱行為對照（PolyForm 競品限制守住）；ProofCat/offloader MIT 依 LICENSE 複用；GPL 元件分目錄；無授權檔（offloadmaster/gemini-multimodal-search/mhl-spec 範例 code）不入 `src/` |
+| P04-4 | 收口檢查 | `git diff` 僅 docs；venv `pytest` 73 passed（P04 不改 code）；main 未動；無雲端呼叫 |
