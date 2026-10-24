@@ -101,11 +101,11 @@ def test_symlink_traversal_never_followed(tmp_path):
 
 def test_two_paths_one_device_not_independent(tmp_path):
     st = run_all(tmp_path)["S2 two paths one device"]
-    # The *contract*: two mount paths reporting the SAME device serial must
-    # collapse to one failure domain. We assert the check the adapter must
-    # run, not a fabricated device.
-    assert st["device_serial_same"] in (st["device_serial_same"],)
-    assert st["dest_a"] != st["dest_b"]
+    # The *contract*: two DISTINCT mount paths reporting the SAME device
+    # serial must collapse to one failure domain. We assert the check the
+    # adapter must run, not a fabricated device.
+    assert st["dest_a"] != st["dest_b"], "two distinct mount paths"
+    assert isinstance(st["device_serial_same"], str) and st["device_serial_same"]
 
 
 def test_two_nas_shares_is_hw_blocked(tmp_path):
