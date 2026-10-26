@@ -71,19 +71,27 @@
   - 介面：`probe(path, sidecar_dir=, sha256=, full_fps=, timeout_s=, ffprobe_bin=)`；精確 Rational FPS（`Fraction`，`"30000/1001"` 不約簡成 float）、time_base 原文、逐幀 PTS→VFR（`cfr`／`vfr-likely`／`unknown` 降級絕不假設 cfr）、drop/non-drop 家系 timecode、codec/pix_fmt/color/HDR（`sdr`／`hdr-sdr`／`unknown` 保守判定）、rotation（display-matrix side data＋tags）、多音軌獨立 sample_rate/layout、sidecar 唯讀掃描、來源 SHA256、`to_evidence_json()` 可重建證據（binary 版本＋argv＋原始 ffprobe JSON）
   - 安全契約：argv 無 shell、URL 在原始字串階段拒絕（subprocess 不執行）、timeout、50MB 輸出上限、空檔不呼叫 ffprobe、損壞/未知格式→`ProbeError` 含 stderr 摘要、Unicode 路徑實測、唯讀（無寫入句柄）、零 v4 import
   - TDD 實測證據：24p `r_frame_rate=="24/1"`、29.97 精確字串＋drop 家系、VFR concat（`-fps_mode vfr`）→`vfr-likely`、雙音軌 32k/48k、CJK 路徑、URL spy 零 subprocess、malformed JSON 用 fake ffprobe、camera family 無樣本一律 `verified=False`（Sony BRAW/CinemaDNG/RED 標 UNVERIFIED，不偽稱實測）；本機 ffmpeg 9.0.2 不帶 display-matrix/HDR 進 MP4 stream → 該路徑改以 crafted ffprobe JSON 於 parser 層驗證（honest、不填假數據）
-  - 收口：focused **19 passed**；全量 **177 passed, 0 failed**（158＋19）；ruff 全綠
+  - 收口：focused **19 passed**；全量 **177 passed, 0 failed**（158＋19）；ruff 全綠；P10 獨立審查 `deleg_6ca7f297` 10/10 PASS（兩個 minor flag 收：`.x-ocn` UNVERIFIED 補測試＋spec VFR/HDR erratum）→ commit `46b6605`、push
+- **P11：Proxy Generator（CPU FFmpeg 最小可播放 MVP，TDD 垂直切片）→ `src/mnemosyne_dit/proxy_generator.py`＋`tests/test_dit22_proxy_generator.py`（16 測試）＋spec `docs/engineering/spec/P11-proxy-generator.md`**：
+  - 管線：staging（隱藏 `.staging/<job_id>/`）→ verify（ffprobe 回讀產物，不信任編碼器自我報告）→ receipt 先寫 → `os.replace()` 原子發布；缺 receipt＝非 committed（P08 同語意）
+  - 安全契約：來源唯讀（ffmpeg `-i`）、URL 在原始字串階段拒絕（Path collapse 陷阱實測抓到）、空來源不跑 ffmpeg、shell-free argv、退出碼≠0 → `ProxyEncodeError`（stderr 摘要截斷）
+  - editor 目標依 build 能力決定：本機 `dnxhr` 無、`prores` 有（10-bit yuv422p10le）→ 走真 ProRes（`degraded=False`）；無 editor encoder 時誠實降級 h264＋`degraded=True`（絕不偽稱 ProRes），兩路徑各有實測
+  - receipt fencing（P09.1 spec §4.3）：receipt 記 `job_id`＋`lease_token`；`find_stale_proxies()` 偵測被竊 lease 產物（可清除）、`delete_proxies()` 依 job 重建路徑；**proxy 完成絕不觸升 DIT Archive Safety Verdict**（API 無 verdict 表面，實測斷言產出目錄只有 proxy＋receipt）
+  - 來源對應：`source_fps`／`source_timecode`／`source_reel`／`audio_mapping` 從 P10 probe 抄寫（不重算）；來源 SHA256 全程不變（實測比對）
+  - 收口：P11 focused **16 passed**；全量 **193 passed, 0 failed**（177＋16）；ruff 全綠；獨立審查 `deleg_32ec0122` 9/9 PASS（兩個 Important 缺口補：同 job 重入＝原子替換、異 job 同 source 不碰撞→產物名 job-namespace `{job_tag}__{stem}__{profile}`）；QSV/Vulkan/OpenVINO 依合約留後段（未啟動）
 
 ## 正在做
-- P10 收口文件 → 獨立 commit + push（加入 Draft PR #1）；之後 P11：proxy 生成（CPU FFmpeg 最小 golden fixture，staging→verify→atomic publish 沿用 P08 receipt shape＋P09.1 `job_id`/`lease_token`）
+- P11 commit + push（審查 9/9 PASS、16 測試全綠、collision/re-entry 已補）；P12 收口文件 → 獨立 commit + push
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P08/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。
 - P09 本切片只落 **狀態儲存**（queue 不跑活）；多 worker 並行執行（ADR-DIT2-003 佇列並行）仍 PROPOSED 待使用者核准，本輪未啟 daemon。
 - P10 真 camera family（Sony BRAW／X-OCN／CinemaDNG／RED）無樣本 → classifier 標 `verified=False`（UNVERIFIED）；本機 ffmpeg 9.0.2 不帶 display-matrix/HDR 進 MP4 stream → 該路徑以 crafted ffprobe JSON 於 parser 層驗證，不填假數據。
+- P11 本機無 `dnxhr` encoder → editor 目標走真 ProRes（本 build 有）；缺 editor encoder 的平台誠實降級 h264＋`degraded=True`（不偽稱）。QSV/Vulkan/OpenVINO 依合約「先 CPU golden 再加速」留後段。
 
 ## 雲端 Gemini：0 呼叫、0 費用（v4 local-only 未獲 ADR 核准，維持不變）。
 
 ## 下一步
-1. P10 文件收口 → 獨立 commit + push → P10 獨立審查；然後 P11：proxy 生成最小可播放 MVP（CPU FFmpeg H.264/ProRes，staging→verify→atomic publish，receipt 記 `job_id`+`lease_token`；Proxy 完成絕不自動提高 DIT Archive Safety Verdict）
-2. 第四輪 P10–P13（media probe / proxy / 切鏡 / 語義分割）依序推進
+1. P11 文件收口 → 獨立 commit + push（加入 Draft PR #1）→ P11 獨立審查
+2. 第四輪 P12–P13（切鏡 / 語義分割）依序推進
 3. ADR 四案仍 PROPOSED 待使用者核准（雲端 opt-in／向量 profile 隔離／佇列並行／安全狀態機）

@@ -337,6 +337,64 @@ v4 behavior change, no cloud, no hardware claims**.
   honest, no fabricated data.
 - Full regression now **177 passed, 0 failed** (158 prior + 19 new).
   ruff clean. No v4 / real-media / cloud touch.
+  P10 independent review `deleg_6ca7f297`: **10/10 PASS** (two minor
+  flags closed: `.x-ocn` added to the UNVERIFIED pin; spec VFR/HDR
+  errata). Committed as `46b6605` and pushed.
+
+### Added — DIT 2.2 P11 proxy generator, CPU FFmpeg MVP (2026-10-25)
+
+- `docs/engineering/spec/P11-proxy-generator.md` — spec-first: 10-
+  scenario test matrix for a CPU proxy pipeline (browser H.264 MP4
+  golden; editor DNxHR/ProRes decided by real build capability with
+  honest h264 degradation; staging → verify → receipt → atomic
+  publish; source correspondence copied from P10 probe; receipt
+  records `job_id` + `lease_token` per P09.1 §4.3 so stolen-lease
+  artifacts are detectable and discardable; proxies deletable +
+  rebuildable; the original is never modified; a proxy NEVER raises
+  an archive safety verdict).
+- `src/mnemosyne_dit/proxy_generator.py` — `generate_proxy()` /
+  `find_stale_proxies()` / `delete_proxies()` /
+  `detect_editor_capabilities()`:
+  - source opened read-only (`ffmpeg -i`), URL sources refused on the
+    ORIGINAL string before any subprocess (the Path-collapsing trap
+    caught by a red test), empty sources refused without running
+    ffmpeg;
+  - staging under a hidden `.staging/<job_id>/` dir; the encoded
+    artifact is verified by reading it back with ffprobe (never the
+    encoder's self-report): decodable, duration within 0.5s of the
+    source, audio stream count matches the source mapping — any miss
+    discards the staging file and raises `ProxyVerifyError`;
+  - atomic publish: receipt JSON written FIRST, then `os.replace()`
+    of the staged file into the public dir; no receipt = not
+    committed (P08 semantics), so a stolen-lease writer's output is
+    attributable (receipt carries `job_id` + `lease_token`) and
+    discardable via `find_stale_proxies`;
+  - editor target: `dnxhr`/`prores` encoders probed from the actual
+    build; this host has ProRes (10-bit) and no DNxHR, so the editor
+    profile produces a real ProRes proxy (`degraded=False`); a build
+    with neither honestly falls back to h264 with `degraded=True` —
+    never a fake ProRes claim;
+  - `delete_proxies(out_dir, job_id=...)` removes only the matching
+    job's artifacts (rebuild path); the source file is byte-for-byte
+    invariant (SHA256 pinned across the whole run).
+- `tests/test_dit22_proxy_generator.py` — 16 tests (14
+  `@behavior_tested` on real ffmpeg encodes + ffprobe read-backs, 2
+  `@fixture_only` on the pure stale-detection / delete logic). TDD
+  red caught three real bugs: the URL check hitting the Path()
+  collapse, the ProRes encoder rejecting `-profile auto` on this
+  build, and a corrupt source surfacing as a ProbeError instead of
+  degrading to "let ffmpeg report the real encode failure".
+  Independent review (`deleg_32ec0122`) 9/9 PASS; its two Important
+  gaps (re-entry + same-output-path collision) are closed: published
+  artifact names are now job-namespaced
+  (`{job_tag}__{src.stem}__{profile}{ext}`) so different jobs sharing
+  a source + profile + out dir never collide, while a re-entry under
+  the same job is an idempotent atomic replace (no duplication);
+  `test_reentry_same_job_is_idempotent_replace` and
+  `test_different_jobs_same_source_do_not_collide` pin both.
+- Full regression now **193 passed, 0 failed** (177 prior + 16 new).
+  ruff clean. No v4 / real-media / cloud touch; QSV/Vulkan/OpenVINO
+  acceleration deferred per the "CPU golden first" contract.
 
 ### Added — v4 dual-machine landing plan (2026-06-05)
 

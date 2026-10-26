@@ -439,6 +439,35 @@ def _run_ffprobe(bin: str, args: list[str], timeout_s: float) -> str:
     return out.decode("utf-8", "replace")
 
 
+def run_ffprobe_json(
+    path: str | Path, *, timeout_s: float = _DEFAULT_TIMEOUT_S,
+    ffprobe_bin: str = "ffprobe",
+) -> dict:
+    """Parse a local media file to its ffprobe JSON payload (a read-only
+    helper, P11 verify step — never trust an encoder's self-report).
+    Same safety contract as `probe()`: refuses URLs, applies the 50MB cap
+    and the timeout."""
+    raw = _run_ffprobe_json_only(ffprobe_bin, str(path), timeout_s)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ProbeError(f"malformed ffprobe JSON: {e}") from e
+
+
+def _run_ffprobe_json_only(bin: str, path: str, timeout_s: float) -> str:
+    _reject_url(path)
+    p = Path(path)
+    if not p.exists():
+        raise InvalidInputError(f"no such file: {p}")
+    if p.stat().st_size == 0:
+        raise ProbeError(f"empty input: {p}")
+    args = [
+        "-hide_banner", "-loglevel", "error",
+        "-of", "json", "-show_format", "-show_streams", path,
+    ]
+    return _run_ffprobe(bin, args, timeout_s)
+
+
 def _ffprobe_version(bin: str) -> str:
     try:
         p = subprocess.run([bin, "-version"], capture_output=True, timeout=15,
