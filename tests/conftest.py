@@ -19,6 +19,36 @@ from unittest.mock import MagicMock
 import pytest
 
 # --------------------------------------------------------------------------- #
+# Custom markers (P07.1 test-coverage taxonomy)
+#
+# Registered via `pytest_configure` (pytest >= 4 removed `register_marker`),
+# so using an unregistered marker raises rather than silently warning.
+# --------------------------------------------------------------------------- #
+
+_MARKERS = [
+    (
+        "behavior_tested",
+        ("Test actually exercises the engine/adapter and asserts rejection "
+         "or acceptance behavior (not just that a fixture was built)."),
+    ),
+    (
+        "fixture_only",
+        ("Test only verifies that a synthetic scenario/fixture builds; it "
+         "does NOT prove engine or adapter behavior."),
+    ),
+    (
+        "hw_blocked",
+        ("Real-hardware case (A770 / SD / NAS / power-loss) absent on host; "
+         "scenario state + contract only, no fabricated result."),
+    ),
+]
+
+
+def pytest_configure(config):
+    for name, desc in _MARKERS:
+        config.addinivalue_line("markers", f"{name}: {desc}")
+
+# --------------------------------------------------------------------------- #
 # Path setup
 # --------------------------------------------------------------------------- #
 

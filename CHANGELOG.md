@@ -7,6 +7,439 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — DIT 2.2 multimodal research consolidation & Claude Code handoff (2026-10-24)
+
+Research-only branch `research/dit22-multimodal-handoff-20261024`; **no
+v4 behavior change, no cloud, no hardware claims**.
+
+- `docs/research/Mnemosyne_DIT_2_2_CONSOLIDATED_MASTER_2026-10-24.md` —
+  one-piece research SSOT (DIT 2.0/2.1/2.2 consolidated, appendices
+  preserved verbatim)
+- `docs/research/Mnemosyne_DIT_2_2_CLAUDE_CODE_AUTONOMOUS_PROMPT_2026-10-24.md` —
+  copyable autonomous engineering prompt with source URLs
+- `docs/research/dit22-source-ledger.md` — 19 upstream repos pinned to
+  exact commits + license status + reuse verdicts
+- `docs/research/dit22-licence-matrix.md` — A/B/C license tiering
+- `docs/research/dit22-architecture-decisions.md` — 5 PROPOSED ADRs
+  (cloud opt-in, vector profile isolation, queue parallelism, DIT
+  safety state machine, frozen-archive verify.py drift)
+- `docs/engineering/{TASK,PLAN,STATE,EVIDENCE}.md`,
+  `dit22-skill-execution-ledger.jsonl`, `dit22-acceptance-matrix.md`
+- `tests/fixtures/dit22/` — deterministic synthetic camera-card fixture
+  generator + 3 contract tests (synthetic data only; verifies
+  determinism, hash readback, copy-to-destination; no real media, no
+  binaries in git)
+- Baseline recorded: `pytest tests/` → 73 passed (venv, Python 3.14.5);
+  `_archive/2026-06-05-v4-plan/verify.py` → exit 1 on main itself
+  (44/105 files changed since the 2026-06-05 freeze; see ADR-DIT2-005)
+
+### Added — DIT 2.2 P03 requirements map (2026-10-24)
+
+- `docs/engineering/spec/F01-F52-requirements-map.md` — F01–F52
+  requirements map grounded in the **actual repo source** (not docs):
+  `indexer.py` (7 invariants), the naive `dit-offload` / `dit-metadata`
+  MCP servers, and the `tests/fixtures/dit22/` synthetic generator. Each
+  feature is tagged `repo_now` (DONE/PARTIAL/NAIVE/GAP) + a `test_spec`.
+  Tallies: DONE 0 / PARTIAL 4 (F21,F31,F38,F49) / NAIVE 2 (F02,F05) /
+  GAP 43 / HARDWARE_BLOCKED F42 (A770 not on host).
+- P03 also independently re-verified the P00–P02 handoff (venv 73
+  passed, Draft PR #1 head `bbd6ff7`) and corrected the Addy Osmani
+  on-disk count to **24** (was recorded as 25 from the upstream README
+  claim; this marketplace clone `13e43f2` installs 24). No v4 behavior
+  change, no cloud call, no real-media touch.
+
+### Added — DIT 2.2 P04 clean-room functional contracts (2026-10-24)
+
+- `docs/engineering/spec/P04-clean-room-contracts.md` — four
+  clean-room REA functional contracts + clean-room isolation boundary
+  (`P04 §0`): `ingest-safety-contract` (S1–S7: source-readonly,
+  independent-device fingerprint, staging atomic commit, idempotent
+  resume, ASC MHL interop, fail-closed safety state machine, 0-byte /
+  Unicode edge), `asset-schema` (asset_id decoupled from path),
+  `provider-interface` (device-truth probe, no cross-model cosine,
+  Gemini 0-call until ADR), `mcp-tools` (read-only / guarded / denied
+  three-layer; `format_card`/`delete_original`/`purge_backup` never
+  exposed to the agent). Each contract carries observable behavior +
+  counter-examples + `test_spec` for later TDD slices (P07/P16).
+  Marked PARTIAL/spec-only: contracts only, tests not yet run.
+
+### Added — DIT 2.2 P05 canonical asset schema (executable slice, 2026-10-24)
+
+- `src/mnemosyne_dit/asset_schema.py` — new-namespace SQLite catalog
+  (`Dit22Catalog`, 4 `dit22_*` tables) implementing the P04 §2 data model:
+  `asset_id` is a **content identity** (sha256 of bytes), fully decoupled
+  from filesystem path; path observations and replicas are append records
+  that never move/rename/delete a source; `independent_replicas()` treats a
+  `unknown` failure domain as **non-independent** (fail-closed, mirrors
+  ADR-DIT2-004 / F13). Lives in its own `dit22.db`; does not open the v4
+  `files.db` or Qdrant named vectors.
+- `tests/test_dit22_asset_schema.py` — 8 contract tests (path-decoupled
+  identity, new-namespace isolation, multi-path observation, unknown
+  failure-domain, evidence ledger, persistence/rebuild). Full suite now
+  **81 passed** (73 prior + 8 new, no regression); ruff clean.
+- No v4 behavior change, no cloud call, no real-media touch.
+
+### Added — DIT 2.2 P05.1 security-model hardening (independent-review negative tests, 2026-10-24)
+
+- `tests/test_dit22_asset_schema_hardening.py` — 12 negative contract tests
+  (written FIRST, Red confirmed via collection ImportError) covering the five
+  independent-review findings: advisory replica count, append-only evidence,
+  upsert clobber, foreign-key enforcement, re-entry consistency.
+- `src/mnemosyne_dit/asset_schema.py` — minimal hardening (dit22 namespace
+  only; v4 index contracts untouched):
+  - `PRAGMA foreign_keys=ON` at open (SQLite default is OFF; prior
+    `REFERENCES` were declared but never enforced)
+  - `upsert_asset` conflict path now `COALESCE` gap-fill — a known
+    `card_id`/`reel` is never overwritten by a later NULL-carrying upsert
+  - `add_evidence` is append-only: identical re-entry is a no-op (resume-safe),
+    any value change under the same `evidence_id` raises
+    `EvidenceConflictError` (first recorded verdict is authoritative)
+  - `add_replica` identical re-entry is a no-op; a value change under the same
+    `replica_id` (e.g. swapped `failure_domain`) raises `ReplicaConflictError`
+  - new fail-closed `reuse_eligibility()` gate — requires PASS readback
+    evidence bound to a replica AND all verified replicas on trusted
+    (non-`unknown`) failure domains; missing any → `BLOCKED`. The module
+    exposes no `SAFE_TO_FORMAT` surface anywhere.
+- `docs/engineering/dit22-skill-execution-ledger.jsonl` split: machine
+  records kept as pure JSONL (every line parseable); the 14 interleaved
+  markdown synthesis lines moved to a new human-readable
+  `docs/engineering/dit22-skill-execution-report.md`.
+- Fresh full regression this session: **93 passed, 0 failed** (81 prior +
+  12 new); `ruff check` clean on all touched files.
+
+### Added — DIT 2.2 P06 differential engine audit (S1–S7, source-grounded, 2026-10-24)
+
+- Pinned clones of both engines at the exact SSOT SHAs (workspace `refs/`,
+  NOT committed to the repo):
+  - ProofCat `29c06a2` → `cargo test -p offload-core` → **131 passed**
+    (this session; Tauri-independent engine crate). Full-Tauri `process-kill-resume.sh`
+    binary NOT built → that one item is `IMPLEMENTED_NOT_TESTED`.
+  - offloader `e01a0eb` → dedicated `venv-engines` (with `hypothesis`)
+    `pytest tests/` → **306 passed, 13 skipped** (skips are Windows-only
+    paths). Engine tests never installed into the repo venv.
+- `docs/engineering/spec/P06-differential-engine-audit.md` — S1–S7
+  differential matrix. Every verdict carries a source path + line/function +
+  a reproducible command. Notable: ProofCat leads on S2 (device serial
+  fingerprint), S4 (job checkpoint / WAL resume), S6 (8-field
+  `SafetyGate`); offloader leads S1 never-write and S7 negative-test style;
+  offloader lacks S2 serial, S4 job re-entry, S6 state machine, and Windows
+  reserved names (`MISSING`).
+- Contamination incident (recorded, not hidden): offloader's `xxhash` was
+  accidentally installed into the repo venv, flipping
+  `test_xxhash_fallback_to_md5` to a false failure; resolved with
+  `pip uninstall offloader xxhash reportlab` and a clean repo-venv rerun
+  (113 passed). Engine suites now run only in `venv-engines`.
+
+### Added — DIT 2.2 P07 fault-injection differential harness (2026-10-24)
+
+- `tests/fixtures/dit22/fault_matrix.py` — 16 deterministic synthetic
+  scenarios, each tagged with one of four classifications
+  (`ENGINE_NATIVE` / `DIT_ADAPTER_GUARD` / `MOCK_SIMULATION` / `HW_BLOCKED`)
+  so the report can separate native engine behavior, adapter-added
+  protection, pure mock/simulation, and untested-on-real-hardware cases.
+- `tests/test_dit22_fault_matrix.py` — 20 tests. The S6 guard cases drive
+  the P05.1 `reuse_eligibility()` gate directly: a forged `verified=True`
+  with no readback evidence, a forged failure_domain, and missing readback
+  all come back `BLOCKED`; the positive control is
+  `ELIGIBLE_FOR_REVIEW` (never `SAFE_TO_FORMAT`).
+  `test_no_scenario_yields_false_safe_to_format` is the aggregate
+  zero-tolerance assertion.
+- TDD caught 2 real bugs while going red→green: a double-`A` reel-name
+  bug (`A001`→`AA0010101.A`) that made every scenario raise
+  `FileNotFoundError`, and a missing `outside_secret` key in the symlink
+  scenario state. Both fixed minimally → 20/20 green.
+- Full regression now **113 passed, 0 failed** (93 prior + 20 new);
+  `ruff check` clean on all four touched files.
+- `HARDWARE_BLOCKED` items (real NAS / real SD re-connect identity /
+  power-loss) build the scenario state + contract asserts only — no
+  fabricated device or benchmark data.
+
+### Fixed — DIT 2.2 P07.1 reuse-gate trust-source hardening (2026-10-24)
+
+- Root cause (TDD red→green): the P05.1 `readback_evidence` gate trusted any
+  stored `verdict == "PASS"` row with a non-null `replica_id`. A dangling
+  `replica_id`, PASS evidence with zero replicas, evidence bound to an
+  unverified replica, or evidence pointing at another asset's replica were
+  all (incorrectly) counted as readback. A stored PASS string is a record,
+  not a verification.
+- `src/mnemosyne_dit/asset_schema.py` — minimal fix:
+  - `reuse_eligibility` now resolves `readback_evidence` against
+    `verified_by_id`: the referenced replica must EXIST, BELONG to this
+    asset, and be VERIFIED.
+  - New `device_identity_trusted` gate (active only when a
+    `DeviceIdentityProvider` is injected): every verified replica's path
+    must resolve to a PHYSICAL device; network/unknown devices fail-closed.
+  - New `independent_domains(asset_id, provider)` + `DeviceIdentity` /
+    `DeviceIdentityProvider` / `StaticDeviceIdentityProvider` (a
+    deterministic fake for behavior-testing "two mount paths of one
+    device"; unlisted paths resolve to a non-physical unknown).
+- `tests/test_dit22_gate_trust.py` — 9 behavior tests, all green.
+- P07 matrix tests now carry explicit coverage taxonomy
+  (`@fixture_only` 13 / `@behavior_tested` 5 / `@hw_blocked` 2), markers
+  registered in `tests/conftest.py` via `pytest_configure` (pytest ≥ 4).
+- Full regression now **122 passed, 0 failed** (113 prior + 9 new).
+  v4 / real media / cloud untouched; A770 + real NAS/SD remain
+  HARDWARE_BLOCKED.
+
+### Added — DIT 2.2 P07.1 addendum + P08 NAS staging atomic commit (2026-10-24)
+
+- P07.1 addendum (from independent review `deleg_af24866c`): pinned the
+  untested-by-test fail-closed default — a replica whose path the
+  `StaticDeviceIdentityProvider` does not know about resolves to a
+  non-physical unknown and contributes 0 to `independent_domains`
+  (`test_unlisted_path_is_fail_closed_non_physical`). Full suite:
+  **123 passed**.
+- `docs/engineering/spec/P08-staging-atomic-commit.md` — spec-first
+  (writing-plans): Mirror≠backup semantics table, fail-closed
+  PENDING→STAGING→HASHED→COMMITTED / INTERRUPTED→resume / BLOCKED state
+  machine, F12/F13/F14 interface, test taxonomy via the P07.1 markers.
+- `src/mnemosyne_dit/staging.py` — `StagedArchive`:
+  - F12 staging atomic commit: target exposure only after full re-hash
+    + LAST-WRITE receipt (`receipt.json` via `os.replace`); no receipt,
+    no committed archive; a partial staging tree is never visible to the
+    processing queue (zero-tolerance).
+  - Crash recovery: `recovery_state()` is derived from directory contents
+    (no journal file needed): resume re-hashes everything and commits
+    only on a full match; any drift → `BLOCKED` (a recorded safety
+    state, never retried as success).
+  - Idempotent re-entry + tamper: `reentry_check()` is a no-op on a
+    valid receipt; receipt/manifest drift raises `StagingConflictError`
+    and marks the archive `BLOCKED` (S5 audit path, P05.1).
+  - F13/F14 independence: `independence_report(provider)` trusts ONLY
+    the injected device-identity probe — same `device_id` across mount
+    points folds to one domain ("availability, not backup"), network
+    shares / unlisted paths count 0 (fail-closed).
+- `tests/test_dit22_staging.py` — 11 tests (10 `@behavior_tested`,
+  1 `@hw_blocked` ZFS drill contract with `result: None`, no fabricated
+  restore data). TDD red→green caught a real bug (the hw_blocked test
+  wrote `str(dict)` into a JSON file → `json.dumps`).
+- Full regression now **134 passed, 0 failed** (123 prior + 11 new).
+  No v4 / real-NAS / cloud touch; ZFS/SMB snapshots remain
+  HARDWARE_BLOCKED (contract-only drill record).
+
+### Added — DIT 2.2 P08 addendum + P09 durable job control (F17, 2026-10-24)
+
+- P08 addendum (independent review `deleg_c9de4a9a`, 6/6 PASS): removed
+  the unused `provider` parameter from `StagedArchive.commit()` /
+  `resume()` — only `independence_report()` consumes the device-identity
+  probe, so the dead surface was misleading the API. Focused
+  `tests/test_dit22_staging.py`: **11 passed**, ruff clean.
+- `docs/engineering/spec/P09-durable-job-queue.md` — spec-first
+  (writing-plans): F17 fields (job_id / idempotency_key / input_manifest /
+  lease / attempt / checkpoint / reversible), the irreversibility rule,
+  and the "multi-worker must not violate the old indexer" acceptance
+  clause (queue carries zero indexer logic — proven by static import
+  review, not by running the indexer).
+- `src/mnemosyne_dit/job_queue.py` — `DurableJobQueue` (pure stdlib
+  SQLite, caller-supplied `dit22_jobs.db`, never opens the v4
+  `files.db`):
+  - idempotent enqueue: same `idempotency_key` reuses the job row;
+  - exclusive lease: unexpired foreign lease → `LeaseHeldError`;
+    expired lease is takeable (crash recovery), takeover bumps `attempt`;
+    re-owning your own unexpired lease is a no-op;
+  - checkpoint durability across pause/resume;
+  - input-manifest drift at complete() → job FAILED (never "done" on
+    changed inputs);
+  - irreversibility: `reversible=False` jobs REFUSE every retry after
+    FAILED (even `authorize_manual=True` — the manual path is a fresh
+    job under a new key, not a rewrite of history);
+  - priority + FIFO claim ordering (priority desc, `seq` asc within).
+- `tests/test_dit22_job_queue.py` — 13 tests (`@behavior_tested`),
+  incl. a `sqlite3.connect` monkeypatch spy proving the queue never
+  opens a v4 database path. TDD red→green caught a real bug
+  (`verify_manifest` double-decoding an already-decoded manifest).
+- Scope boundary: this slice stores job state only; no daemon, no
+  worker pool — parallel execution (ADR-DIT2-003) stays PROPOSED
+  pending user approval.
+- Full regression now **147 passed, 0 failed** (134 prior + 13 new).
+  ruff clean. No v4 / media / cloud touch.
+
+### Added — DIT 2.2 P09 CAS lease hardening (2026-10-24)
+
+- P09 independent review (`deleg_5a3282cb`, 7/7 PASS) flagged one
+  concrete race the slice deliberately left to ADR-DIT2-003: the
+  read-then-unconditional-UPDATE in `lease()` could let two processes
+  both commit a live lease on one PENDING / expired job. Hardened it
+  without expanding scope:
+  - the take-lease `UPDATE` now re-checks takeability *at write time*
+    (`WHERE ... state IN ('PENDING','PAUSED') OR (state='LEASED' AND
+    expired)`); `rowcount == 0` means the writer lost the race and
+    `LeaseHeldError` is raised instead of a second lease being set;
+  - `PRAGMA busy_timeout=5000` so a losing writer waits for the
+    winner's committed row instead of raising "database is locked".
+- Two deterministic tests pin the behavior
+  (`test_cas_second_stale_take_lease_cannot_win`,
+  `test_expired_takeover_via_second_connection_bumps_attempt_once`).
+- Cross-process fairness beyond this lock stays deferred to
+  ADR-DIT2-003 (still PROPOSED, pending user approval).
+- P09 focused suite now **15 passed**; full regression **149 passed,
+  0 failed** (147 prior + 2 new). ruff clean.
+
+### Added — DIT 2.2 P09.1 lease fencing + P10 FFprobe media probe (2026-10-24)
+
+- P09.1 (spec addendum §4, writing-plans): every lease-protected state
+  update (`update_checkpoint` / `pause` / `fail` / `complete`) becomes a
+  single **fenced conditional UPDATE** — the WHERE clause re-checks
+  `job_id` + `state='LEASED'` + the caller's exact `lease_token` +
+  `lease_worker` + "still unexpired at write time". `rowcount=0` is
+  fail-closed: it raises the new `LeaseFencedError`, writes nothing, and
+  never silently no-ops or retries in place.
+- API change: the token is now mandatory on the four methods
+  (`token=` keyword; `fail()` keeps `reason` positional for
+  compatibility). P09's PENDING/PAUSED retry path is unchanged.
+- What this closes: a stale token from a taken-over lease, and a
+  worker that *restarts under the same name* (name is not a fencing
+  token — the lease_token is). Same-name restart now bumps `attempt`,
+  old incarnation's writes are refused.
+- **External side-effect evaluation (spec §4.3)**: the DB fence
+  protects queue state only. External artifacts written between lease
+  and complete must be fenced by the *destination's* atomic contract —
+  P08 `StagedArchive` receipt shape; P11 proxy publishing MUST reuse it
+  and record `job_id` + `lease_token` in its receipt so stolen-lease
+  artifacts are detectable and discardable. The queue's CAS alone is
+  explicitly NOT treated as complete protection for external writes.
+- `tests/test_dit22_lease_fencing.py` — 9 `@behavior_tested` tests
+  covering the six spec scenarios (stale-token checkpoint/pause/fail,
+  same-name restart, two-connection takeover, expired complete,
+  valid-token drift regression, valid-token happy paths, no-silent-
+  success). P09's 15 tests migrated to the new token signatures.
+- No ADR-DIT2-003 scope expansion: this is DB-layer hardening only.
+- P09.1 focused suite (9 new + 15 P09) **24 passed**; full regression
+  **158 passed, 0 failed** (149 prior + 9 new). ruff clean.
+  Independent review `deleg_e2e10053`: **8/8 PASS** (the one residual
+  note — same-name + same-token no-op — is P09's documented no-op
+  contract, not a P09.1 gap).
+- `docs/engineering/spec/P10-media-probe.md` — spec-first (writing-
+  plans): 13-scenario test matrix for a read-only FFprobe probe.
+- `src/mnemosyne_dit/media_probe.py` — `MediaProbe` + `probe()`:
+  - exact rational FPS (`Fraction`; "30000/1001" never rounded),
+    time_base, per-frame PTS → VFR (`cfr` / `vfr-likely` / `unknown`
+    — degrades, never assumes cfr);
+  - drop-frame vs non-drop timecode by FPS family;
+  - codec / pix_fmt / color primaries / transfer / HDR (conservative
+    `sdr` / `hdr-sdr` / `unknown`); rotation (display-matrix side data +
+    tags); multi-audio streams with per-stream sample_rate / layout;
+  - sidecar association (read-only dir scan), source SHA256, and a
+    reconstructable evidence blob (`to_evidence_json()` carries binary
+    version + argv + the raw ffprobe JSON);
+  - safety: shell-free argv, network-URL refusal BEFORE any subprocess
+    (verified by a spy that asserts zero ffprobe runs), timeout, a 50MB
+    output cap, empty-file refusal without invoking ffprobe, corrupt /
+    unknown formats → `ProbeError` with a stderr summary, CJK unicode
+    paths, strictly read-only, zero v4 imports.
+- `tests/test_dit22_media_probe.py` — 19 tests (10 `@behavior_tested`
+  on real ffmpeg-generated synthetic fixtures; 9 `@fixture_only` on the
+  classifier / parser layer). Camera families with no real sample
+  (Sony BRAW, X-OCN, CinemaDNG, RED) are pinned `verified=False`
+  (UNVERIFIED); this host's ffmpeg 9.0.2 does not carry a
+  display-matrix / HDR transfer into an MP4 stream, so that path is
+  verified against a crafted ffprobe JSON at the parser level —
+  honest, no fabricated data.
+- Full regression now **177 passed, 0 failed** (158 prior + 19 new).
+  ruff clean. No v4 / real-media / cloud touch.
+  P10 independent review `deleg_6ca7f297`: **10/10 PASS** (two minor
+  flags closed: `.x-ocn` added to the UNVERIFIED pin; spec VFR/HDR
+  errata). Committed as `46b6605` and pushed.
+
+### Added — DIT 2.2 P12 shot boundary detection, three-way provider contract (2026-10-25)
+
+- `docs/engineering/spec/P12-shot-boundary-detection.md` — spec-first:
+  three strictly separated notions (fixed-interval cutting is a TOOL with
+  no confidence; real shot boundary detection carries detector +
+  model/version + confidence 0..1; semantic event segmentation is a P13
+  enum slot only — never conflated). Segment records source_asset_id,
+  frame range (half-open), PTS/time_base from the P10 probe (never
+  recomputed or guessed), camera reel, detector, model version and
+  confidence.
+- `src/mnemosyne_dit/scene_detect.py` — zero-dependency CPU providers
+  plus adapter contracts:
+  - `FixedIntervalProvider`: cut every N seconds; the last interval
+    absorbs the remainder so coverage stays contiguous;
+  - `ContentDiffProvider`: deterministic reference SBD (per-frame mean
+    absolute pixel difference via ffmpeg rawvideo decode + numpy,
+    median*8 threshold with a 2.0 floor) — `kind=CONTENT_CUT`,
+    confidence in (0, 1] on detected cuts;
+  - `PySceneDetectProvider` / `TransNetV2Provider`: adapter contracts
+    for the real optional dependencies. When `scenedetect` /
+    tensorflow + weights are absent (this venv), `is_available()`
+    reports the honest reason and `detect()` refuses with
+    `ProviderUnavailable` after the URL safety gate — never a
+    fabricated fallback. A770 GPU benchmark recorded as a
+    `HARDWARE_BLOCKED` marker, not a fabricated number;
+  - `assert_contiguous` enforces gapless ordered [0, total) coverage;
+  - missing info degrades to None (no guessed fps/time_base); a probe
+    without a main-video resolution is refused (fail-closed, per the
+    independent review's Minor #1);
+  - source read-only everywhere (ffmpeg rawvideo decode to stdout,
+    zero write paths, no v4 files.db / qdrant / indexer imports, zero
+    cloud).
+- `tests/test_dit22_scene_detect.py` — 16 tests (9 `@behavior_tested`
+  on real-ffmpeg synthetic two-scene fixtures + ContentDiff decode,
+  7 `@fixture_only` pure logic / unavailable contract). TDD red caught
+  three real issues: the TransNet boundary math missing 0->1 flips,
+  the URL safety gate running after `is_available()`, and a guessed
+  320x240 resolution fallback.
+- Full regression now **209 passed, 0 failed** (193 prior + 16 new).
+  ruff clean. No v4 / real-media / cloud touch; the optional
+  dependencies (scenedetect, tensorflow + TransNetV2 weights) are
+  deliberately NOT installed into the shared v4 venv, and no GPU
+  benchmark was fabricated.
+
+### Added — DIT 2.2 P11 proxy generator, CPU FFmpeg MVP (2026-10-25)
+
+- `docs/engineering/spec/P11-proxy-generator.md` — spec-first: 10-
+  scenario test matrix for a CPU proxy pipeline (browser H.264 MP4
+  golden; editor DNxHR/ProRes decided by real build capability with
+  honest h264 degradation; staging → verify → receipt → atomic
+  publish; source correspondence copied from P10 probe; receipt
+  records `job_id` + `lease_token` per P09.1 §4.3 so stolen-lease
+  artifacts are detectable and discardable; proxies deletable +
+  rebuildable; the original is never modified; a proxy NEVER raises
+  an archive safety verdict).
+- `src/mnemosyne_dit/proxy_generator.py` — `generate_proxy()` /
+  `find_stale_proxies()` / `delete_proxies()` /
+  `detect_editor_capabilities()`:
+  - source opened read-only (`ffmpeg -i`), URL sources refused on the
+    ORIGINAL string before any subprocess (the Path-collapsing trap
+    caught by a red test), empty sources refused without running
+    ffmpeg;
+  - staging under a hidden `.staging/<job_id>/` dir; the encoded
+    artifact is verified by reading it back with ffprobe (never the
+    encoder's self-report): decodable, duration within 0.5s of the
+    source, audio stream count matches the source mapping — any miss
+    discards the staging file and raises `ProxyVerifyError`;
+  - atomic publish: receipt JSON written FIRST, then `os.replace()`
+    of the staged file into the public dir; no receipt = not
+    committed (P08 semantics), so a stolen-lease writer's output is
+    attributable (receipt carries `job_id` + `lease_token`) and
+    discardable via `find_stale_proxies`;
+  - editor target: `dnxhr`/`prores` encoders probed from the actual
+    build; this host has ProRes (10-bit) and no DNxHR, so the editor
+    profile produces a real ProRes proxy (`degraded=False`); a build
+    with neither honestly falls back to h264 with `degraded=True` —
+    never a fake ProRes claim;
+  - `delete_proxies(out_dir, job_id=...)` removes only the matching
+    job's artifacts (rebuild path); the source file is byte-for-byte
+    invariant (SHA256 pinned across the whole run).
+- `tests/test_dit22_proxy_generator.py` — 16 tests (14
+  `@behavior_tested` on real ffmpeg encodes + ffprobe read-backs, 2
+  `@fixture_only` on the pure stale-detection / delete logic). TDD
+  red caught three real bugs: the URL check hitting the Path()
+  collapse, the ProRes encoder rejecting `-profile auto` on this
+  build, and a corrupt source surfacing as a ProbeError instead of
+  degrading to "let ffmpeg report the real encode failure".
+  Independent review (`deleg_32ec0122`) 9/9 PASS; its two Important
+  gaps (re-entry + same-output-path collision) are closed: published
+  artifact names are now job-namespaced
+  (`{job_tag}__{src.stem}__{profile}{ext}`) so different jobs sharing
+  a source + profile + out dir never collide, while a re-entry under
+  the same job is an idempotent atomic replace (no duplication);
+  `test_reentry_same_job_is_idempotent_replace` and
+  `test_different_jobs_same_source_do_not_collide` pin both.
+- Full regression now **193 passed, 0 failed** (177 prior + 16 new).
+  ruff clean. No v4 / real-media / cloud touch; QSV/Vulkan/OpenVINO
+  acceleration deferred per the "CPU golden first" contract.
+
 ### Added — v4 dual-machine landing plan (2026-06-05)
 
 This is the **plan-freeze snapshot** of the v4 architecture. The plan

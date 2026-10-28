@@ -1,178 +1,167 @@
 # Mnemosyne
 
-> **A local-first, privacy-preserving personal AI second brain.** Indexes your notes, photos, videos, and audio into a private, semantically searchable archive on your own hardware. No cloud, no telemetry, no surveillance.
+> **Local-first AI Memory & Media Workbench.** A private second brain that indexes your notes, photos, videos, and audio on your own hardware — plus an experimental DIT 2.2 media subsystem that turns verified footage into recoverable, lease-fenced proxy pipelines. Developer Preview.
 
-[![Status](https://img.shields.io/badge/status-pre--implementation-yellow)]()
-[![License: AGPL-3.0](https://img.shields.io/badge/code-AGPL--3.0--or--later-blue.svg)](LICENSE)
-[![License: CC BY-SA 4.0](https://img.shields.io/badge/docs-CC%20BY--SA%204.0-lightgrey.svg)](LICENSE-DOCS)
-[![Privacy: 100% Local](https://img.shields.io/badge/privacy-100%25%20local-success)]()
-[![Powered by Hermes Agent](https://img.shields.io/badge/powered%20by-Hermes%20Agent-blueviolet)](https://github.com/NousResearch/hermes-agent)
-[![v4 plan](https://img.shields.io/badge/v4%20plan-frozen-blue)]()
+![Hero](docs/assets/rc1/mnemosyne-hero.svg)
 
----
-
-## What is Mnemosyne?
-
-**Mnemosyne** (μνημοσύνη) is a personal AI second brain that runs **entirely on your own hardware**. It turns the digital artifacts you already have — notes, photos, videos, audio recordings, PDFs, screenshots — into a single, semantically-aware, locally-indexed archive that you (and your AI assistant) can query in natural language.
-
-> No cloud. No SaaS. No data ever leaves your LAN.
-
-It is named after the **Greek goddess of memory**, mother of the nine Muses — and also after the long-term memory backend the system is built on, so "Powered by Mnemosyne" forms a deliberate recursion: **the second brain *is* a memory system**.
-
-### Why this name
-
-- **μνημοσύνη (mnēmosýnē)** = "memory" in ancient Greek
-- The goddess Mnemosyne was the mother of the Muses — the source of all inspiration and knowledge
-- The project's memory backend is also called Mnemosyne, so the name has built-in continuity
-- Short, distinctive; live fork at `github.com/juhjuhx/Mnemosyne-Hermes_second_brain_agent`
+| | |
+|---|---|
+| **Status** | **Developer Preview (RC-1)** — core safety pipeline locally tested & reviewed; Windows pilot specified, not yet run |
+| **License** | Code: [AGPL-3.0-or-later](LICENSE) · Docs & diagrams: [CC BY-SA 4.0](LICENSE-DOCS) · Third-party components keep their own licenses |
+| **Powered by** | [Hermes Agent](https://github.com/NousResearch/hermes-agent) · Qdrant · Ollama/llama.cpp · FFmpeg · MCP |
 
 ---
 
-## Reference hardware
+## 1. What is Mnemosyne?
 
-The plan is **parameterized for any similar "small Mac + workstation" pair**. The reference design:
+**Mnemosyne** (μνημοσύνη, "memory") is a local-first personal AI system. Everything runs on hardware you own: your documents, media, and models never leave your LAN, and there is no telemetry. The system is named after the Greek goddess of memory and after the long-term memory backend it is built on — the second brain *is* a memory system.
 
-| Machine | Role | Spec |
-|---|---|---|
-| M1 Air | Perception / NAS / Edge Agent | macOS, 8GB RAM, Metal GPU |
-| Workstation | Heavy Inference | Linux, 5800X + 48GB RAM + A770 16GB VRAM, Vulkan |
+It has two interconnected product tracks:
 
----
+## 2. Two product tracks
 
-## Stack (all AGPL-3.0, all local)
+### Track A — Second Brain v4 (private document & media indexing)
 
-- [Hermes Agent](https://github.com/NousResearch/hermes-agent) — autonomous agent runtime
-- [Ollama](https://ollama.com) (M1, Metal) + [llama.cpp](https://github.com/ggerganov/llama.cpp) (workstation, Vulkan)
-- **Gemma 4 E2B** (M1) + **Qwen 3.6 27B-PRISM-DQ** (workstation, with MTP speculative decoding)
-- [Mnemosyne](https://github.com/AxDSan/mnemosyne) — long-term memory
-- [Qdrant](https://qdrant.tech) — vector store (named vectors: `text_vec(768)` + `image_vec(512)`)
-- [Open WebUI](https://github.com/open-webui/open-webui) — chat frontend
-- [Tailscale](https://tailscale.com) — private mesh between machines
-- [PySceneDetect](https://github.com/Breakthrough/PySceneDetect) — video slicing (F1 = 91.6%)
-- [MCP](https://modelcontextprotocol.io) (Model Context Protocol) — tool/server bus
-- 3 example skills ship out of the box: `filesystem-search`, `qdrant-search`, `video-slice`
+- Private indexing of notes, photos, videos, audio, and PDFs.
+- Local LLMs via [Ollama](https://ollama.com) (Metal) or [llama.cpp](https://github.com/ggerganov/llama.cpp) (Vulkan).
+- [Qdrant](https://qdrant.tech) named vectors (`text_vec(768)` + `image_vec(512)`) — a rebuildable view over your files, never the source of truth.
+- [Hermes Agent](https://github.com/NousResearch/hermes-agent) with [MCP](https://modelcontextprotocol.io) tool contracts and extensible skills (3 example skills ship in-repo).
+- Local-first data ownership: originals are never moved or modified; the indexer only *suggests*.
 
----
+> **Track A status:** the v4 plan is frozen with a SHA-256-verified 105-file archive snapshot, and the indexer/invariants/MCP skills are committed with CI-verified tests. The reference two-machine deployment (M1 + workstation) had not been physically stood up at plan time — live service integration remains hardware-pending. See the [implementation status matrix](docs/05_implementation-status-matrix.md) for exact tiers.
 
-## Three invariants
+### Track B — Mnemosyne DIT 2.2 (media subsystem)
 
-Mnemosyne will not compromise on these:
+A Digital Imaging Technician-style core for moving image: not a replacement for Track A, but a media subsystem inside the project.
 
-1. **Memory never forgotten** — your original files are never modified; the indexer only *suggests* moves.
-2. **Local-first** — every byte of compute and storage is on hardware you own.
-3. **No surveillance** — no facial recognition, no voice emotion monitoring, no auto-mutation of your archive.
+- **Source & replica catalog** — content-addressed assets, replica records, read-back evidence.
+- **Verified media provenance** — Source admission gate (fail-closed) + **SourcePin** (content SHA256 re-hashed before *and after* encode; drift discards the artifact, never publishes).
+- **Durable job queue** — SQLite, lease fencing, retry budget with exponential backoff.
+- **FFprobe metadata** — read-only probing of FPS (incl. non-integer/VFR), timecode, HDR/log, audio layout; degrades to `unknown` rather than guessing.
+- **CPU proxy generation** — H.264 browser/editor profiles, atomic staging → verify → receipt → publish.
+- **Recoverable publication** — read-only recovery reconciler: `PUBLISHED` requires a complete generation, hash-matching artifact, *and* a valid receipt.
+- **Scene detection** — content-diff (CPU) + fixed-interval, memory-bounded (frame-cap hard limit).
+- **Safeguards** — memory guard, path isolation (symlink/traversal), capacity reservation, Windows-safe artifact naming.
 
-> These three constraints are enforced in code: the indexer rejects `workers > 1`, all services bind to `127.0.0.1`, and the SQLite `suggested_move` field is *advisory only*.
+> **Track B status (honest tiers):** P11.1/P12/P12.1/P12.2 are **LOCAL TESTED / REVIEWED** in this research branch — 330 tests passing, independent reviews complete, **not yet committed**. Windows CPU Pilot is **SPECIFICATION ONLY**; UNC/SMB, A770 GPU, and real camera media families are **HARDWARE BLOCKED / UNVERIFIED**. See the [status matrix](docs/05_implementation-status-matrix.md).
 
----
+## 3. What problems does it solve?
 
-## Repository layout
+- **Ownership** — search and process your media without uploading it; no SaaS, no telemetry.
+- **Trust in pipelines** — a derived proxy is only ever `PUBLISHED` when artifact, hash, and receipt agree; a source change mid-pipeline can never masquerade as a trusted output.
+- **Recoverability** — crash residue (zombie staging, orphan receipts, stale workers) is classified read-only with a safe action attached, never auto-deleted.
+- **Reproducibility** — synthetic, generated test media drive the whole test battery; no real footage, no personal paths in evidence bundles.
 
-```
-mnemosyne/                       (a.k.a. ~/mnemosyne/ when cloned)
-├── README.md                    ← you are here
-├── LICENSE                      ← AGPL-3.0 for code
-├── LICENSE-DOCS                 ← CC BY-SA 4.0 for documentation
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-├── CODE_OF_CONDUCT.md
-├── SECURITY.md
-├── .gitignore
-│
-├── docs/
-│   ├── 00_index.md              ← master index of every artifact
-│   ├── 01_對話與調研紀錄/        ← session logs, research notes (8 files)
-│   ├── 02_方案文檔/              ← plans, integration guides, manuals (16 files)
-│   ├── 03_架構圖_SVG/            ← 11 hand-crafted SVG architecture diagrams
-│   ├── 06_備份與同步/            ← backup & sync strategy + 4 scripts
-│   └── 07_更新日誌/              ← phase-end summaries (reserved for use post-deployment)
-│
-├── src/                         ← all runnable code
-│   ├── hermes_skills/           ← 3 example skills (SKILL.md + manifest + src + tests)
-│   ├── launchd/                 ← 6 macOS service plists
-│   ├── systemd/                 ← 3 Linux service units
-│   ├── scripts/                 ← 8 Python + bash glue scripts
-│   ├── tailscale/               ← ACL JSON
-│   ├── ollama/                  ← Modelfiles
-│   └── llama_cpp/               ← build flags & RPC config
-│
-├── tests/                       ← pytest suites + 100-entry eval set
-├── examples/                    ← sample configs (hermes, indexer)
-├── .github/                     ← issue/PR templates + CI workflows
-└── _archive/                    ← SHA-256-verified snapshots (2026-06-05)
+## 4. Who is it for?
+
+- Individual creators and editors who want a private, auditable media workflow.
+- Developers building local-first AI on their own hardware (Hermes + MCP extensibility).
+- DIT-style professionals who need provenance, receipts, and recoverable jobs more than speed.
+
+## 5. Current capabilities (verified, by tier)
+
+| Capability | Tier |
+|---|---|
+| v4 plan archive, 105/105 SHA-256 verified | COMMITTED |
+| Indexer core + 7 invariants, named-vector test | COMMITTED / CI VERIFIED |
+| 3 MCP skills (qdrant / filesystem / video-slice) | COMMITTED / CI VERIFIED |
+| DIT 2.2 admission, fencing, proxy, recovery, P12.2 gates | LOCAL TESTED / REVIEWED (330 tests, uncommitted research branch) |
+| Live two-machine deployment (M1 + workstation) | HARDWARE PENDING |
+| Windows CPU Pilot (A770 box) | SPECIFICATION ONLY |
+| GPU acceleration (QSV/OpenVINO) | HARDWARE BLOCKED |
+| Real camera media families (Sony BRAW/XAVC, etc.) | UNVERIFIED (synthetic fixtures only) |
+| Interactive developer TUI | NOT IMPLEMENTED (design concepts + labeled mockups) |
+
+Full detail: [implementation status matrix](docs/05_implementation-status-matrix.md).
+
+## 6. Architecture overview
+
+![Architecture](docs/assets/rc1/architecture-overview.svg)
+
+- **Track A** (document/media → chunk → embed → Qdrant named vectors → local LLM → Hermes MCP).
+- **Track B** (admission → SourcePin → durable queue → capacity gate → CPU encode → re-verify → atomic publish → read-only reconcile).
+- **Shared invariants**: originals never mutated; index is a rebuildable view; fail-closed gates; local-only by default.
+
+Media pipeline detail: [safety workflow diagram](docs/assets/rc1/media-pipeline-safety.svg) · [DIT 2.2 developer quick start](docs/dit22-quickstart.md).
+
+## 7. Five-minute synthetic developer demo
+
+No camera card, NAS, Windows, GPU, or cloud tokens needed — generated media, isolated temp dataset, CPU only. This runner maps 1:1 to the tested public APIs (each step is a real call, no invented commands):
+
+```bash
+# Python 3.10–3.12; ffmpeg + ffprobe on PATH
+pip install -e .            # installs dev deps (pyproject)
+python examples/dit22_synthetic_demo.py
 ```
 
----
+Eight steps: source probe → CPU proxy → receipt verification → controlled safe failure → read-only recovery verdicts → editor proxy validation → CPU scene detection → Windows-safe naming + capacity gate. Machine-readable evidence (no absolute host paths, no credentials) lands in `demo_evidence_bundle.json`.
 
-## Quick start
+The demo is **MODULE-LEVEL**: it exercises the tested APIs separately; there is no single shipped end-to-end CLI yet (that is part of the next development phase).
 
-> The reference hardware (M1 Air + Linux workstation) was offline during v4 planning, so the repo is **complete on paper** and ready to **run as soon as you have both machines in hand**.
+## 8. System requirements & supported platforms
 
-1. **Read [`docs/00_index.md`](docs/00_index.md)** — full table of contents.
-2. **Read [`docs/02_方案文檔/Phase_0_啟動手冊.md`](docs/02_方案文檔/Phase_0_啟動手冊.md)** — the 1-day bootstrap checklist.
-3. **Skim [`docs/02_方案文檔/個人AI第二腦落地方案_v4.md`](docs/02_方案文檔/個人AI第二腦落地方案_v4.md)** — the master plan (27 sections).
-4. **Adapt & execute** — every path/port/hostname is parameterized.
+| Need | Requirement |
+|---|---|
+| Python | 3.10 – 3.12 (venv recommended) |
+| Media tools | `ffmpeg` + `ffprobe` on PATH (CPU baseline; no GPU required) |
+| OS | macOS (Apple Silicon / Intel) and Linux are exercised by tests; **Windows is specification-only** (CPU Pilot pending) |
+| Track A services | Qdrant, Ollama or llama.cpp, Hermes Agent — see [Phase guides](docs/02_方案文檔/Phase_0_啟動手冊.md) |
+| Memory | Scene detection is frame-capped (P12.1); long 4K workloads remain unvalidated |
 
----
+## 9. Safety principles & permission boundaries
 
-## v4 design pillars (TL;DR)
+1. **Originals are truth.** The index is a derived, rebuildable view; nothing is auto-moved or auto-deleted.
+2. **Fail-closed gates.** Admission, pin verification, lease fencing, capacity, and path isolation all deny on ambiguity.
+3. **No cloud by default.** Everything is local and 100% on your hardware; the architecture *could* later add explicitly-enabled, opt-in providers, but none are configured or called in this release — and any such change is a separate, announced decision, not a hidden one.
+4. **Honest status.** Hardware-blocked items are labeled as such; a synthetic test is never reported as a real-device PASS.
+5. **15% free-space is advisory-only.** Low space stops *new* proxy/embedding jobs; it never triggers deletion of originals, music, or backups.
 
-1. **Dual-machine split** — M1 = perception/NAS/edge agent; workstation = heavy LLM inference.
-2. **Hermes Agent replaces v3's self-built FastAPI agent** — community-supported, MCP-native, skill-driven.
-3. **Mnemosyne replaces v3's self-built memory layer** — SQLite-only, BEAM-friendly, 98.9% on LongMem.
-4. **Named vectors preserved** — `text_vec(768) + image_vec(512)` in Qdrant (v3 invariant).
-5. **Single worker indexer** — v3 invariant, no parallel ingestion.
-6. **Memory never forgotten** — original files preserved, index is rebuildable.
-7. **Privacy by construction** — `127.0.0.1`-bound services, Tailscale mesh, no cloud, no telemetry.
+## 10. Developer TUI (design, clearly labeled)
 
----
+An interactive developer TUI does **not** exist yet — the screens below are **CONCEPT MOCKUPS** from a documented design system, built from static fixture data, and never pass as a shipped feature. The synthetic demo output above (REAL EXECUTION) is the only terminal capture in this release, and it is reproducible: `python examples/dit22_synthetic_demo.py`.
 
-## Status of every component
+Design system (6 screens, synthetic data only): [TUI design & mockup guide](docs/dit22-tui-design.md) · [mockup asset](docs/assets/rc1/tui-dashboard-concept.svg)
 
-| Component | Plan | Code | Tested | Notes |
-|---|:---:|:---:|:---:|---|
-| Tailscale mesh | ✅ | ✅ | ⏳ | Awaiting hardware |
-| Ollama on M1 (Metal) | ✅ | ✅ | ⏳ | Awaiting M1 |
-| llama.cpp on A770 (Vulkan) | ✅ | ✅ | ⏳ | Awaiting workstation |
-| Qdrant single-node | ✅ | ✅ | ⏳ | |
-| Mnemosyne integration | ✅ | ✅ | ⏳ | |
-| Hermes Agent setup | ✅ | ✅ | ⏳ | |
-| Open WebUI link | ✅ | ✅ | ⏳ | |
-| 100-entry eval suite | ✅ | ✅ | ⏳ | |
-| Skill templates | ✅ | ✅ | ⏳ | 3 example skills included |
+### Visual identity
 
-Legend: ✅ done · ⏳ pending hardware
+Restrained engineering visual system (dark graphite / midnight navy foundation, cool blue for memory & indexing, warm amber for camera media & DIT processing, thin graph lines with media-timeline checksum marks). Editable SVG sources + PNG derivatives (via `rsvg-convert`) live in [`docs/assets/rc1/`](docs/assets/rc1/):
 
----
+| Asset | Source (editable) | Derived PNG | Role |
+|---|---|---|---|
+| Hero banner | [mnemosyne-hero.svg](docs/assets/rc1/mnemosyne-hero.svg) | mnemosyne-hero.png | README landing (1280×320) |
+| Social preview | [social-preview.svg](docs/assets/rc1/social-preview.svg) | social-preview.png | GitHub repo social-preview setting (1280×640, <1 MB) — upload via **repo Settings → Social preview** (manual, recorded below); until then the default repo card applies |
+| Project icon | [mnemosyne-icon.svg](docs/assets/rc1/mnemosyne-icon.svg) | mnemosyne-icon.png | Square mark (1280×1280, scalable down) |
+| Architecture overview | [architecture-overview.svg](docs/assets/rc1/architecture-overview.svg) | architecture-overview.png | Two tracks + shared safety core |
+| TUI dashboard concept | [tui-dashboard-concept.svg](docs/assets/rc1/tui-dashboard-concept.svg) | tui-dashboard-concept.png | **CONCEPT MOCKUP** (DESIGN PREVIEW watermark in the artwork) |
+| Media pipeline / safety workflow | [media-pipeline-safety.svg](docs/assets/rc1/media-pipeline-safety.svg) | media-pipeline-safety.png | Fail-closed pipeline, honest tiers |
 
-## Contributing
+> No asset is a screenshot of running software except the demo capture (REAL EXECUTION). None depicts fabricated operational status, benchmarks, or real footage. Visual QA of the rendered PNGs is marked **VISUAL_QA_PENDING** (automated vision review unavailable at preparation time); SVG sources are the editable truth and render deterministically.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md). The plan is parameterizable; PRs to add new hardware profiles (e.g. M2/M3, RX 7900, multi-GPU) are very welcome.
+## 11. Documentation index
 
-**Code**: AGPL-3.0 — see [`LICENSE`](LICENSE)
-**Docs**: CC BY-SA 4.0 — see [`LICENSE-DOCS`](LICENSE-DOCS)
+- [`docs/00_index.md`](docs/00_index.md) — master TOC for the v4 plan artifacts.
+- [Implementation status & evidence matrix](docs/05_implementation-status-matrix.md) — every component's honest tier.
+- [DIT 2.2 developer quick start](docs/dit22-quickstart.md) — Track B, from clone to first proxy.
+- [TUI design & mockups (DESIGN PREVIEW)](docs/dit22-tui-design.md).
+- [DIT 2.2 engineering records](docs/engineering/P11.1-safety-integration-review.md) · [P4 integration contract audit](docs/engineering/P4-integration-contract-audit.md).
+- [Windows CPU Pilot spec](docs/engineering/spec/Windows-CPU-pilot-A770.md) · [Windows workstation census spec](docs/engineering/spec/Windows-workstation-census.md).
+- Troubleshooting & recovery: [restore drills](docs/06_備份與同步/還原演練.md) + the read-only recovery reconciler (Track B).
+- [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) · [CODE OF CONDUCT](CODE_OF_CONDUCT.md).
 
----
+## 12. Roadmap & limitations
 
-## License
+- **Windows CPU Pilot** (A770 workstation, CPU-only by design) — spec complete, awaiting execution authorization.
+- Committing the Track B safety layers (C1/C2/C3 atomic slices) — prepared, awaiting approval.
+- GPU/QSV/OpenVINO validation — hardware-blocked, census-driven.
+- P13 semantic segmentation — not started in this release.
+- Durable limitations: UNC/SMB durability, power-loss, and real-camera media families are out of scope until physical evidence exists.
 
-- All **code** under [`LICENSE`](LICENSE) (AGPL-3.0)
-- All **documentation, diagrams, and eval sets** under [`LICENSE-DOCS`](LICENSE-DOCS) (CC BY-SA 4.0)
-- Third-party components retain their own licenses — see the [Component Integration Matrix](docs/02_方案文檔/架構B_開源組件整合表.md).
+## 13. License & acknowledgments
 
----
-
-## Acknowledgments
-
-- [Nous Research](https://nousresearch.com) — Hermes Agent, Hermes API
-- [AxDSan](https://github.com/AxDSan) — Mnemosyne (the memory backend Mnemosyne is named after)
-- [Qdrant](https://qdrant.tech) — vector store
-- [Ollama](https://ollama.com) — local LLM serving
-- [ggerganov](https://github.com/ggerganov) — llama.cpp
-- [Anthropic](https://anthropic.com) — MCP + agentskills.io
-- [Open WebUI](https://github.com/open-webui/open-webui) — chat UI
-- All the open-source maintainers who make local-first AI possible.
+- **Code**: [AGPL-3.0-or-later](LICENSE). **Docs/diagrams/eval sets**: [CC BY-SA 4.0](LICENSE-DOCS).
+- **Third-party components retain their own licenses** — Hermes Agent (MIT), Qdrant (Apache-2.0), Ollama, llama.cpp (MIT), Open WebUI, Tailscale, PySceneDetect, and the Mnemosyne memory backend are all separate projects with their own terms; see the [component integration matrix](docs/02_方案文檔/架構B_開源組件整合表.md).
+- Thanks to [Nous Research](https://nousresearch.com) (Hermes Agent), [Qdrant](https://qdrant.tech), and the open-source maintainers who make local-first AI possible.
 
 ---
 
-*"Memory never forgotten. The original file is the source of truth; the index is a derived view."*
+*“Memory never forgotten. The original file is the source of truth; the index is a derived view.” — Track B adds: a published artifact is only trusted when artifact, hash, and receipt agree.*
