@@ -24,21 +24,32 @@ Safety contract:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
 
+from capacity_gate import CapacityShortError, check_capacity
 from media_probe import (
     ProbeError,
     _sha256_file,
     probe,
     run_ffprobe_json,
 )
+from path_isolation import HARDWARE_BLOCKED, PathIsolationError, check_path_isolation
+from source_admission import (
+    AdmissionDecision,
+    ProxySourceAdmissionError,
+    admit_source,
+    record_admission_evidence,
+)
+from source_pinner import SourceDriftError, SourcePin, verify_pin
 
 # ── limits ──────────────────────────────────────────────────────────
 
@@ -58,6 +69,29 @@ class ProxyEncodeError(Exception):
 class ProxyVerifyError(Exception):
     """The encoded proxy failed the verification gate (corrupt, wrong
     length, missing audio) and was NOT published."""
+
+
+class ProxyFencedError(Exception):
+    """P11.1-B publication fencing: the lease obligation failed (a
+    formal job carrying a lease_token without a live-check, or a lease
+    that died before / mid-encode), or the target slot is not ours to
+    clobber (receipt-less healthy artifact, another job's receipt, an
+    undecodable receipt). A fenced publish discards the staged
+    artifact; nothing published is ever overwritten by a stale
+    worker."""
+
+
+def generation_tag(lease_token: str | None) -> str:
+    """A short, path-safe staging-generation tag derived from the lease
+    token (tok- prefix + first 12 hex of its sha256). Two lease
+    generations of the same job therefore never share a staging
+    target, so a zombie worker's partial write cannot land in the
+    current holder's slot. `None` (ad-hoc / test path) is a fixed
+    `unleased` tag."""
+    if lease_token is None:
+        return "unleased"
+    digest = hashlib.sha256(str(lease_token).encode("utf-8")).hexdigest()
+    return "tok-" + digest[:12]
 
 
 # ── result model ────────────────────────────────────────────────────
@@ -80,6 +114,7 @@ class ProxyResult:
     receipt: dict
     size_bytes: int
     duration_s: float | None
+    admission: AdmissionDecision | None = None  # None only in test_mode
 
     def to_evidence_json(self) -> str:
         return json.dumps(
@@ -211,14 +246,11 @@ def delete_proxies(out_dir: Path, job_id: str | None = None) -> int:
             except (OSError, json.JSONDecodeError):
                 continue
         artifact = out_dir / base
-        artifact_ok = False
         if artifact.exists():
             artifact.unlink()
             removed += 1
-            artifact_ok = True
         rfile.unlink()
         removed += 1
-        del artifact_ok
     return removed
 
 
@@ -261,10 +293,67 @@ def generate_proxy(
     ffmpeg_bin: str = "ffmpeg",
     timeout_s: float = _DEFAULT_TIMEOUT_S,
     fps_cap: int | None = None,
+    test_mode: bool = False,
+    catalog=None,
+    storage_id: str | None = None,
+    device_provider=None,
+    queue=None,
+    worker: str | None = None,
+    source_pin: SourcePin | None = None,
+    protected_source: bool = False,
+    capacity_probe=None,
+    estimated_staging_bytes: int = 0,
+    estimated_output_bytes: int = 0,
+    capacity_safety_factor: float = 1.0,
+    actual_manifest: dict | None = None,
 ) -> ProxyResult:
     """Encode a playable proxy of `source` into `out_dir` and atomically
     publish it (staging -> verify -> receipt -> rename). The source is
-    never modified. A proxy never raises an archive safety verdict."""
+    never modified. A proxy never raises an archive safety verdict.
+
+    P11.1-A admission: a formal job (`job_id` set, not `test_mode`)
+    MUST pass a `catalog` + `storage_id`; the source is admitted by the
+    `source_admission` gate (fail-closed) and a DENIED source raises
+    `ProxySourceAdmissionError` before any ffmpeg. An admitted outcome
+    is recorded in the catalog's evidence ledger. `test_mode` is the
+    isolated synthetic path (never with a catalog): it skips the gate
+    and records nothing.
+
+    P11.1-B publication fencing: a formal job carrying a `lease_token`
+    MUST also pass the live-lease truth source — `queue` (a P09
+    `DurableJobQueue`) + `worker`. The lease is verified against the
+    queue row (state LEASED, holder, exact token, unexpired — P09.1
+    `_assert_leased_to` semantics) at START and re-verified at the
+    PUBLISH moment (a lease can die mid-encode). A dead lease raises
+    `ProxyFencedError` and the staged artifact is discarded. Staging
+    is versioned by the token (`generation_tag`), so two lease
+    generations of one job never share a target; a successful live
+    publish sweeps the job's stale staging generations. A published
+    slot that is not ours to own (receipt-less healthy artifact,
+    another job's receipt, an undecodable receipt) is fenced, never
+    clobbered. Writing the token into the receipt alone (P09.1
+    detection-based fencing) is NOT a publication fence — it only
+    detects an already-happened clobber.
+
+    P12.2 Phase-4 gates (all optional => default behavior unchanged):
+    - `source_pin` (C1/C2): when given, the pinner RE-VERIFIES the
+      source's identity before ffmpeg AND after encode completes (the
+      C1 TOCTOU close — a pre-execution SHA alone is not sufficient:
+      drift can land mid-encode). A pre-encode mismatch raises
+      `SourceDriftError`; a post-encode mismatch discards the staged
+      artifact (nothing is published on a drifted source).
+    - `protected_source` (C5): a camera-card / NAS volume that must
+      stay pristine — the path-isolation gate then also refuses
+      staging INSIDE the source's own directory.
+    - `capacity_probe` (C4): when given, a pre-encode storage
+      reservation (estimated staging + output bytes, factor-applied)
+      runs BEFORE ffmpeg; a short volume raises `CapacityShortError`.
+    - out_dir UNC paths return the pinner's `HARDWARE_BLOCKED`
+      verdict (C6: never a fabricated pass).
+    - `actual_manifest` (C2): the queue's input manifest, re-checked
+      against a manifest-bound pin at both pre-encode and post-encode
+      moments; a missing manifest on a manifest-bound pin is a fail.
+    """
     src = Path(source)
     # URL refusal on the ORIGINAL string: Path() collapses "http://x" to
     # "http:/x" and would hide the scheme from _reject_url.
@@ -275,15 +364,146 @@ def generate_proxy(
             f"refusing to encode a network URL ({source!r}); pass a local "
             f"file path"
         )
-    if not src.exists():
-        raise ProxyInputError(f"no such source file: {src}")
-    if src.stat().st_size == 0:
-        raise ProxyInputError(f"empty source: {src}")
     if profile not in ("browser", "editor"):
         raise ProxyInputError(f"unknown profile {profile!r}")
 
     out = Path(out_dir)
+    # ── P12.2 Phase-4 pre-encode gates (fail-closed, before any I/O) ──
+    # C5+C6 in one call: UNC / unverified-FS paths => the HARDWARE_BLOCKED
+    # sentinel (never a fabricated pass); same/contains/protected-inside
+    # containment => PathIsolationError.
+    # C5: containment (same / contains / protected-inside) => wrap the
+    # gate's PathIsolationError as the caller's input-level rejection.
+    try:
+        iso = check_path_isolation(
+            str(src), str(out), protected_source=protected_source
+        )
+    except PathIsolationError as e:
+        raise ProxyInputError(f"source/output path isolation failed: {e}")
+    if iso == HARDWARE_BLOCKED:
+        raise ProxyInputError(
+            f"out_dir {out_dir!r} is a UNC/unverified-filesystem path — "
+            "cross-volume rename + persistence are HARDWARE_BLOCKED on "
+            "this build (C6); a pass verdict is not fabricated"
+        )
+    # C4: pre-encode storage reservation (estimated staging + output).
+    if capacity_probe is not None:
+        try:
+            check_capacity(
+                capacity_probe,
+                estimated_staging_bytes=estimated_staging_bytes,
+                estimated_output_bytes=estimated_output_bytes,
+                safety_factor=capacity_safety_factor,
+            )
+        except CapacityShortError as e:
+            raise ProxyInputError(
+                f"destination cannot reserve the estimated staging + "
+                f"output bytes (C4 storage reservation): {e}"
+            )
+    # C1/C2: the pinner re-verifies the source's identity BEFORE ffmpeg
+    # (content + the C2 manifest digest, when the pin is manifest-bound).
+    if source_pin is not None:
+        verify_pin(source_pin, actual_manifest=actual_manifest)
     out.mkdir(parents=True, exist_ok=True)
+
+    # ── P11.1-A source admission gate (fail-closed, BEFORE any encode) ──
+    if test_mode and catalog is not None:
+        raise ProxyInputError(
+            "test_mode is the isolated synthetic path: pass test_mode WITHOUT "
+            "a catalog. A fixture must not be admitted through, or recorded "
+            "into, a formal catalog (it could not masquerade as a verified "
+            "source)."
+        )
+    admission: AdmissionDecision | None = None
+    if job_id is not None and not test_mode:
+        # formal job: the gate is authoritative and runs FIRST — a missing
+        # replica surfaces as the gate's `file_exists` denial, not a bare
+        # input error.
+        if catalog is None or storage_id is None:
+            missing = "catalog" if catalog is None else "storage_id"
+            raise ProxySourceAdmissionError(
+                f"a formal proxy job ({job_id!r}) must pass a `catalog` and "
+                f"`storage_id` to run the source admission gate; "
+                f"missing {missing!r}"
+            )
+        decision = admit_source(
+            catalog, storage_id, src, device_provider=device_provider
+        )
+        if not decision.admitted:
+            # record the denial in the controlled ledger (when the file is
+            # absent there is no asset identity to attribute the row to —
+            # the job log carries it), then stop: a denied source never
+            # reaches staging or ffmpeg.
+            if decision.asset_id is not None:
+                record_admission_evidence(
+                    catalog, decision,
+                    job_id=job_id,
+                    evidence_id=f"adm-{job_id}-{decision.fingerprint[:12]}",
+                )
+            raise ProxySourceAdmissionError(
+                f"source admission DENIED ({decision.reason}) for "
+                f"{src!r} on {storage_id!r}: a denied source must not "
+                f"enter the proxy pipeline"
+            )
+        # A 0-B source is refused even on a complete trust chain — and this
+        # check runs BEFORE the ADMITTED outcome is written to the
+        # controlled ledger, so an "ADMITTED" row can never point at a
+        # source from which no encode actually ran (review Minor #2).
+        if src.stat().st_size == 0:
+            raise ProxyInputError(f"empty source: {src}")
+        # the admission outcome is part of the job's controlled evidence:
+        record_admission_evidence(
+            catalog, decision,
+            job_id=job_id,
+            evidence_id=f"adm-{job_id}-ok-{decision.fingerprint[:12]}",
+        )
+        admission = decision
+    else:
+        # isolated (test_mode) or ad-hoc (no job_id) path: base checks,
+        # no gate, nothing recorded.
+        if not src.exists():
+            raise ProxyInputError(f"no such source file: {src}")
+        if src.stat().st_size == 0:
+            raise ProxyInputError(f"empty source: {src}")
+
+    # ── P11.1-B lease obligation: a formal lease-bound run must prove
+    # the lease is still LIVE before we spend an encode on it. The live
+    # truth is the P09 queue row (P09.1 `_assert_leased_to` semantics):
+    # state LEASED, holder == worker, EXACT token, unexpired. ────────
+    def _lease_live() -> bool:
+        if queue is None or worker is None:
+            return False
+        try:
+            row = queue.job_state(job_id)
+        except KeyError:
+            return False
+        unexpired = (
+            row["lease_expires_at"] is None
+            or time.time() < row["lease_expires_at"]
+        )
+        return (
+            row["state"] == "LEASED"
+            and row["lease_worker"] == worker
+            and row["lease_token"] == lease_token
+            and unexpired
+        )
+
+    if job_id is not None and not test_mode and lease_token is not None:
+        if queue is None or worker is None:
+            missing = "queue" if queue is None else "worker"
+            raise ProxyFencedError(
+                f"a formal proxy job ({job_id!r}) carrying lease token "
+                f"{lease_token!r} must pass a live-lease source "
+                f"(a `queue` + `worker` {missing!r} is missing) — the "
+                "publication fence is fail-closed, not skipped"
+            )
+        if not _lease_live():
+            raise ProxyFencedError(
+                f"lease fence failed at start: {job_id!r} token "
+                f"{lease_token!r} is no longer {worker!r}'s live lease; "
+                "re-lease before encoding"
+            )
+
     caps = detect_editor_capabilities(ffmpeg_bin)
     v_args, codec, container, degraded = _pick_encoder(profile, caps)
 
@@ -329,11 +549,14 @@ def generate_proxy(
     # Namespace artifacts by job_tag (job_id or "ad-hoc"): two DIFFERENT
     # jobs sharing a source + profile + out dir never collide — each
     # publishes `{job_tag}__{stem}__{profile}{ext}` with its own receipt.
-    # Re-entry with the SAME job is an idempotent atomic replace.
+    # P11.1-B: staging is VERSIONED by the lease generation, so two lease
+    # tokens of the same job never share a staging target (a zombie's
+    # partial write cannot land in the live holder's slot).
     job_tag = job_id or "ad-hoc"
     stem = f"{job_tag}__{src.stem}__{profile}"
+    gen = generation_tag(lease_token)
 
-    staging_root = out / ".staging" / job_tag
+    staging_root = out / ".staging" / job_tag / gen
     staging_root.mkdir(parents=True, exist_ok=True)
     staged = staging_root / f"{stem}{ext}"
 
@@ -385,6 +608,22 @@ def generate_proxy(
             f"{len(audio_mapping)} per the source mapping"
         )
 
+    # C1 (P12.2): "source changing WHILE FFmpeg runs" — a pre-execution
+    # SHA is explicitly NOT sufficient. Re-verify the pin AFTER the
+    # encode but BEFORE the receipt/publish; a drift that landed during
+    # the encode means the staged bytes were cut from a DIFFERENT
+    # source than the pinned identity, so nothing is published.
+    if source_pin is not None:
+        try:
+            verify_pin(source_pin, actual_manifest=actual_manifest)
+        except SourceDriftError as e:
+            _discard(staging_root, staged)
+            raise SourceDriftError(
+                f"source drifted while FFmpeg was running ({e}); the "
+                "staged proxy was cut from a different source than the "
+                "pinned identity — it was discarded, nothing published"
+            ) from e
+
     proxy_sha = _sha256_file(staged)
     receipt = {
         "job_id": job_id,
@@ -400,14 +639,116 @@ def generate_proxy(
         "status": "published",
     }
 
-    # ── atomic publish: receipt FIRST, then rename ─────────────────
-    receipt_path = out / f"{stem}{ext}.receipt.json"
-    receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2))
+    # ── P11.1-B publish-time fence + conditional publish ─────────────
+    # A lease can die while we were encoding. The PUBLISH moment is where
+    # ownership is decided: re-verify against the live-lease truth (queue
+    # row) so a zombie cannot rename over the live holder's slot. (P09.1's
+    # receipt-only fence is *detection* — it reads the token after the
+    # clobber. This is the *stop*.)
+    #
+    # RESIDUAL TOCTOU WINDOW (reviewed, quantified — Minor #1): between
+    # the `_lease_live()` re-check above and the receipt write +
+    # `os.replace` below, the lease can still expire and be taken over —
+    # a clobber by a just-staled writer is NOT impossible, only rarer.
+    # This is deliberately NOT closed here: closing it needs a P11.1-C
+    # generation-owned commit primitive (receipt+rename as one fenced
+    # transaction) that does not exist yet. Mitigations in place:
+    # (a) the window is sub-millisecond on local volumes; (b) P09.1's
+    # detection backstop still fires post-hoc — `find_stale_proxies`
+    # reports the clobbered slot stale under the NEW token, so nothing
+    # is lost silently; (c) crash material inside the window is P08's
+    # crash-discardable staging, not published truth. Documented as
+    # P11.1-C territory (HARDWARE_BLOCKED on Windows/UNC, where
+    # `os.replace` is not atomic cross-volume).
+    if (
+        job_id is not None
+        and lease_token is not None
+        and not test_mode
+        and not _lease_live()
+    ):
+        _discard(staging_root, staged)
+        raise ProxyFencedError(
+            f"lease fence failed at publish: {job_id!r} token "
+            f"{lease_token!r} is no longer live; the staged artifact "
+            f"was discarded, nothing published"
+        )
+
+    # conditional publish: if the target slot already exists, decide
+    # ownership from its receipt BEFORE writing anything. Fail-closed on
+    # every unattributable signal:
+    #   - healthy artifact + no/undecodable receipt => UNOWNABLE, never
+    #     clobbered (an operator investigates; P11.1-C quarantines);
+    #   - an undecodable receipt under our slot is ALWAYS a fence, even
+    #     when the artifact is gone (it may be the only trace of a
+    #     crash in the receipt-first window — we must not overwrite it);
+    #   - a decodable receipt is replaceable ONLY when it attributes the
+    #     slot to exactly THIS run's job (P09.1's detection semantics,
+    #     made into a stop): a foreign job's receipt, an ad-hoc (None)
+    #     receipt under a formal slot, or a dict with no `job_id` key at
+    #     all (hand-crafted — no writer in this codebase emits that) is
+    #     unattributable and fenced;
+    #   - our own job's receipt (rotation / re-entry) => an atomic
+    #     replace is allowed.
     published = out / f"{stem}{ext}"
+    receipt_path = out / f"{stem}{ext}.receipt.json"
+    if published.exists() or receipt_path.exists():
+        existing_receipt = "undecodable"
+        if receipt_path.exists():
+            try:
+                existing_receipt = json.loads(receipt_path.read_text())
+            except (OSError, json.JSONDecodeError):
+                existing_receipt = "undecodable"
+        else:
+            existing_receipt = None
+        if (
+            isinstance(existing_receipt, dict)
+            and "job_id" in existing_receipt
+            and existing_receipt["job_id"] != job_id
+        ):
+            _discard(staging_root, staged)
+            raise ProxyFencedError(
+                f"target {published.name!r} carries a receipt that does "
+                f"not attribute it to this run's job "
+                f"({existing_receipt.get('job_id', '<absent>')!r} != "
+                f"{job_id!r}); refusing to clobber unattributable material"
+            )
+        if isinstance(existing_receipt, dict) and "job_id" not in existing_receipt:
+            _discard(staging_root, staged)
+            raise ProxyFencedError(
+                f"target {published.name!r} carries a hand-crafted receipt "
+                f"with no `job_id` key; unattributable — refusing to clobber"
+            )
+        if existing_receipt == "undecodable":
+            _discard(staging_root, staged)
+            raise ProxyFencedError(
+                f"target {published.name!r} has an undecodable receipt; "
+                f"refusing to overwrite unattributable evidence "
+                f"(fail-closed)"
+            )
+        if published.exists() and existing_receipt is None:
+            _discard(staging_root, staged)
+            raise ProxyFencedError(
+                f"target {published.name!r} is a healthy artifact without a "
+                f"receipt; refusing to clobber it (fail-closed)"
+            )
+
+    # ── atomic publish: receipt FIRST, then rename ─────────────────
+    receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2))
     os.replace(staged, published)
-    # clean up now-empty staging dir (best effort)
+    # P11.1-B live-success sweep: a successful publish by the LIVE holder
+    # may discard this job's OTHER (stale/zombie) staging generations —
+    # a stale worker never triggers it (no live lease => no sweep). The
+    # operator's published artifacts + receipts are untouched.
+    if job_id is not None and lease_token is not None and not test_mode:
+        _sweep_stale_staging(out / ".staging" / job_tag, current_gen=gen)
+    # clean up now-empty staging dirs (best effort)
     try:
         staging_root.rmdir()
+        job_staging = out / ".staging" / job_tag
+        try:
+            job_staging.rmdir()
+        except OSError:
+            pass
         (out / ".staging").rmdir()
     except OSError:
         pass
@@ -428,6 +769,7 @@ def generate_proxy(
         receipt=receipt,
         size_bytes=published.stat().st_size,
         duration_s=duration,
+        admission=admission,
     )
 
 
@@ -438,3 +780,23 @@ def _discard(staging_root: Path, staged: Path) -> None:
             staged.unlink()
     except OSError:
         pass
+
+
+def _sweep_stale_staging(job_staging_dir: Path, *, current_gen: str) -> int:
+    """Discard the OTHER (stale/zombie) staging generations under a job's
+    staging dir — P08 crash-discardable material (never a published
+    artifact, never another job's dir, never the caller's own generation).
+    Called only after a SUCCESSFUL publish by the live holder (the caller
+    re-verified the lease), so a stale worker can never trigger it.
+    Returns the number of foreign generation dirs removed."""
+    removed = 0
+    job_staging_dir = Path(job_staging_dir)
+    if not job_staging_dir.is_dir():
+        return 0
+    for gen_dir in sorted(job_staging_dir.iterdir()):
+        if not gen_dir.is_dir() or gen_dir.name == current_gen:
+            continue
+        shutil.rmtree(gen_dir, ignore_errors=True)
+        if not gen_dir.exists():
+            removed += 1
+    return removed

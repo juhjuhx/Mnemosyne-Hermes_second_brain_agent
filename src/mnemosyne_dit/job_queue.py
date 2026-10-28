@@ -66,7 +66,9 @@ CREATE TABLE IF NOT EXISTS dit22_job (
     lease_expires_at  REAL,
     checkpoint        TEXT NOT NULL DEFAULT '{}',
     fail_reason       TEXT,
-    seq               INTEGER NOT NULL
+    seq               INTEGER NOT NULL,
+    max_attempts      INTEGER,
+    retry_count       INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS dit22_job_claim_idx
     ON dit22_job(state, priority DESC, seq ASC);
@@ -80,6 +82,26 @@ class LeaseHeldError(Exception):
 class IrreversibleRetryError(Exception):
     """The job is marked irreversible: it will never be re-run from
     this record. Start a fresh job (new idempotency key) instead."""
+
+
+class RetryBudgetExhaustedError(Exception):
+    """P12.2-D (Phase 4 C3): the job's bounded retry budget is used
+    up. A reversible job's automatic re-queues are capped at
+    `max_attempts` total attempts (the enqueue value, None = legacy
+    unbounded); beyond that the record is terminal and a fresh job
+    under a new idempotency key is the only path. Resource saturation
+    must not loop forever against a saturated backend (backoff via
+    `backoff_seconds`)."""
+
+
+__all__ = [
+    "DurableJobQueue",
+    "InputManifestDriftError",
+    "IrreversibleRetryError",
+    "LeaseFencedError",
+    "LeaseHeldError",
+    "RetryBudgetExhaustedError",
+]
 
 
 class InputManifestDriftError(Exception):
@@ -106,6 +128,13 @@ def _now() -> float:
 class DurableJobQueue:
     """One durable job table in one SQLite file (the caller's path)."""
 
+    #: P12.2-D (Phase 4 C3): deterministic exponential backoff for
+    #: re-queued jobs. `backoff_seconds(job)` = BASE * 2 ** retry_count,
+    #: capped at MAX. The consumer applies the interval; the queue only
+    #: COMPUTES it (one schedule, no caller-invented math).
+    BASE_BACKOFF_S = 30
+    MAX_BACKOFF_S = 3600
+
     def __init__(self, db_path: str | Path):
         self.db_path = Path(db_path)
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
@@ -119,6 +148,31 @@ class DurableJobQueue:
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.executescript(_SCHEMA)
         self.conn.commit()
+        self._migrate_retry_budget_columns()
+
+    def _migrate_retry_budget_columns(self) -> None:
+        """P12.2-D (Phase 4 C3): databases created by an older build
+        lack the `max_attempts` / `retry_count` columns; add them
+        in place (NULL = legacy unbounded, 0 = no re-queues yet).
+        Existing rows keep the old behavior: a NULL budget never
+        exhausts."""
+        cols = {
+            r[1] for r in self.conn.execute("PRAGMA table_info(dit22_job)")
+        }
+        if "max_attempts" not in cols:
+            self.conn.execute(
+                "ALTER TABLE dit22_job ADD COLUMN max_attempts INTEGER"
+            )
+        if "retry_count" not in cols:
+            self.conn.execute(
+                "ALTER TABLE dit22_job ADD COLUMN retry_count INTEGER"
+                " NOT NULL DEFAULT 0"
+            )
+            self.conn.execute(
+                "UPDATE dit22_job SET retry_count = attempt WHERE "
+                "retry_count = 0 AND attempt > 0"
+            )
+        self.conn.commit()
 
     # ── enqueue (idempotent) ─────────────────────────────────────────
 
@@ -130,8 +184,18 @@ class DurableJobQueue:
         idempotency_key: str,
         priority: int = 0,
         reversible: bool = True,
+        max_attempts: int | None = None,
     ) -> dict[str, Any]:
+        """P12.2-D (Phase 4 C3): `max_attempts` caps the job's total
+        attempts (None = legacy unbounded; a value must be >= 1).
+        Idempotent re-enqueue of the same key returns the existing row
+        (its original budget — the cap is set at creation)."""
         manifest = manifest or {}
+        if max_attempts is not None and max_attempts < 1:
+            raise ValueError(
+                "max_attempts must be >= 1 (or None for legacy "
+                f"unbounded); got {max_attempts}"
+            )
         existing = self.conn.execute(
             "SELECT job_id FROM dit22_job WHERE idempotency_key=?",
             (idempotency_key,),
@@ -146,8 +210,8 @@ class DurableJobQueue:
         )
         self.conn.execute(
             "INSERT INTO dit22_job (job_id, idempotency_key, name, input_manifest,"
-            " priority, reversible, state, attempt, checkpoint, seq) "
-            "VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?)",
+            " priority, reversible, state, attempt, checkpoint, seq, max_attempts)"
+            " VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?)",
             (
                 job_id,
                 idempotency_key,
@@ -157,6 +221,7 @@ class DurableJobQueue:
                 int(reversible),
                 "{}",
                 seq,
+                max_attempts,
             ),
         )
         self.conn.commit()
@@ -344,21 +409,49 @@ class DurableJobQueue:
     def retry(self, job_id: str, authorize_manual: bool = False) -> bool:
         """Re-queue a FAILED job. Irreversible jobs refuse ALL retries
         (the flag authorizes a human START, not a rewrite of history —
-        the manual path is a fresh job under a new key)."""
+        the manual path is a fresh job under a new key).
+
+        P12.2-D (Phase 4 C3): a REVERSIBLE job with a `max_attempts`
+        budget refuses re-queues once its total attempts (the original
+        run + every re-queue) reach the cap — a saturated backend must
+        not be hammered forever. The backoff before the NEXT attempt
+        is `backoff_seconds`. Legacy jobs (budget NULL) keep the old
+        unbounded behavior."""
         row = self._row(job_id)
         if row["state"] != "FAILED":
             return False
         if not row["reversible"]:
             raise IrreversibleRetryError(
                 f"job {job_id} is irreversible; start a fresh job with a new "
-                f"idempotency key instead of retrying this record"
+                "idempotency key instead of retrying this record"
+            )
+        budget = row["max_attempts"]
+        if budget is not None and row["attempt"] >= budget:
+            raise RetryBudgetExhaustedError(
+                f"job {job_id} used all {budget} allowed attempts "
+                f"(attempt={row['attempt']}); the record is terminal — "
+                "start a fresh job under a new idempotency key if the "
+                "work is still required (C3: no unbounded retry loops)"
             )
         self.conn.execute(
-            "UPDATE dit22_job SET state='PENDING', fail_reason=NULL WHERE job_id=?",
+            "UPDATE dit22_job SET state='PENDING', fail_reason=NULL, "
+            "retry_count = COALESCE(retry_count, 0) + 1 WHERE job_id=?",
             (job_id,),
         )
         self.conn.commit()
         return True
+
+    def backoff_seconds(self, job_id: str) -> int:
+        """P12.2-D (Phase 4 C3): deterministic exponential backoff to
+        wait BEFORE the next attempt after `job_id`'s current failure:
+        `BASE_BACKOFF_S * 2 ** retry_count`, capped at
+        `MAX_BACKOFF_S`. Saturated-resource jobs must back off, not
+        loop. (A wall-clock wait is the consumer's job; this is the
+        computed interval, kept in one place so no caller invents its
+        own schedule.)"""
+        row = self._row(job_id)
+        k = max(0, row.get("retry_count") or 0)
+        return min(self.BASE_BACKOFF_S * (2 ** k), self.MAX_BACKOFF_S)
 
     # ── claiming (priority + FIFO) ───────────────────────────────────
 
@@ -399,7 +492,8 @@ class DurableJobQueue:
         r = self.conn.execute(
             "SELECT job_id, idempotency_key, name, input_manifest, priority,"
             " reversible, state, attempt, lease_token, lease_worker,"
-            " lease_expires_at, checkpoint, fail_reason, seq"
+            " lease_expires_at, checkpoint, fail_reason, seq,"
+            " COALESCE(max_attempts, NULL), COALESCE(retry_count, 0)"
             " FROM dit22_job WHERE job_id=?",
             (job_id,),
         ).fetchone()
@@ -420,6 +514,8 @@ class DurableJobQueue:
             "checkpoint": json.loads(r[11]),
             "fail_reason": r[12],
             "seq": r[13],
+            "max_attempts": r[14],
+            "retry_count": r[15],
         }
 
     def _assert_leased_to(self, row: dict[str, Any], worker: str, token: str) -> None:
