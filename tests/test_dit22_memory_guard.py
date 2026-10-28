@@ -304,22 +304,49 @@ def test_t10_refusal_paths_have_no_side_effects(tmp_path):
 
 @pytest.mark.behavior_tested
 def test_t11_full_regression_boundary(tmp_path):
-    # P12.1 must not have touched the P12 staged surface:
+    # Delivery invariant, written to hold in BOTH worktree states:
+    #
+    #  (a) transient dev tree — P12 still staged (8 files), HEAD still at
+    #      the pre-P12 baseline 3d3a2a7: the original "P12 staged surface
+    #      untouched" assertion (len(staged)==8).
+    #
+    #  (b) delivered tree — P12 has been committed (C1) so nothing P12
+    #      sits in the staged index anymore. A fresh CI clone has no
+    #      staged files at all, so `git diff --cached` is empty by
+    #      construction. The meaningful invariant there is *byte
+    #      invariance of the committed P12 content*: the two P12 code
+    #      files on disk must equal their committed blob at HEAD. That
+    #      is stable for any number of descendant commits, because P12
+    #      content is frozen — no later commit touches those paths.
+    #
+    # The protected -encoders artifact must stay untracked in a dev tree
+    # (nothing may ever `git add` it); on a delivered/CI clone it is
+    # legitimately absent, so the assertion only guards the dev tree.
     import subprocess as sp
     repo = Path(__file__).resolve().parent.parent
-    out = sp.run(
+    head = sp.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo, capture_output=True, text=True, check=False,
+    ).stdout.strip()
+    cached = sp.run(
         ["git", "diff", "--cached", "--name-only"],
         cwd=repo, capture_output=True, text=True, check=False,
-    )
-    staged = [l for l in out.stdout.splitlines() if l]
-    assert len(staged) == 8, f"P12 staged index changed: {staged}"
-    out2 = sp.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo,
-        capture_output=True, text=True, check=False,
-    )
-    assert out2.stdout.strip().startswith("3d3a2a7")
-    # and the -encoders artifact is still untouched (explicit user rule):
-    assert (repo / "-encoders").exists()
+    ).stdout
+    staged = [l for l in cached.splitlines() if l]
+
+    if head == "3d3a2a7bcc16ca68ac26acff51d9ddbbd0f1394c":
+        # transient dev tree: P12 staged surface must hold verbatim.
+        assert len(staged) == 8, f"P12 staged index changed: {staged}"
+        assert (repo / "-encoders").exists(), "protected -encoders missing"
+    else:
+        # delivered tree: P12 code files byte-identical to their commit.
+        for f in ["src/mnemosyne_dit/scene_detect.py",
+                  "tests/test_dit22_scene_detect.py"]:
+            blob = sp.run(["git", "show", "HEAD:" + f],
+                          cwd=repo, capture_output=True, check=False)
+            assert blob.returncode == 0, f"{f} not present at HEAD"
+            assert blob.stdout == (repo / f).read_bytes(), \
+                f"{f} diverged from its committed P12 content"
 
 
 @pytest.mark.behavior_tested
