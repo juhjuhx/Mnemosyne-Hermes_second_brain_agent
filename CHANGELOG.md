@@ -341,6 +341,50 @@ v4 behavior change, no cloud, no hardware claims**.
   flags closed: `.x-ocn` added to the UNVERIFIED pin; spec VFR/HDR
   errata). Committed as `46b6605` and pushed.
 
+### Added — DIT 2.2 P12 shot boundary detection, three-way provider contract (2026-10-25)
+
+- `docs/engineering/spec/P12-shot-boundary-detection.md` — spec-first:
+  three strictly separated notions (fixed-interval cutting is a TOOL with
+  no confidence; real shot boundary detection carries detector +
+  model/version + confidence 0..1; semantic event segmentation is a P13
+  enum slot only — never conflated). Segment records source_asset_id,
+  frame range (half-open), PTS/time_base from the P10 probe (never
+  recomputed or guessed), camera reel, detector, model version and
+  confidence.
+- `src/mnemosyne_dit/scene_detect.py` — zero-dependency CPU providers
+  plus adapter contracts:
+  - `FixedIntervalProvider`: cut every N seconds; the last interval
+    absorbs the remainder so coverage stays contiguous;
+  - `ContentDiffProvider`: deterministic reference SBD (per-frame mean
+    absolute pixel difference via ffmpeg rawvideo decode + numpy,
+    median*8 threshold with a 2.0 floor) — `kind=CONTENT_CUT`,
+    confidence in (0, 1] on detected cuts;
+  - `PySceneDetectProvider` / `TransNetV2Provider`: adapter contracts
+    for the real optional dependencies. When `scenedetect` /
+    tensorflow + weights are absent (this venv), `is_available()`
+    reports the honest reason and `detect()` refuses with
+    `ProviderUnavailable` after the URL safety gate — never a
+    fabricated fallback. A770 GPU benchmark recorded as a
+    `HARDWARE_BLOCKED` marker, not a fabricated number;
+  - `assert_contiguous` enforces gapless ordered [0, total) coverage;
+  - missing info degrades to None (no guessed fps/time_base); a probe
+    without a main-video resolution is refused (fail-closed, per the
+    independent review's Minor #1);
+  - source read-only everywhere (ffmpeg rawvideo decode to stdout,
+    zero write paths, no v4 files.db / qdrant / indexer imports, zero
+    cloud).
+- `tests/test_dit22_scene_detect.py` — 16 tests (9 `@behavior_tested`
+  on real-ffmpeg synthetic two-scene fixtures + ContentDiff decode,
+  7 `@fixture_only` pure logic / unavailable contract). TDD red caught
+  three real issues: the TransNet boundary math missing 0->1 flips,
+  the URL safety gate running after `is_available()`, and a guessed
+  320x240 resolution fallback.
+- Full regression now **209 passed, 0 failed** (193 prior + 16 new).
+  ruff clean. No v4 / real-media / cloud touch; the optional
+  dependencies (scenedetect, tensorflow + TransNetV2 weights) are
+  deliberately NOT installed into the shared v4 venv, and no GPU
+  benchmark was fabricated.
+
 ### Added — DIT 2.2 P11 proxy generator, CPU FFmpeg MVP (2026-10-25)
 
 - `docs/engineering/spec/P11-proxy-generator.md` — spec-first: 10-

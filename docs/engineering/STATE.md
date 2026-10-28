@@ -78,16 +78,23 @@
   - editor 目標依 build 能力決定：本機 `dnxhr` 無、`prores` 有（10-bit yuv422p10le）→ 走真 ProRes（`degraded=False`）；無 editor encoder 時誠實降級 h264＋`degraded=True`（絕不偽稱 ProRes），兩路徑各有實測
   - receipt fencing（P09.1 spec §4.3）：receipt 記 `job_id`＋`lease_token`；`find_stale_proxies()` 偵測被竊 lease 產物（可清除）、`delete_proxies()` 依 job 重建路徑；**proxy 完成絕不觸升 DIT Archive Safety Verdict**（API 無 verdict 表面，實測斷言產出目錄只有 proxy＋receipt）
   - 來源對應：`source_fps`／`source_timecode`／`source_reel`／`audio_mapping` 從 P10 probe 抄寫（不重算）；來源 SHA256 全程不變（實測比對）
-  - 收口：P11 focused **16 passed**；全量 **193 passed, 0 failed**（177＋16）；ruff 全綠；獨立審查 `deleg_32ec0122` 9/9 PASS（兩個 Important 缺口補：同 job 重入＝原子替換、異 job 同 source 不碰撞→產物名 job-namespace `{job_tag}__{stem}__{profile}`）；QSV/Vulkan/OpenVINO 依合約留後段（未啟動）
+  - 收口：P11 focused **16 passed**；全量 **193 passed, 0 failed**（177＋16）；ruff 全綠；獨立審查 `deleg_32ec0122` 9/9 PASS（兩 Important 缺口補：同 job 重入＝原子替換、異 job 同 source 不碰撞→產物名 job-namespace `{job_tag}__{stem}__{profile}`；3 Minor 記載不影響 MVP：①crash 後 `.staging/<job>/` orphan 無 GC API（磁碟洩漏、非正確性問題，手動 wipe 可清）；②同 output path receipt-collision／同 job+token re-publish 兩支邊界測試已隨 job-namespace 修補進 16 測試（重入＋異 job 不碰撞），剩「純同路徑無 delete re-publish」為 os.replace 原子語意、非缺陷證據；③`delete_proxies` 的 `artifact_ok` 死代碼行（set 未讀後 del）待 P12 順手清或留 P11.1）；QSV/Vulkan/OpenVINO 依合約留後段（未啟動）→ commit `3d3a2a7`
+- **P12：Shot Boundary Detection（三分法 provider interface，TDD 垂直切片）→ `src/mnemosyne_dit/scene_detect.py`＋`tests/test_dit22_scene_detect.py`（16 測試）＋spec `docs/engineering/spec/P12-shot-boundary-detection.md`**：
+  - 三分法嚴禁混淆：固定秒數分段＝工具（`kind=FIXED_INTERVAL`、`confidence=None`、`model_version="fixed"`，非偵測語意）；真 shot detection＝`ContentDiffProvider`（零依賴 CPU：ffmpeg rawvideo 解構＋numpy 逐幀平均絕對像素差、median×8 門檻 floor 2.0、`kind=CONTENT_CUT`、confidence 0..1、`detector="content-diff"`）；語義事件分割＝P13 僅 `SEMANTIC` enum 槽位（未實作）
+  - `PySceneDetectProvider`／`TransNetV2Provider` 為 adapter 契約：缺 `scenedetect`／tensorflow＋權重時 `is_available()=(False, reason)`、`detect()` 先過 URL 安全門再拋 `ProviderUnavailable`，**絕不返回假 segment**；TransNetV2 A770 benchmark 僅記 `HARDWARE_BLOCKED` 標記、不填假數字
+  - segment 保留 `source_asset_id`／frame range（half-open）／`start_pts`/`end_pts`（來源 time_base 單位）／`time_base`（P10 probe 原文抄寫不重算）／`camera_reel`／`detector`／`model_version`／`confidence`；`assert_contiguous` 強製 `[0,total)` 無縫覆蓋；缺失資訊字段＝None（不猜 24fps）
+  - 安全：來源全路徑唯讀（rawvideo 解構只讀、零寫入）；缺 probe／fps 時偵測 provider 拒跑（fail-closed）；probe 未報解像度時拒跑（审查 Minor #1 已修 fail-closed）；無 v4／雲端
+  - 收口：P12 focused **16 passed**；全量 **209 passed, 0 failed**（193＋16）；ruff 全綠；獨立審查 `deleg_57762b1e` 10/10 PASS（3 Minor 全不影響 MVP：#1 推測 320×240 fallback 已改 fail-closed＋補 `test_content_diff_refuses_unknown_resolution`、#2 empty-pred `[]` 已釘測試、#3 `_frame_context` ValueError 已被 provider refusal 測試間接覆蓋）
 
 ## 正在做
-- P11 commit + push（審查 9/9 PASS、16 測試全綠、collision/re-entry 已補）；P12 收口文件 → 獨立 commit + push
+- P12 已收口（獨立 commit 前）：`scene_detect.py`＋16 測試＋spec，全量 209 綠、ruff clean、審查 `deleg_57762b1e` 10/10 PASS；P12 獨立 commit＋push 待執行
 
 ## 失敗/阻塞
 - 無 P0 失敗。HARDWARE_BLOCKED：A770、實體 SD/NAS 不在本機（host M1，`torch.xpu.is_available()=False`）→ P07/P08/P14+ 依 SSOT 規則改以 deterministic fixture/unit test 推進並明確標 BLOCKED，不填假數據。
 - P09 本切片只落 **狀態儲存**（queue 不跑活）；多 worker 並行執行（ADR-DIT2-003 佇列並行）仍 PROPOSED 待使用者核准，本輪未啟 daemon。
 - P10 真 camera family（Sony BRAW／X-OCN／CinemaDNG／RED）無樣本 → classifier 標 `verified=False`（UNVERIFIED）；本機 ffmpeg 9.0.2 不帶 display-matrix/HDR 進 MP4 stream → 該路徑以 crafted ffprobe JSON 於 parser 層驗證，不填假數據。
 - P11 本機無 `dnxhr` encoder → editor 目標走真 ProRes（本 build 有）；缺 editor encoder 的平台誠實降級 h264＋`degraded=True`（不偽稱）。QSV/Vulkan/OpenVINO 依合約「先 CPU golden 再加速」留後段。
+- P12 本 venv 無 `scenedetect`／tensorflow＋權重（不裝進 v4 共享 venv）→ `PySceneDetectProvider`／`TransNetV2Provider` 只釘 **unavailable 契約**（缺依賴＝`ProviderUnavailable`、絕不假 segment）；有套件環境的行為實測留後補。A770 未連接 → TransNetV2 GPU benchmark＝`HARDWARE_BLOCKED` 標記、不填假數字。
 
 ## 雲端 Gemini：0 呼叫、0 費用（v4 local-only 未獲 ADR 核准，維持不變）。
 

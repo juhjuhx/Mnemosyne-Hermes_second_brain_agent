@@ -24,9 +24,11 @@
 - [x] P09：durable job queue 冪等/lease 設計（不動 v4 indexer）→ `src/mnemosyne_dit/job_queue.py`（`DurableJobQueue`）+ `tests/test_dit22_job_queue.py`（15 測試）+ spec `P09-durable-job-queue.md`
 - [x] P09.1：lease fencing 完整性（fenced conditional write on checkpoint/pause/fail/complete；`LeaseFencedError` fail-closed；外部副作用 fencing 評估落 spec §4）→ `tests/test_dit22_lease_fencing.py`（9 測試）；獨立審查 `deleg_e2e10053` 8/8 PASS → commit `6cf03cd`
 - [x] P10：FFprobe 唯讀媒體探測（精確 Rational FPS、VFR 降級、drop/non-drop TC、color/HDR、rotation、多音軌、sidecar、SHA256、可重建證據；安全 argv/URL/timeout/空檔/Unicode/唯讀；無樣本 camera family 標 UNVERIFIED）→ `src/mnemosyne_dit/media_probe.py`＋`tests/test_dit22_media_probe.py`（19 測試）＋spec `P10-media-probe.md`；獨立審查 `deleg_6ca7f297` 10/10 PASS → commit `46b6605`
-- [x] P11：Proxy Generator CPU 最小可播放 MVP（staging→verify→receipt→atomic publish；來源對應抄 P10 probe；editor 依 build 能力 DNxHR/ProRes 誠實降級；receipt 記 `job_id`+`lease_token` 外部 fencing；可刪除可重建；不觸升 safety verdict）→ `src/mnemosyne_dit/proxy_generator.py`＋`tests/test_dit22_proxy_generator.py`（16 測試）＋spec `P11-proxy-generator.md`
+- [x] P11：Proxy Generator CPU 最小可播放 MVP（staging→verify→receipt→atomic publish；來源對應抄 P10 probe；editor 依 build 能力 DNxHR/ProRes 誠實降級；receipt 記 `job_id`+`lease_token` 外部 fencing；可刪除可重建；不觸升 safety verdict）→ `src/mnemosyne_dit/proxy_generator.py`＋`tests/test_dit22_proxy_generator.py`（16 測試）＋spec `P11-proxy-generator.md`；獨立審查 `deleg_32ec0122` 9/9 PASS（兩 Important 缺口補 job-namespace＋重入／碰撞測試）→ commit `3d3a2a7`
+- [x] P12：Shot Boundary Detection（三分法：固定秒數＝工具 confidence=None、真 shot detection＝ContentDiff CPU detector median×8、語義分割＝P13 僅 enum 槽位；場景 segment 保留 source_asset_id/frame range/PTS/timebase/camera reel/detector/model_version/confidence；PySceneDetect＋TransNetV2 adapter 誠實 unavailable、不填假 benchmark；A770 未連接＝HARDWARE_BLOCKED）→ `src/mnemosyne_dit/scene_detect.py`＋`tests/test_dit22_scene_detect.py`（16 測試）＋spec `P12-shot-boundary-detection.md`；獨立審查 `deleg_57762b1e` 10/10 PASS（3 Minor 全不影響 MVP：#1 推測 320×240 已改 fail-closed 補測試、#2 empty-pred 已釘、#3 已被 refusal 測試間接覆蓋）→ commit 待定
 
 ## 第四輪（P10–P13）media probe / proxy / 切鏡 / 語義分割（依序，各切片獨立 commit）
+- P12 在內；P13 語義分割未啟動。
 
 ## 第五輪（P14–P16）A770/OpenVINO baseline → WeMM/Qwen XPU PoC → Gemini 隔離與費用（HARDWARE_BLOCKED 項以 deterministic 測試推進，標 BLOCKED 不造假數據）
 
