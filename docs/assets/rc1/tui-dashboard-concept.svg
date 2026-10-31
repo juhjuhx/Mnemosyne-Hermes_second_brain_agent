@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="Mnemosyne developer TUI concept — DESIGN PREVIEW">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#080B14"/>
+      <stop offset="1" stop-color="#0E1424"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <!-- watermark: concept, not a shipped feature -->
+  <text x="640" y="360" font-family="ui-sans-serif, sans-serif" font-size="46" font-weight="700" fill="#141B2E" text-anchor="middle">CONCEPT</text>
+  <text x="64" y="56" font-family="ui-sans-serif, sans-serif" font-size="26" font-weight="700" fill="#E6E9F0">mnemosyne · developer TUI — DESIGN PREVIEW</text>
+  <text x="1216" y="56" font-family="ui-monospace, monospace" font-size="18" fill="#E0A63C" text-anchor="end">CONCEPT MOCKUP · not a shipped feature</text>
+  <text x="64" y="82" font-family="ui-monospace, monospace" font-size="16" fill="#5A6478">synthetic fixture data only · illustrates the §6 design system (6 screens, honest status tiers)</text>
+
+  <!-- header band -->
+  <rect x="64" y="104" width="1152" height="44" rx="8" fill="#111527" stroke="#2A3350"/>
+  <text x="88" y="133" font-family="ui-monospace, monospace" font-size="20" fill="#6CB6FF">mnemosyne-dit22</text>
+  <text x="420" y="133" font-family="ui-monospace, monospace" font-size="20" fill="#5A6478">overview ▸ ingest ▸ jobs ▸ media ▸ ai ▸ hw</text>
+  <text x="1192" y="133" font-family="ui-monospace, monospace" font-size="18" fill="#57D9A3" text-anchor="end">330 tests · green</text>
+
+  <!-- left: proxy jobs / recovery -->
+  <g font-family="ui-monospace, monospace" font-size="17">
+    <rect x="64" y="164" width="560" height="220" rx="10" fill="#0E1424" stroke="#2A3350"/>
+    <text x="84" y="192" fill="#E6E9F0">proxy jobs / recovery</text>
+    <text x="84" y="220" fill="#57D9A3">job-1  PUBLISHED  gen tok-demo  sha 2e9c…</text>
+    <text x="84" y="248" fill="#57D9A3">job-1  receipt ok   read-back match</text>
+    <text x="84" y="276" fill="#E4574C">job-2  QUARANTINE  corrupt encode  nothing published</text>
+    <text x="84" y="304" fill="#E0A63C">job-3  PENDING      retry 2/3  backoff 120s</text>
+    <text x="84" y="332" fill="#5A6478">stale staging swept on live-holder success</text>
+    <text x="84" y="356" fill="#5A6478">recovery = read-only verdicts (never auto-delete)</text>
+  </g>
+
+  <!-- right: storage pressure + hw -->
+  <g font-family="ui-monospace, monospace" font-size="17">
+    <rect x="656" y="164" width="560" height="150" rx="10" fill="#0E1424" stroke="#2A3350"/>
+    <text x="676" y="192" fill="#E6E9F0">storage pressure (advisory 15%)</text>
+    <rect x="676" y="210" width="420" height="16" rx="4" fill="#1A2030"/>
+    <rect x="676" y="210" width="330" height="16" rx="4" fill="#57D9A3"/>
+    <text x="676" y="252" fill="#57D9A3">C: 62% used · new jobs permitted</text>
+    <text x="676" y="278" fill="#E0A63C">below 15% free → stop new proxy/embed jobs (advisory)</text>
+    <text x="676" y="300" fill="#5A6478">never auto-deletes originals / music / backups</text>
+
+    <rect x="656" y="328" width="560" height="156" rx="10" fill="#0E1424" stroke="#2A3350"/>
+    <text x="676" y="356" fill="#E6E9F0">hardware / storage diagnostics</text>
+    <text x="676" y="384" fill="#E4574C">A770 GPU .......... HARDWARE BLOCKED</text>
+    <text x="676" y="412" fill="#E4574C">UNC / SMB ........ HARDWARE BLOCKED</text>
+    <text x="676" y="440" fill="#E4574C">SD / camera card . UNVERIFIED</text>
+    <text x="676" y="468" fill="#57D9A3">CPU FFmpeg ........ local-tested (330)</text>
+  </g>
+
+  <!-- bottom: approval + media -->
+  <g font-family="ui-monospace, monospace" font-size="17">
+    <rect x="64" y="404" width="560" height="180" rx="10" fill="#0E1424" stroke="#2A3350"/>
+    <text x="84" y="432" fill="#E6E9F0">asset identity / replica evidence</text>
+    <text x="84" y="460" fill="#6CB6FF">asset sha256 41f8… · camera family unverified</text>
+    <text x="84" y="488" fill="#6CB6FF">replica r1 (nas-a) verified 123 · PASS</text>
+    <text x="84" y="516" fill="#9AA3B8">SourcePin re-hash pre/post encode · manifest bound</text>
+    <text x="84" y="544" fill="#57D9A3">admission: trusted → admitted (fail-closed)</text>
+    <text x="84" y="572" fill="#5A6478">scene: content-cut 1 · fixed-interval 2 (CPU)</text>
+  </g>
+
+  <g font-family="ui-monospace, monospace" font-size="17">
+    <rect x="656" y="508" width="560" height="76" rx="10" fill="#111527" stroke="#3A3226"/>
+    <text x="676" y="536" fill="#E6E9F0">human approval actions (read-only → plan → approve → execute)</text>
+    <text x="676" y="564" fill="#E0A63C">[approve] low-space policy harden · [approve] Windows pilot run</text>
+  </g>
+</svg>

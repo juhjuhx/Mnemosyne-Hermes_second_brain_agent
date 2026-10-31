@@ -1,0 +1,15 @@
+
+ MNE-MOSYNE DIT 2.2 · synthetic demo (module-level, generated media)
+ work dir: demo_out
+
+  [ OK ] 1_probe_source
+  [ OK ] 2_cpu_proxy_generation
+  [ OK ] 3_receipt_verification
+  [ OK ] 4_controlled_safe_failure
+  [ OK ] 5_recovery_reconciliation
+  [ OK ] 6_editor_proxy_validation
+  [ OK ] 7_scene_detection
+  [ OK ] 8_windows_naming_capacity_gate
+
+ evidence bundle: demo_out/evidence/demo_evidence_bundle.json
+ all green: True   (1.03s)

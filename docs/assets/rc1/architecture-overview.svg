@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="Mnemosyne architecture — two product tracks on shared safety core">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B0F1A"/>
+      <stop offset="1" stop-color="#101728"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <text x="64" y="64" font-family="ui-sans-serif, system-ui, sans-serif" font-size="34" font-weight="700" fill="#E6E9F0">Mnemosyne — two tracks, one safety core</text>
+  <text x="64" y="92" font-family="ui-monospace, monospace" font-size="18" fill="#5A6478">A = Second Brain v4 · B = DIT 2.2 (media subsystem, not a replacement for A) · tiers shown honestly</text>
+
+  <!-- Track A -->
+  <g>
+    <rect x="64" y="128" width="560" height="256" rx="12" fill="#0E1424" stroke="#2A3350" stroke-width="2"/>
+    <text x="88" y="164" font-family="ui-sans-serif, sans-serif" font-size="24" font-weight="700" fill="#6CB6FF">A · Second Brain v4</text>
+    <g font-family="ui-monospace, monospace" font-size="18">
+      <text x="88" y="200" fill="#9AA3B8">documents · photos · video · audio</text>
+      <text x="88" y="232" fill="#9AA3B8">→ chunk → embed → Qdrant named vectors</text>
+      <text x="88" y="264" fill="#9AA3B8">→ local LLM (Ollama / llama.cpp)</text>
+      <text x="88" y="296" fill="#9AA3B8">→ Hermes Agent + MCP skills</text>
+      <text x="88" y="328" fill="#57D9A3">✓ plan-frozen · code present · hardware pending</text>
+      <text x="88" y="356" fill="#5A6478">tiers: SPEC / LOCAL-TESTED per component (see evidence matrix)</text>
+    </g>
+  </g>
+
+  <!-- Track B -->
+  <g>
+    <rect x="656" y="128" width="560" height="256" rx="12" fill="#0E1424" stroke="#3A3226" stroke-width="2"/>
+    <text x="680" y="164" font-family="ui-sans-serif, sans-serif" font-size="24" font-weight="700" fill="#E0A63C">B · DIT 2.2 media core</text>
+    <g font-family="ui-monospace, monospace" font-size="18">
+      <text x="680" y="200" fill="#9AA3B8">admission + SourcePin → durable queue (lease fencing)</text>
+      <text x="680" y="232" fill="#9AA3B8">→ ffprobe → CPU proxy → receipt → publish</text>
+      <text x="680" y="264" fill="#9AA3B8">→ scene detection → recovery reconciler</text>
+      <text x="680" y="296" fill="#57D9A3">✓ local-tested · reviewed · 330 tests (this branch)</text>
+      <text x="680" y="328" fill="#E0A63C">⏳ Windows CPU pilot = SPEC ONLY · GPU/NAS/SD = HARDWARE BLOCKED</text>
+      <text x="680" y="356" fill="#5A6478">never mutates originals; index is a rebuildable view</text>
+    </g>
+  </g>
+
+  <!-- shared safety core -->
+  <g>
+    <rect x="64" y="420" width="1152" height="128" rx="12" fill="#111527" stroke="#2A3350" stroke-width="2"/>
+    <text x="88" y="456" font-family="ui-sans-serif, sans-serif" font-size="22" font-weight="700" fill="#E6E9F0">Shared safety invariants</text>
+    <g font-family="ui-monospace, monospace" font-size="17">
+      <text x="88" y="488" fill="#6CB6FF">memory never forgotten (originals untouched) · 127.0.0.1 bound · no telemetry</text>
+      <text x="88" y="516" fill="#6CB6FF">fail-closed gates · versioned generation + receipt · capacity reservation · retry budget</text>
+    </g>
+    <line x1="344" y1="384" x2="344" y2="420" stroke="#2A3350" stroke-width="2"/>
+    <line x1="936" y1="384" x2="936" y2="420" stroke="#2A3350" stroke-width="2"/>
+  </g>
+
+  <!-- evidence tier legend -->
+  <g font-family="ui-monospace, monospace" font-size="17">
+    <rect x="64" y="584" width="1152" height="96" rx="12" fill="#0E1424" stroke="#2A3350"/>
+    <text x="88" y="616" fill="#E6E9F0">evidence tiers (never collapsed into one DONE label):</text>
+    <circle cx="96" cy="644" r="7" fill="#57D9A3"/><text x="112" y="651" fill="#9AA3B8">COMMITTED / CI VERIFIED</text>
+    <circle cx="392" cy="644" r="7" fill="#6CB6FF"/><text x="408" y="651" fill="#9AA3B8">LOCAL TESTED / REVIEWED</text>
+    <circle cx="696" cy="644" r="7" fill="#E0A63C"/><text x="712" y="651" fill="#9AA3B8">SPECIFICATION ONLY</text>
+    <circle cx="944" cy="644" r="7" fill="#E4574C"/><text x="960" y="651" fill="#9AA3B8">HARDWARE BLOCKED</text>
+    <circle cx="1140" cy="644" r="7" fill="#5A6478"/><text x="1156" y="651" fill="#9AA3B8">NOT IMPLEMENTED</text>
+  </g>
+</svg>

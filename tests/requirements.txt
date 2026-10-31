@@ -3,6 +3,14 @@
 #
 # All versions are pinned to the v4 plan target (June 2026).
 
+# --- numpy (direct runtime dep of the DIT media subsystem:
+# src/mnemosyne_dit/scene_detect.py + memory_guard.py import it top-level;
+# previously only present transitively via opencv/scenedetect) ---
+# Floor/ceiling chosen from the actual CI-parity resolutions:
+#   Py3.10 -> 2.2.6, Py3.11 -> 2.4.6, Py3.12 -> 2.5.4 (all pass the suite).
+# Ceiling <3: numpy 3.x is not part of the verified range.
+numpy>=2.0,<3
+
 # --- core testing ---
 pytest==8.3.4
 pytest-cov==5.0.0

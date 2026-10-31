@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="DIT 2.2 media pipeline and safety workflow (locally tested)">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B0F1A"/>
+      <stop offset="1" stop-color="#101728"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#5A6478"/>
+    </marker>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <text x="64" y="56" font-family="ui-sans-serif, sans-serif" font-size="30" font-weight="700" fill="#E6E9F0">DIT 2.2 media pipeline — every gate fail-closed</text>
+  <text x="64" y="84" font-family="ui-monospace, monospace" font-size="17" fill="#5A6478">330 local tests · read-only probes · originals never mutated · CPU baseline (GPU/NAS = HARDWARE BLOCKED)</text>
+
+  <!-- pipeline stages -->
+  <g font-family="ui-monospace, monospace" font-size="16">
+    <!-- 1 admission -->
+    <rect x="64" y="120" width="220" height="96" rx="10" fill="#0E1424" stroke="#2A3350" stroke-width="2"/>
+    <text x="80" y="150" fill="#6CB6FF" font-weight="700">1 · admission</text>
+    <text x="80" y="176" fill="#9AA3B8">file exists? replica</text>
+    <text x="80" y="196" fill="#9AA3B8">recorded+verified?</text>
+    <text x="80" y="216" fill="#E0A63C">DENIED → no ffmpeg</text>
+
+    <!-- 2 sourcepin -->
+    <rect x="330" y="120" width="220" height="96" rx="10" fill="#0E1424" stroke="#2A3350" stroke-width="2"/>
+    <text x="346" y="150" fill="#6CB6FF" font-weight="700">2 · source pin</text>
+    <text x="346" y="176" fill="#9AA3B8">content SHA + manifest</text>
+    <text x="346" y="196" fill="#9AA3B8">digest bound</text>
+    <text x="346" y="216" fill="#E4574C">drift → discard</text>
+
+    <!-- 3 queue -->
+    <rect x="596" y="120" width="220" height="96" rx="10" fill="#0E1424" stroke="#2A3350" stroke-width="2"/>
+    <text x="612" y="150" fill="#6CB6FF" font-weight="700">3 · durable queue</text>
+    <text x="612" y="176" fill="#9AA3B8">lease fencing · retry</text>
+    <text x="612" y="196" fill="#9AA3B8">budget · backoff</text>
+    <text x="612" y="216" fill="#E4574C">exhausted → stop</text>
+
+    <!-- 4 capacity -->
+    <rect x="862" y="120" width="220" height="96" rx="10" fill="#0E1424" stroke="#2A3350" stroke-width="2"/>
+    <text x="878" y="150" fill="#6CB6FF" font-weight="700">4 · capacity gate</text>
+    <text x="878" y="176" fill="#9AA3B8">reserve staging + out</text>
+    <text x="878" y="196" fill="#9AA3B8">safety factor ≥ 1.0</text>
+    <text x="878" y="216" fill="#E0A63C">short → refuse new</text>
+
+    <!-- arrows row 1 -->
+    <line x1="284" y1="168" x2="330" y2="168" stroke="#5A6478" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="550" y1="168" x2="596" y2="168" stroke="#5A6478" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="816" y1="168" x2="862" y2="168" stroke="#5A6478" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 5 encode -->
+    <rect x="862" y="256" width="220" height="96" rx="10" fill="#0E1424" stroke="#3A3226" stroke-width="2"/>
+    <text x="878" y="286" fill="#E0A63C" font-weight="700">5 · CPU encode</text>
+    <text x="878" y="312" fill="#9AA3B8">ffmpeg browser/editor</text>
+    <text x="878" y="332" fill="#9AA3B8">mem-bounded (P12.1)</text>
+    <text x="878" y="352" fill="#E4574C">corrupt → verify fail</text>
+    <line x1="972" y1="216" x2="972" y2="256" stroke="#5A6478" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 6 re-verify pin -->
+    <rect x="596" y="256" width="220" height="96" rx="10" fill="#0E1424" stroke="#3A3226" stroke-width="2"/>
+    <text x="612" y="286" fill="#E0A63C" font-weight="700">6 · re-verify pin</text>
+    <text x="612" y="312" fill="#9AA3B8">post-encode re-hash</text>
+    <text x="612" y="332" fill="#9AA3B8">+ manifest drift</text>
+    <text x="612" y="352" fill="#E4574C">drift → discard staged</text>
+    <line x1="862" y1="304" x2="816" y2="304" stroke="#5A6478" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 7 publish -->
+    <rect x="330" y="256" width="220" height="96" rx="10" fill="#0E1424" stroke="#2A3350" stroke-width="2"/>
+    <text x="346" y="286" fill="#6CB6FF" font-weight="700">7 · atomic publish</text>
+    <text x="346" y="312" fill="#9AA3B8">staging → receipt →</text>
+    <text x="346" y="332" fill="#9AA3B8">rename · versioned gen</text>
+    <text x="346" y="352" fill="#57D9A3">lease re-check first</text>
+    <line x1="596" y1="304" x2="550" y2="304" stroke="#5A6478" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 8 reconcile -->
+    <rect x="64" y="256" width="220" height="96" rx="10" fill="#0E1424" stroke="#2A3350" stroke-width="2"/>
+    <text x="80" y="286" fill="#6CB6FF" font-weight="700">8 · reconcile</text>
+    <text x="80" y="312" fill="#9AA3B8">read-only verdicts:</text>
+    <text x="80" y="332" fill="#57D9A3">PUBLISHED / quarantine</text>
+    <text x="80" y="352" fill="#5A6478">never auto-deletes</text>
+    <line x1="330" y1="304" x2="284" y2="304" stroke="#5A6478" stroke-width="2" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- downstream + truth rule -->
+  <g font-family="ui-monospace, monospace" font-size="16">
+    <rect x="64" y="400" width="1152" height="84" rx="10" fill="#0E1424" stroke="#2A3350"/>
+    <text x="84" y="432" fill="#E6E9F0">downstream (locally tested): editor proxy validation (PTS/frames/audio read-back) · scene detection (content-cut / fixed-interval, CPU)</text>
+    <text x="84" y="460" fill="#9AA3B8">any source change at any moment → derived artifact is NEVER marked a trusted publication</text>
+  </g>
+  <g font-family="ui-monospace, monospace" font-size="15">
+    <rect x="64" y="508" width="1152" height="96" rx="10" fill="#111527" stroke="#3A3226"/>
+    <text x="84" y="538" fill="#E0A63C">honest tiers in this diagram</text>
+    <text x="84" y="564" fill="#57D9A3">LOCAL TESTED / REVIEWED — steps 1–8 CPU pipeline (330 tests, this branch)</text>
+    <text x="84" y="588" fill="#E4574C">HARDWARE BLOCKED — UNC/SMB cross-volume rename, A770 GPU, real SD/NAS, power-loss (synthetic fixtures only)</text>
+  </g>
+</svg>

@@ -22,5 +22,5 @@ jobs:
           # All non-default config lives in ./lychee.toml (excludes, accept codes,
           # cache). Only pass --offline and the input paths here so the workflow
           # stays version-agnostic across lychee releases.
-          args: --offline docs/ README.md
+          args: --offline docs/ README.md README.zh-TW.md
           fail: true

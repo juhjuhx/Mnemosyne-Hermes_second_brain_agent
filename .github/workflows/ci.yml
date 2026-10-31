@@ -22,7 +22,17 @@ jobs:
       - name: Install lint tools
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy pytest pytest-asyncio
+          # Pin to the repo's declared standard (tests/requirements.txt).
+          # Ruff 0.17.x enables non-default rule families (UP045/I001/
+          # BLE001/EXE001/...) that flag the legacy v4 code; the standard
+          # is 0.6.9, not "latest". Future Ruff modernization is tracked
+          # as technical debt, not this slice.
+          pip install ruff==0.6.9 mypy==1.13.0 pytest pytest-asyncio
+
+      - name: Print lint tool versions
+        run: |
+          ruff --version
+          mypy --version
 
       - name: ruff
         run: ruff check src/ tests/
@@ -60,10 +70,30 @@ jobs:
     name: Python tests
     runs-on: ubuntu-latest
     strategy:
+      # Collect independent per-version results for 3.10/3.11/3.12 instead of
+      # cancelling the survivors when one version fails.
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+
+      # DIT 2.2 media tests drive a REAL ffmpeg/ffprobe (lavfi testsrc2 source,
+      # -c:v libx264 -pix_fmt yuv420p, optional aac). ubuntu-latest has no
+      # ffmpeg on PATH by default, so provision the system package before
+      # pytest. A provisioning failure must fail this job visibly (no fallback
+      # to mocks / skip-if-missing).
+      - name: Provision FFmpeg + FFprobe (system)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Validate FFmpeg/FFprobe on PATH + record versions
+        run: |
+          command -v ffmpeg
+          command -v ffprobe
+          ffmpeg -version
+          ffprobe -version
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
