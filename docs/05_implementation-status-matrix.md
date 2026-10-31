@@ -3,15 +3,21 @@
 > **Purpose**: the single source of truth for what is actually working, at
 > what evidence tier. Public docs (README, quickstarts, TUI guide) must
 > cite the tiers in this file. **Never collapse tiers into one "DONE"
-> label.** Updated 2026-10-28 at RC-1 preparation; baseline commit
-> `3d3a2a7` (branch `research/dit22-multimodal-handoff-20261024`).
+> label.** Updated 2026-10-29 at RC-1.2; RC-1 committed at
+> `6846af2` (branch `research/dit22-multimodal-handoff-20261024`). **CI at
+> that commit is RED for documented pre-existing v4 debt** (Ruff 0.17.x
+> version drift vs the declared 0.6.9 standard; FFmpeg absent on the
+> runner); the RC-1.2 CI-parity fix is prepared locally and is not yet
+> pushed or CI-verified.
 
 ## Tiers (definitions)
 
 | Tier | Meaning |
 |---|---|
-| **COMMITTED / CI VERIFIED** | In a git commit with passing CI (or passing local test battery at a pinned commit). |
-| **LOCAL TESTED / REVIEWED** | Implemented + tests passing in the local tree + independent review; **not yet committed** (this branch's P11.1/P12.1/P12.2/P12.2-R layers). |
+| **COMMITTED** | In a git commit on the research branch. A commit alone is **not** verification — it says nothing about CI or local-test status. |
+| **LOCAL TESTED** | Implemented + passing the local test battery at a pinned commit (fresh re-run, not an inherited count). |
+| **CI VERIFIED** | A GitHub Actions run passing **on the exact new commit SHA**. Never claim before that run exists; `COMMITTED` and `LOCAL TESTED` do not imply CI is green. |
+| **LOCAL TESTED / REVIEWED** | Implemented + tests passing in the local tree + independent review; committed to this research branch (`6846af2`), not yet CI-verified. |
 | **SPECIFICATION ONLY** | Design document exists; code not written or not validated on target hardware. |
 | **HARDWARE BLOCKED** | Code path exists (or is intentionally absent); real-device validation impossible without the specific hardware (A770, Windows, NAS, camera media). Never claim PASS without physical evidence. |
 | **NOT IMPLEMENTED** | No code; roadmap item only. |
@@ -23,9 +29,9 @@
 | Component | Tier | Evidence |
 |---|---|---|
 | v4 plan + 105-file SHA-256 archive snapshot | COMMITTED | `_archive/2026-06-05-v4-plan/verify.py` → 105/105 OK |
-| Indexer core (`src/scripts/indexer.py`) + 7 invariants enforced | COMMITTED / CI VERIFIED | `tests/test_index_pipeline.py` (16 tests) in CI at `3d3a2a7` |
-| Qdrant named vectors `text_vec(768)+image_vec(512)` | COMMITTED / CI VERIFIED | `tests/test_qdrant_named_vectors.py` |
-| 3 MCP skills (qdrant-search / filesystem-search / video-slice) | COMMITTED / CI VERIFIED | `tests/test_mcp_servers.py` + `test_hermes_skills.py` |
+| Indexer core (`src/scripts/indexer.py`) + 7 invariants enforced | COMMITTED / LOCAL TESTED | `tests/test_index_pipeline.py` (16 tests); CI at `6846af2` red for v4 debt — parity fix PENDING |
+| Qdrant named vectors `text_vec(768)+image_vec(512)` | COMMITTED / LOCAL TESTED | `tests/test_qdrant_named_vectors.py`; CI PENDING |
+| 3 MCP skills (qdrant-search / filesystem-search / video-slice) | COMMITTED / LOCAL TESTED | `tests/test_mcp_servers.py` + `test_hermes_skills.py`; CI PENDING |
 | 100-entry eval set | COMMITTED | `tests/eval_v2_100.jsonl` |
 | Live Qdrant/Ollama/Hermes integration **on the reference machines** | HARDWARE BLOCKED | machines offline since planning; integration never run on-hardware |
 | Local LLM serving (Gemma / Qwen profiles) | SPECIFICATION ONLY | Modelfiles + build flags only; no model weights in repo, no on-hardware run |
@@ -41,7 +47,7 @@
 | CPU proxy generation (H.264 browser/editor profiles) | LOCAL TESTED / REVIEWED | `test_dit22_proxy_generator.py` (16) |
 | Crash recovery reconciler (read-only PUBLISHED/quarantine verdicts) | LOCAL TESTED / REVIEWED | `test_dit22_artifact_recovery.py` (P11.1-C) |
 | Editor proxy validation (PTS/frames/audio read-back, P11.1-D) | LOCAL TESTED / REVIEWED | `test_dit22_editor_validation.py` |
-| Memory-bounded scene detection (P12 staged + P12.1 frame cap / RSS guard) | P12 COMMITTED-staged (8 files, byte-fingerprinted); P12.1 LOCAL TESTED / REVIEWED | `test_dit22_scene_detect.py` (16, staged) + `test_dit22_memory_guard.py` (12) |
+| Memory-bounded scene detection (P12 + P12.1 frame cap / RSS guard) | P12 COMMITTED (6846af2; RC-1.2 0.6.9 format reflow pending commit); P12.1 LOCAL TESTED / REVIEWED | `test_dit22_scene_detect.py` (16) + `test_dit22_memory_guard.py` (12, incl. T11) |
 | Phase-4 integration hardening: SourcePin re-hash (C1/C2), retry budget (C3), capacity gate (C4), path isolation (C5), Windows stem/UNC sentinel (C6) | LOCAL TESTED / REVIEWED | 5 new test files (38) + `deleg_a5ec733f` REVIEWED-complete (0C/0I) |
 | Windows-safe artifact naming (`windows_naming.py`) | LOCAL TESTED | `test_dit22_windows_naming.py` (10, incl. MAX_PATH, NFKC/case collisions, UNC status) |
 | **Full suite: 330 passed, 6 pre-existing qdrant-client warnings; scoped ruff clean** | LOCAL TESTED (fresh run 2026-10-28) | battery re-executed this round, not inherited |

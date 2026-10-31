@@ -1,9 +1,12 @@
 # DIT 2.2 Developer Quick Start
 
-> **Track B, from clone to first proxy.** Everything here is **LOCAL TESTED /
-> REVIEWED** in the research branch (330 tests) but **not yet committed** —
-> treat this as Developer Preview, and do not represent the Windows/Pilot
-> items as operational. See the [status matrix](05_implementation-status-matrix.md)
+> **Track B, from clone to first proxy.** Everything here is **COMMITTED**
+> to the research branch (`6846af2`) and **LOCAL TESTED / INDEPENDENTLY
+> REVIEWED** (330 tests); full CI at that SHA is not green — pre-existing
+> v4 reasons (Ruff version drift, missing FFmpeg). The RC-1.2 CI-parity
+> fix is prepared locally, not yet pushed or verified. Treat this as
+> Developer Preview, and do not represent the Windows/Pilot items as
+> operational. See the [status matrix](05_implementation-status-matrix.md)
 > for tiers.
 
 ## Prerequisites
@@ -15,8 +18,18 @@
 ## Setup
 
 ```bash
-pip install -e .                # installs test/dev deps from pyproject
-pytest tests/ -q               # expect 330 passed, 6 pre-existing qdrant-client warnings
+# 1) runtime deps (pyproject; packages=[] — source is NOT installed as a package)
+pip install -e .
+# 2) test/dev deps (separate — not pulled in by step 1)
+pip install -r tests/requirements.txt
+# 3) media tools: system binaries, install ffmpeg + ffprobe on PATH separately
+# (the count below is a historical acceptance baseline, not a live claim):
+#   330 passed / 6 qdrant-client warnings — observed 2026-10-29 on the local
+#   host Python 3.14 venv WITH ffmpeg/ffprobe on PATH and scenedetect installed.
+#   Other Python versions / a no-ffmpeg runner will differ (e.g. 3.10–3.12
+#   report 329 passed + 1 scenedetect skip; CI at 6846af2 is red — pre-existing
+#   v4 Ruff version drift + missing ffmpeg — so treat this as NOT CI-verified).
+pytest tests/ -q               # ~330 passed, 6 pre-existing qdrant-client warnings
 ```
 
 ## The one-command demo (module-level, 8 steps)

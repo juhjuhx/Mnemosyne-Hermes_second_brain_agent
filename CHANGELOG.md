@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — RC-1.2 CI-parity prep (2026-10-29, local, not yet pushed)
+
+- CI: pin `ruff==0.6.9` / `mypy==1.13.0` (repo standard; the unpinned CI
+  install pulled 0.17.x, whose extra default rule families flagged the
+  legacy v4 code); FFmpeg/FFprobe system provisioning + version validation
+  added to the test job; matrix `fail-fast: false`.
+- Markdown link check now covers `README.zh-TW.md` in addition to `docs/`
+  + `README.md`.
+- Docs: README EN/zh-TW, status matrix and quick start reconciled to
+  committed-at-`6846af2` + CI-not-green (pre-existing v4 debt);
+  `pip install -e .` documented as runtime-only (does not install test
+  extras).
+- NumPy declared explicitly (item B5E, resolved 2026-10-29 from CI-parity
+  evidence): `numpy>=2.0,<3` added to `tests/requirements.txt` (DIT media
+  subsystem imports it directly; was transitive-only via OpenCV/PySceneDetect)
+  + a new `dit` optional extra in `pyproject.toml`. Verified resolutions:
+  Py3.10→2.2.6 / Py3.11→2.4.6 / Py3.12→2.5.4, all passing.
+
 ### Added — DIT 2.2 multimodal research consolidation & Claude Code handoff (2026-10-24)
 
 Research-only branch `research/dit22-multimodal-handoff-20261024`; **no

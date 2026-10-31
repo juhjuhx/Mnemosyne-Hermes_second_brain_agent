@@ -77,6 +77,10 @@ lint = [
 ]
 # Per-skill extras (optional — only needed when running a specific skill).
 qdrant = []
+# DIT 2.2 media subsystem runtime dependency (scene_detect / memory_guard
+# import numpy top-level). Not in base `dependencies` because v4's runtime
+# does not need it; install with `pip install -e ".[dit]"`.
+dit = ["numpy>=2.0,<3"]
 filesystem = []
 video = [
     "scenedetect>=0.6.7",
@@ -93,3 +97,21 @@ Issues = "https://github.com/juhjuhx/Mnemosyne-Hermes_second_brain_agent/issues"
 
 [tool.setuptools]
 packages = []
+
+# --------------------------------------------------------------------------- #
+# Ruff lint config (repo standard is ruff==0.6.9, see tests/requirements.txt).
+# CI's lint-python job pins ruff==0.6.9 to match; 0.17.x additionally enables
+# non-default rule families (UP045/I001/BLE001/...) that flag the legacy v4
+# code, so the standard is 0.6.9, not "latest".
+#
+# Per-file exception (narrow, named — not a blanket noqa / scope narrowing):
+# DIT 2.2 test files use the repo's established `sys.path.insert(0, ...)` then
+# import the module-under-test pattern (see AGENTS.md: "tests use conftest.py
+# sys.path injection"). That puts the target import AFTER the sys.path line,
+# which PEP8 E402 (module-level import not at top of file) flags. This is the
+# deliberate test layout, not a lint debt to remove, so E402 is ignored for
+# exactly the DIT test glob only. Legacy v4 tests keep full E402 enforcement.
+# --------------------------------------------------------------------------- #
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_dit22_*.py" = ["E402"]

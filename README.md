@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| **Status** | **Developer Preview (RC-1)** — core safety pipeline locally tested & reviewed; Windows pilot specified, not yet run |
+| **Status** | **Developer Preview (RC-1)** — core safety pipeline committed to the research branch (`6846af2`), locally tested & independently reviewed; full CI at that SHA is red for pre-existing v4 reasons (RC-1.2 CI-parity fix prepared locally, not yet pushed); Windows pilot specified, not yet run |
 | **License** | Code: [AGPL-3.0-or-later](LICENSE) · Docs & diagrams: [CC BY-SA 4.0](LICENSE-DOCS) · Third-party components keep their own licenses |
 | **Powered by** | [Hermes Agent](https://github.com/NousResearch/hermes-agent) · Qdrant · Ollama/llama.cpp · FFmpeg · MCP |
 
@@ -28,7 +28,7 @@ It has two interconnected product tracks:
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent) with [MCP](https://modelcontextprotocol.io) tool contracts and extensible skills (3 example skills ship in-repo).
 - Local-first data ownership: originals are never moved or modified; the indexer only *suggests*.
 
-> **Track A status:** the v4 plan is frozen with a SHA-256-verified 105-file archive snapshot, and the indexer/invariants/MCP skills are committed with CI-verified tests. The reference two-machine deployment (M1 + workstation) had not been physically stood up at plan time — live service integration remains hardware-pending. See the [implementation status matrix](docs/05_implementation-status-matrix.md) for exact tiers.
+> **Track A status:** the v4 plan is frozen with a SHA-256-verified 105-file archive snapshot; the indexer/invariants/MCP skills are committed and pass the local test battery. CI at the baseline commit is **not green** — the failing jobs are pre-existing v4 debt (Ruff 0.17.x version drift vs the declared 0.6.9 standard; FFmpeg absent on the runner), not Track-A regressions; the RC-1.2 CI-parity fix (ruff pin + FFmpeg provisioning + matrix `fail-fast: false`) is prepared locally. The reference two-machine deployment (M1 + workstation) had not been physically stood up at plan time — live service integration remains hardware-pending. See the [implementation status matrix](docs/05_implementation-status-matrix.md) for exact tiers.
 
 ### Track B — Mnemosyne DIT 2.2 (media subsystem)
 
@@ -43,7 +43,7 @@ A Digital Imaging Technician-style core for moving image: not a replacement for 
 - **Scene detection** — content-diff (CPU) + fixed-interval, memory-bounded (frame-cap hard limit).
 - **Safeguards** — memory guard, path isolation (symlink/traversal), capacity reservation, Windows-safe artifact naming.
 
-> **Track B status (honest tiers):** P11.1/P12/P12.1/P12.2 are **LOCAL TESTED / REVIEWED** in this research branch — 330 tests passing, independent reviews complete, **not yet committed**. Windows CPU Pilot is **SPECIFICATION ONLY**; UNC/SMB, A770 GPU, and real camera media families are **HARDWARE BLOCKED / UNVERIFIED**. See the [status matrix](docs/05_implementation-status-matrix.md).
+> **Track B status (honest tiers):** P11.1/P12/P12.1/P12.2 are **COMMITTED** to this research branch (`6846af2`), **LOCAL TESTED / INDEPENDENTLY REVIEWED** — 330 tests passing, independent reviews complete; **full CI at that SHA is red for pre-existing v4 reasons** (Ruff 0.17.x version drift vs the declared 0.6.9 standard, FFmpeg absent on the runner), and the RC-1.2 CI-parity fix is prepared locally, not yet pushed or verified. Windows CPU Pilot is **SPECIFICATION ONLY**; UNC/SMB, A770 GPU, and real camera media families are **HARDWARE BLOCKED / UNVERIFIED**. See the [status matrix](docs/05_implementation-status-matrix.md).
 
 ## 3. What problems does it solve?
 
@@ -63,9 +63,9 @@ A Digital Imaging Technician-style core for moving image: not a replacement for 
 | Capability | Tier |
 |---|---|
 | v4 plan archive, 105/105 SHA-256 verified | COMMITTED |
-| Indexer core + 7 invariants, named-vector test | COMMITTED / CI VERIFIED |
-| 3 MCP skills (qdrant / filesystem / video-slice) | COMMITTED / CI VERIFIED |
-| DIT 2.2 admission, fencing, proxy, recovery, P12.2 gates | LOCAL TESTED / REVIEWED (330 tests, uncommitted research branch) |
+| Indexer core + 7 invariants, named-vector test | COMMITTED / LOCAL TESTED (CI red at baseline `6846af2` — pre-existing v4 debt; RC-1.2 parity fix PENDING) |
+| 3 MCP skills (qdrant / filesystem / video-slice) | COMMITTED / LOCAL TESTED (CI red at baseline; RC-1.2 parity fix PENDING) |
+| DIT 2.2 admission, fencing, proxy, recovery, P12.2 gates | COMMITTED (`6846af2`) / LOCAL TESTED / INDEPENDENTLY REVIEWED; CI PENDING |
 | Live two-machine deployment (M1 + workstation) | HARDWARE PENDING |
 | Windows CPU Pilot (A770 box) | SPECIFICATION ONLY |
 | GPU acceleration (QSV/OpenVINO) | HARDWARE BLOCKED |
@@ -89,8 +89,12 @@ Media pipeline detail: [safety workflow diagram](docs/assets/rc1/media-pipeline-
 No camera card, NAS, Windows, GPU, or cloud tokens needed — generated media, isolated temp dataset, CPU only. This runner maps 1:1 to the tested public APIs (each step is a real call, no invented commands):
 
 ```bash
-# Python 3.10–3.12; ffmpeg + ffprobe on PATH
-pip install -e .            # installs dev deps (pyproject)
+# Python 3.10–3.12 in a venv.
+# `pip install -e .` installs ONLY the runtime deps declared in pyproject
+# (packages=[] — the project source is not installed as a package).
+# Test deps are separate:        pip install -r tests/requirements.txt
+# ffmpeg + ffprobe are SYSTEM binaries — install them on PATH separately.
+pip install -e .
 python examples/dit22_synthetic_demo.py
 ```
 

@@ -43,7 +43,7 @@
 - **場景偵測**：content-diff（CPU）＋固定間隔，記憶體有硬上限。
 - **防護層**：memory guard、路徑隔離（symlink/traversal）、容量預留、Windows 安全檔名。
 
-> **Track B 現況（誠實分層）**：P11.1/P12/P12.1/P12.2 在研究分支上 **LOCAL TESTED / REVIEWED**——330 測試全綠、獨立審查完成、**尚未 commit**。Windows CPU Pilot 為 **SPECIFICATION ONLY**；UNC/SMB、A770 GPU、真實相機媒體家族為 **HARDWARE BLOCKED / UNVERIFIED**。見[狀態矩陣](docs/05_implementation-status-matrix.md)。
+> **Track B 現況（誠實分層）**：P11.1/P12/P12.1/P12.2 已 **COMMITTED** 至研究分支（`6846af2`）、**LOCAL TESTED / INDEPENDENTLY REVIEWED**——330 測試全綠、獨立審查完成；**該 SHA 的完整 CI 因 v4 既有債而紅**（Ruff 0.17.x 版本漂移 vs 宣告的 0.6.9 標準、runner 缺 FFmpeg），RC-1.2 對齊修復已在本機準備、未 push 也未驗證。Windows CPU Pilot 為 **SPECIFICATION ONLY**；UNC/SMB、A770 GPU、真實相機媒體家族為 **HARDWARE BLOCKED / UNVERIFIED**。見[狀態矩陣](docs/05_implementation-status-matrix.md)。
 
 ## 3. 它解決什麼問題？
 
@@ -63,9 +63,9 @@
 | 能力 | 分層 |
 |---|---|
 | v4 計畫存檔，105/105 SHA-256 驗證 | COMMITTED |
-| indexer 核心＋7 不變量、具名向量測試 | COMMITTED / CI VERIFIED |
-| 3 個 MCP skills（qdrant / filesystem / video-slice） | COMMITTED / CI VERIFIED |
-| DIT 2.2 准入、封鎖、proxy、恢復、P12.2 閘 | LOCAL TESTED / REVIEWED（330 測試，未 commit 的研究分支） |
+| indexer 核心＋7 不變量、具名向量測試 | COMMITTED / LOCAL TESTED（基線 `6846af2` CI 未全綠——v4 既有債；RC-1.2 對齊修復 PENDING） |
+| 3 個 MCP skills（qdrant / filesystem / video-slice） | COMMITTED / LOCAL TESTED（基線 CI 未全綠；RC-1.2 對齊修復 PENDING） |
+| DIT 2.2 准入、封鎖、proxy、恢復、P12.2 閘 | COMMITTED（`6846af2`）/ LOCAL TESTED / INDEPENDENTLY REVIEWED；CI PENDING |
 | 雙機實體部署（M1 + 工作站） | HARDWARE PENDING |
 | Windows CPU Pilot（A770 工作站） | SPECIFICATION ONLY |
 | GPU 加速（QSV/OpenVINO） | HARDWARE BLOCKED |
@@ -89,8 +89,12 @@
 不需要相機卡、NAS、Windows、GPU 或雲端 token——全用產生的媒體與隔離暫存資料集，純 CPU。此 runner 1:1 對應已測試的公開 API（沒有捏造指令）：
 
 ```bash
-# Python 3.10–3.12；PATH 需有 ffmpeg + ffprobe
-pip install -e .            # 安裝 dev 依賴（pyproject）
+# Python 3.10–3.12（venv）。
+# `pip install -e .` 只安裝 pyproject 宣告的 runtime 依賴
+# （packages=[]——本專案原始碼不會被當作 Python package 安裝）。
+# Test 依賴另裝：        pip install -r tests/requirements.txt
+# ffmpeg + ffprobe 是系統執行檔——請自行另外安裝到 PATH。
+pip install -e .
 python examples/dit22_synthetic_demo.py
 ```
 
