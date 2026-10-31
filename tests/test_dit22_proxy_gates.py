@@ -34,9 +34,22 @@ def _mk_clip(path: Path, name: str = "gates.mp4") -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     sub = path.parent / name
     subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-         "-f", "lavfi", "-i", "color=red:size=64x36:rate=30:duration=0.3",
-         "-pix_fmt", "yuv420p", "-c:v", "libx264", str(sub)],
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=red:size=64x36:rate=30:duration=0.3",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:v",
+            "libx264",
+            str(sub),
+        ],
         check=True,
     )
     sub.replace(path)
@@ -75,8 +88,11 @@ def test_g1_drifted_pin_blocks_before_ffmpeg(tmp_path):
     src.write_bytes(b"drifted-bytes")
     with pytest.raises(SourceDriftError):
         proxy_generator.generate_proxy(
-            src, "browser", tmp_path / "out",
-            source_pin=pin, test_mode=True,
+            src,
+            "browser",
+            tmp_path / "out",
+            source_pin=pin,
+            test_mode=True,
             ffmpeg_bin=str(_fake_ffmpeg(tmp_path)),
         )
     # no staging dir may have been created:
@@ -88,8 +104,11 @@ def test_g5_protected_source_dir_rejected(tmp_path):
     # out_dir == the source's own dir, on a protected volume:
     with pytest.raises(proxy_generator.ProxyInputError):
         proxy_generator.generate_proxy(
-            src, "browser", tmp_path / "media",
-            protected_source=True, test_mode=True,
+            src,
+            "browser",
+            tmp_path / "media",
+            protected_source=True,
+            test_mode=True,
             ffmpeg_bin=str(_fake_ffmpeg(tmp_path)),
         )
     assert not (tmp_path / "media" / ".staging").exists()
@@ -99,8 +118,11 @@ def test_g6_unc_out_dir_is_hardware_blocked(tmp_path):
     src = _mk_clip(tmp_path / "clip.mov")
     with pytest.raises(proxy_generator.ProxyInputError) as exc:
         proxy_generator.generate_proxy(
-            src, "browser", r"\\nas\share\proxies",
-            test_mode=True, ffmpeg_bin=str(_fake_ffmpeg(tmp_path)),
+            src,
+            "browser",
+            r"\\nas\share\proxies",
+            test_mode=True,
+            ffmpeg_bin=str(_fake_ffmpeg(tmp_path)),
         )
     assert "HARDWARE_BLOCKED" in str(exc.value)
     # UNC path semantics never "pass": no encode may have started.
@@ -117,13 +139,16 @@ def test_g4_capacity_short_blocks_before_ffmpeg(tmp_path):
 
     with pytest.raises(proxy_generator.ProxyInputError):
         proxy_generator.generate_proxy(
-            src, "browser", tmp_path / "out",
+            src,
+            "browser",
+            tmp_path / "out",
             capacity_probe=_ShortVol(),
             estimated_staging_bytes=500,
             estimated_output_bytes=400,
             test_mode=True,
             ffmpeg_bin=str(_fake_ffmpeg(tmp_path)),
         )
+
     # and a volume with enough room passes the gate (the fake ffmpeg's
     # garbage output will later fail the verify gate, which is the
     # EXPECTED next stop — proof the capacity gate let it through):
@@ -133,7 +158,9 @@ def test_g4_capacity_short_blocks_before_ffmpeg(tmp_path):
 
     with pytest.raises(proxy_generator.ProxyVerifyError):
         proxy_generator.generate_proxy(
-            src, "browser", tmp_path / "out2",
+            src,
+            "browser",
+            tmp_path / "out2",
             capacity_probe=_RoomyVol(),
             estimated_staging_bytes=500,
             estimated_output_bytes=400,

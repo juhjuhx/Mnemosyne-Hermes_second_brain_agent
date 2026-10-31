@@ -36,9 +36,9 @@ def test_asset_id_path_decoupled(tmp_path):
     c.write_bytes(b"DIFFERENT-content")
 
     assert asset_id_for_file(a) == asset_id_for_file(b), "same bytes → same asset_id"
-    assert asset_id_for_file(a) != asset_id_for_file(c), (
-        "diff bytes → diff asset_id even with same basename"
-    )
+    assert asset_id_for_file(a) != asset_id_for_file(
+        c
+    ), "diff bytes → diff asset_id even with same basename"
 
 
 def test_asset_id_is_sha256_of_content():
@@ -102,9 +102,9 @@ def test_unknown_failure_domain_is_not_independent(tmp_path):
         cat.add_replica(
             Replica("r4", asset.asset_id, "nas-d", "domain-1", "/d", False, 0)
         )  # unverified, same domain-1
-        assert cat.independent_replicas(asset.asset_id) == 2, (
-            "domains {1,2}; unknown + unverified excluded"
-        )
+        assert (
+            cat.independent_replicas(asset.asset_id) == 2
+        ), "domains {1,2}; unknown + unverified excluded"
 
 
 def test_no_verified_replica_means_zero(tmp_path):

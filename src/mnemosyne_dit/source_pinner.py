@@ -99,7 +99,10 @@ def manifest_digest_of(manifest: dict) -> str:
 
 
 def pin_from_admission(
-    decision, *, catalog=None, manifest: dict | None = None,
+    decision,
+    *,
+    catalog=None,
+    manifest: dict | None = None,
 ) -> SourcePin:
     """Build a pin from an `AdmissionDecision` (P11.1-A). The
     decision already proved: VERIFIED replica, PASS read-back
@@ -149,9 +152,7 @@ def _recheck_replica_trust(catalog, decision) -> None:
     unverified, is an untrusted chain — C2/C6 adjacency, fail
     closed.)"""
     reps = catalog.replicas_for(decision.asset_id)
-    trusted = [
-        r for r in reps if r.replica_id == decision.replica_id
-    ]
+    trusted = [r for r in reps if r.replica_id == decision.replica_id]
     if not trusted or not all(r.verified for r in trusted):
         raise SourceDriftError(
             f"replica {decision.replica_id!r} is not a VERIFIED replica "
@@ -164,7 +165,9 @@ def _recheck_replica_trust(catalog, decision) -> None:
 
 
 def verify_pin(
-    pin: SourcePin, *, actual_manifest: dict | None = None,
+    pin: SourcePin,
+    *,
+    actual_manifest: dict | None = None,
 ) -> PinVerification:
     """Re-verify the pin against the CURRENT source. Reads the file
     (stat + streamed SHA256) — never writes it. Raises
@@ -196,9 +199,7 @@ def verify_pin(
         )
     if pin.manifest_digest is not None:
         actual_digest = (
-            manifest_digest_of(actual_manifest)
-            if actual_manifest is not None
-            else None
+            manifest_digest_of(actual_manifest) if actual_manifest is not None else None
         )
         if actual_digest is None:
             raise SourceDriftError(

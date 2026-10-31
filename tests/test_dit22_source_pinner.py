@@ -151,9 +151,7 @@ def test_s7_pin_built_from_admission_decision(tmp_path: Path):
     cat.upsert_asset(MediaAsset(source_sha256=aid))
     p = tmp_path / "clip.mov"
     p.write_bytes(data)
-    cat.add_observation(
-        AssetPathObservation(aid, "sd1", str(p), p.stat().st_size)
-    )
+    cat.add_observation(AssetPathObservation(aid, "sd1", str(p), p.stat().st_size))
     cat.add_replica(Replica("rep-a", aid, "sd1", "card", str(p), verified=True))
     cat.add_evidence(
         VerificationEvidence(
@@ -199,13 +197,16 @@ def test_s8_replica_mismatch_pin_rejected(tmp_path: Path):
     p.write_bytes(data)
     cat.add_observation(AssetPathObservation(aid, "sd1", str(p), p.stat().st_size))
     cat.add_replica(
-        Replica("rep-other", "other-asset-id", "sd1", "card", str(p),
-                verified=True)
+        Replica("rep-other", "other-asset-id", "sd1", "card", str(p), verified=True)
     )
     cat.add_evidence(
         VerificationEvidence(
-            evidence_id="ev", asset_id=aid, file_name=p.name,
-            algorithm="sha256", digest=aid, verdict="PASS",
+            evidence_id="ev",
+            asset_id=aid,
+            file_name=p.name,
+            algorithm="sha256",
+            digest=aid,
+            verdict="PASS",
             replica_id="rep-other",
         )
     )

@@ -67,8 +67,9 @@ def test_stale_token_pause_and_fail_after_takeover_are_fenced(tmp_path):
     with pytest.raises(LeaseFencedError):
         q.fail(job_id, worker, token=stale, reason="stale")
     st = q.job_state(job_id)
-    assert st["state"] == "LEASED" and st["lease_worker"] == "w2", \
-        "stale pause/fail must not disturb the new holder"
+    assert (
+        st["state"] == "LEASED" and st["lease_worker"] == "w2"
+    ), "stale pause/fail must not disturb the new holder"
 
 
 # ── scenario 2: same worker NAME restart ─────────────────────────────
@@ -111,8 +112,9 @@ def test_stale_token_across_two_connections_is_fenced(tmp_path):
     with pytest.raises(LeaseFencedError):
         q1b.complete(job["job_id"], "w1", {}, token=stale)
     st = q2.job_state(job["job_id"])
-    assert st["state"] == "LEASED" and st["lease_worker"] == "w2", \
-        "a stale complete must not flip state or clear the new holder"
+    assert (
+        st["state"] == "LEASED" and st["lease_worker"] == "w2"
+    ), "a stale complete must not flip state or clear the new holder"
     q1b.close()
     q2.close()
 
@@ -129,8 +131,9 @@ def test_complete_after_expiry_by_old_holder_is_fenced(tmp_path):
         q.complete(job_id, worker, {}, token=stale)
     st = q.job_state(job_id)
     assert st["state"] == "LEASED" and st["lease_worker"] == "w2"
-    assert st["fail_reason"] is None, \
-        "a stale writer must not be able to FAIL the job either"
+    assert (
+        st["fail_reason"] is None
+    ), "a stale writer must not be able to FAIL the job either"
 
 
 # ── scenario 5: regression — drift with a VALID token still works ──

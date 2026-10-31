@@ -39,14 +39,23 @@ FFPROBE = "ffprobe"
 def _ff(*args) -> None:
     p = subprocess.run(
         [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", *args],
-        capture_output=True, timeout=60, check=False,
+        capture_output=True,
+        timeout=60,
+        check=False,
     )
     assert p.returncode == 0, f"ffmpeg failed: {p.stderr[:500]!r}"
 
 
-def _mk_source(tmp: Path, *, rate="24", dur="0.5", extra=(),
-               itsoffset: str | None = None, audio_tracks: int = 0,
-               name="src.mp4") -> Path:
+def _mk_source(
+    tmp: Path,
+    *,
+    rate="24",
+    dur="0.5",
+    extra=(),
+    itsoffset: str | None = None,
+    audio_tracks: int = 0,
+    name="src.mp4",
+) -> Path:
     p = tmp / name
     v = f"testsrc2=d={dur}:r={rate}:s=192x108"
     # inputs first (lavfi video + optional lavfi sine tracks), then output
@@ -66,8 +75,12 @@ def _mk_source(tmp: Path, *, rate="24", dur="0.5", extra=(),
     return p
 
 
-def _probe(path: Path, *, start_time_override: float | None = None,
-           hdr_override: str | None = None):
+def _probe(
+    path: Path,
+    *,
+    start_time_override: float | None = None,
+    hdr_override: str | None = None,
+):
     p = probe(path, full_fps=True)
     import dataclasses as _dc
 
@@ -97,7 +110,11 @@ def test_d1_verified_cfr_baseline_carries_mapping_and_tc(tmp_path):
     sp = _probe(src)
     prx = _make_proxy(src, tmp_path / "out")
     v = validate_editor_proxy(
-        src, prx, source_probe=sp, asset_id="ASSET-1", reel="reel-001",
+        src,
+        prx,
+        source_probe=sp,
+        asset_id="ASSET-1",
+        reel="reel-001",
     )
     assert v.status == STATUS_VERIFIED, f"baseline must verify: {v.reasons}"
     m = v.frame_mapping
@@ -137,8 +154,7 @@ def test_d3_retimed_fps_is_degraded_not_verifying_metadata(tmp_path):
     sp = _probe(src)
     # a proxy RE-TIMED to 24 (fps_cap) — both sides carry fps metadata,
     # but the timeline changed: metadata presence must NOT be acceptance.
-    res = generate_proxy(src, "editor", tmp_path / "out",
-                         test_mode=True, fps_cap=24)
+    res = generate_proxy(src, "editor", tmp_path / "out", test_mode=True, fps_cap=24)
     prx = Path(res.path)
     v = validate_editor_proxy(src, prx, source_probe=sp)
     assert v.status == STATUS_DEGRADED
@@ -152,14 +168,44 @@ def test_d4_vfr_source_is_degraded_with_pts_mapping(tmp_path):
     # real VFR: two different rates concatenated (24 then 48)
     a = tmp_path / "a.mp4"
     b = tmp_path / "b.mp4"
-    _ff("-f", "lavfi", "-i", "testsrc2=d=0.25:r=24:s=192x108",
-        "-pix_fmt", "yuv420p", "-c:v", "libx264", str(a))
-    _ff("-f", "lavfi", "-i", "testsrc2=d=0.25:r=48:s=192x108",
-        "-pix_fmt", "yuv420p", "-c:v", "libx264", str(b))
+    _ff(
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=d=0.25:r=24:s=192x108",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:v",
+        "libx264",
+        str(a),
+    )
+    _ff(
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=d=0.25:r=48:s=192x108",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:v",
+        "libx264",
+        str(b),
+    )
     src = tmp_path / "vfr.mp4"
-    _ff("-i", str(a), "-i", str(b),
-        "-filter_complex", "[0:v][1:v]concat=n=2:v=1:a=0",
-        "-fps_mode", "vfr", "-pix_fmt", "yuv420p", "-c:v", "libx264", str(src))
+    _ff(
+        "-i",
+        str(a),
+        "-i",
+        str(b),
+        "-filter_complex",
+        "[0:v][1:v]concat=n=2:v=1:a=0",
+        "-fps_mode",
+        "vfr",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:v",
+        "libx264",
+        str(src),
+    )
     sp = _probe(src)
     prx = _make_proxy(src, tmp_path / "out")
     v = validate_editor_proxy(src, prx, source_probe=sp)
@@ -181,13 +227,14 @@ def test_d5_start_pts_offset_is_absorbed_not_error(tmp_path):
     v = validate_editor_proxy(src, prx, source_probe=sp)
     m = v.frame_mapping
     assert m.start_pts_offset_s is not None
-    assert abs(m.start_pts_offset_s - 30.0) < 0.1, \
-        "the source's 30s reel start must be recorded"
+    assert (
+        abs(m.start_pts_offset_s - 30.0) < 0.1
+    ), "the source's 30s reel start must be recorded"
     assert v.status in (STATUS_VERIFIED, STATUS_DEGRADED)
     # a large recorded offset is a NOTE, and the verdict must SAY so:
-    assert any("offset" in r for r in v.reasons) or \
-        "offset" in v.timecode.note, \
-        "a >half-second start offset must be surfaced to the editor"
+    assert (
+        any("offset" in r for r in v.reasons) or "offset" in v.timecode.note
+    ), "a >half-second start offset must be surfaced to the editor"
 
 
 @pytest.mark.behavior_tested
@@ -198,8 +245,19 @@ def test_d6_multi_audio_source_with_single_audio_proxy_degraded(tmp_path):
     sp = _probe(src)
     assert len(sp.audio) == 2
     prx = tmp_path / "legacy.mp4"
-    _ff("-i", str(src), "-map", "0:v:0", "-map", "0:a:0",
-        "-c:v", "libx264", "-c:a", "aac", str(prx))
+    _ff(
+        "-i",
+        str(src),
+        "-map",
+        "0:v:0",
+        "-map",
+        "0:a:0",
+        "-c:v",
+        "libx264",
+        "-c:a",
+        "aac",
+        str(prx),
+    )
     v = validate_editor_proxy(src, prx, source_probe=sp)
     assert v.audio.source_streams == 2 and v.audio.proxy_streams == 1
     assert v.audio.streams_lost is True
@@ -253,11 +311,14 @@ def test_d9_unverified_camera_family_is_unverified_even_when_mapping_holds(tmp_p
     prx = _make_proxy(src, tmp_path / "out")
     # stand-in for a BRAW/Sony source (NO real sample exists on this host):
     brawish = dataclasses.replace(
-        sp, camera_family="sony-braw", family_verified=False,
+        sp,
+        camera_family="sony-braw",
+        family_verified=False,
     )
     v = validate_editor_proxy(src, prx, source_probe=brawish)
-    assert v.status == STATUS_UNVERIFIED, \
-        "unverified camera families never become VERIFIED"
+    assert (
+        v.status == STATUS_UNVERIFIED
+    ), "unverified camera families never become VERIFIED"
     assert any("sony-braw" in r or "unverified" in r for r in v.reasons)
     # the mapping evidence is STILL computed (a reviewer can audit it):
     assert v.frame_mapping.fps_exact_match is True
@@ -271,8 +332,9 @@ def test_d10_bounded_frame_enumeration_truncation_is_degraded(tmp_path):
     prx = _make_proxy(src, tmp_path / "out")
     v = validate_editor_proxy(src, prx, source_probe=sp, max_frames=3)
     assert v.status == STATUS_DEGRADED
-    assert any("truncat" in r for r in v.reasons), \
-        "capped enumeration must be surfaced, not silently trusted"
+    assert any(
+        "truncat" in r for r in v.reasons
+    ), "capped enumeration must be surfaced, not silently trusted"
 
 
 @pytest.mark.behavior_tested

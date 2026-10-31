@@ -59,8 +59,9 @@ class MemoryBudgetExceeded(Exception):
     mid-stream) — the decode was stopped fail-closed. Carries how far
     we got, for evidence."""
 
-    def __init__(self, message: str, *, frames_processed: int = 0,
-                 frame_bytes: int = 0):
+    def __init__(
+        self, message: str, *, frames_processed: int = 0, frame_bytes: int = 0
+    ):
         super().__init__(message)
         self.frames_processed = frames_processed
         self.frame_bytes = frame_bytes
@@ -95,8 +96,13 @@ class BudgetPlan:
     reason: str
 
 
-def plan_budget(width: int, height: int, total_frames: int, *,
-                byte_budget: int = DEFAULT_BYTE_BUDGET) -> BudgetPlan:
+def plan_budget(
+    width: int,
+    height: int,
+    total_frames: int,
+    *,
+    byte_budget: int = DEFAULT_BYTE_BUDGET,
+) -> BudgetPlan:
     """Pure arithmetic pre-spawn guard: does the PLANNED rawvideo size
     fit the budget? 4K x 720 frames (30 s @ 24 fps) = ~17.9 GB ->
     refused BEFORE any ffmpeg is launched. (The streaming decode itself
@@ -106,13 +112,18 @@ def plan_budget(width: int, height: int, total_frames: int, *,
     planned = frame_bytes * total_frames
     feasible = planned <= byte_budget
     return BudgetPlan(
-        width=width, height=height, total_frames=total_frames,
-        frame_bytes=frame_bytes, planned_bytes=planned,
-        byte_budget=byte_budget, feasible=feasible,
+        width=width,
+        height=height,
+        total_frames=total_frames,
+        frame_bytes=frame_bytes,
+        planned_bytes=planned,
+        byte_budget=byte_budget,
+        feasible=feasible,
         reason=(
-            "" if feasible
+            ""
+            if feasible
             else f"planned {planned} B exceeds the {byte_budget} B "
-                 f"decoded-byte budget (4K-class or long clip)"
+            f"decoded-byte budget (4K-class or long clip)"
         ),
     )
 
@@ -136,14 +147,14 @@ class MemoryEvidence:
     frames_processed: int
     total_frames_expected: int
     frame_bytes: int
-    peak_buffer_bytes: int              # this run's sliding-window high-water
-    peak_child_rss_bytes: int           # getrusage(RUSAGE_CHILDREN) high-water
-    peak_python_alloc_bytes: int        # in-run tracemalloc delta (>= 0)
+    peak_buffer_bytes: int  # this run's sliding-window high-water
+    peak_child_rss_bytes: int  # getrusage(RUSAGE_CHILDREN) high-water
+    peak_python_alloc_bytes: int  # in-run tracemalloc delta (>= 0)
     chunk_bytes: int
     byte_budget: int
     budget_hit: bool
-    truncated: bool                     # max_frames cap or raw EOF
-    long_format_accepted: bool          # ALWAYS False on a sampled run
+    truncated: bool  # max_frames cap or raw EOF
+    long_format_accepted: bool  # ALWAYS False on a sampled run
     sampled_params: dict
     notes: tuple[str, ...]
 
@@ -175,11 +186,17 @@ class MemoryEvidence:
         """Conservative all-refusal evidence (used by the RED skeleton
         and by fail-closed early exits)."""
         return MemoryEvidence(
-            frames_processed=0, total_frames_expected=0, frame_bytes=0,
+            frames_processed=0,
+            total_frames_expected=0,
+            frame_bytes=0,
             peak_buffer_bytes=0,
-            peak_child_rss_bytes=0, peak_python_alloc_bytes=0,
-            chunk_bytes=0, byte_budget=0, budget_hit=False,
-            truncated=False, long_format_accepted=False,
+            peak_child_rss_bytes=0,
+            peak_python_alloc_bytes=0,
+            chunk_bytes=0,
+            byte_budget=0,
+            budget_hit=False,
+            truncated=False,
+            long_format_accepted=False,
             sampled_params={},
             notes=("refusal: no decode was run",),
         )
@@ -201,8 +218,13 @@ def _peak_child_rss_bytes() -> int:
 
 
 def iter_rawvideo_frames(
-    source, width: int, height: int, total_frames: int, *,
-    ffmpeg_bin: str = "ffmpeg", timeout_s: float = 120.0,
+    source,
+    width: int,
+    height: int,
+    total_frames: int,
+    *,
+    ffmpeg_bin: str = "ffmpeg",
+    timeout_s: float = 120.0,
     byte_budget: int | None = None,
     chunk_bytes: int = DEFAULT_CHUNK_BYTES,
     stats: dict | None = None,
@@ -224,18 +246,30 @@ def iter_rawvideo_frames(
     accounting still guards against a stream that over-runs."""
     frame_bytes = width * height * 3
     cap = (
-        (total_frames * frame_bytes) if byte_budget is None else min(
-            total_frames * frame_bytes, byte_budget
-        )
+        (total_frames * frame_bytes)
+        if byte_budget is None
+        else min(total_frames * frame_bytes, byte_budget)
     )
     cmd = [
-        ffmpeg_bin, "-hide_banner", "-loglevel", "error",
-        "-i", str(source),
-        "-f", "rawvideo", "-pix_fmt", "rgb24",
-        "-an", "-vframes", str(total_frames), "-",
+        ffmpeg_bin,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        str(source),
+        "-f",
+        "rawvideo",
+        "-pix_fmt",
+        "rgb24",
+        "-an",
+        "-vframes",
+        str(total_frames),
+        "-",
     ]
     proc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
     chunks: queue.Queue[bytes | None] = queue.Queue()
 
@@ -290,12 +324,16 @@ def iter_rawvideo_frames(
                 raise MemoryBudgetExceeded(
                     f"decoded-byte budget {cap} B exceeded mid-stream "
                     f"(after {processed} frame)",
-                    frames_processed=processed, frame_bytes=frame_bytes,
+                    frames_processed=processed,
+                    frame_bytes=frame_bytes,
                 )
             while len(buf) >= frame_bytes and processed < total_frames:
-                yield processed, np.frombuffer(
-                    bytes(buf[:frame_bytes]), dtype=np.uint8
-                ).reshape(height, width, 3).copy()
+                yield (
+                    processed,
+                    np.frombuffer(bytes(buf[:frame_bytes]), dtype=np.uint8)
+                    .reshape(height, width, 3)
+                    .copy(),
+                )
                 del buf[:frame_bytes]
                 processed += 1
         pump.join(timeout=5.0)
@@ -340,8 +378,11 @@ def _grid_total(source_probe: MediaProbe, total_frames: int | None) -> int:
 
 
 def content_diff_bounded(
-    source, source_probe: MediaProbe, *,
-    threshold_factor: float = 8.0, floor: float = 2.0,
+    source,
+    source_probe: MediaProbe,
+    *,
+    threshold_factor: float = 8.0,
+    floor: float = 2.0,
     total_frames: int | None = None,
     max_frames: int = DEFAULT_MAX_FRAMES,
     byte_budget: int = DEFAULT_BYTE_BUDGET,
@@ -417,9 +458,14 @@ def content_diff_bounded(
     prev: np.ndarray | None = None
     try:
         for idx, frame in iter_rawvideo_frames(
-            source, width, height, total,
-            ffmpeg_bin=ffmpeg_bin, timeout_s=timeout_s,
-            byte_budget=byte_budget, chunk_bytes=chunk_bytes,
+            source,
+            width,
+            height,
+            total,
+            ffmpeg_bin=ffmpeg_bin,
+            timeout_s=timeout_s,
+            byte_budget=byte_budget,
+            chunk_bytes=chunk_bytes,
             stats=stats,
         ):
             if idx >= max_frames:
@@ -427,8 +473,7 @@ def content_diff_bounded(
                 break
             if prev is not None:
                 diffs.append(
-                    float(np.abs(frame.astype(np.int16) - prev.astype(np.int16))
-                          .mean())
+                    float(np.abs(frame.astype(np.int16) - prev.astype(np.int16)).mean())
                 )
             prev = frame
             processed = idx + 1
@@ -459,11 +504,16 @@ def content_diff_bounded(
             truncated=truncated,
             long_format_accepted=False,  # a sampled run is NEVER accepted
             sampled_params={
-                "width": width, "height": height, "total_frames": total,
-                "max_frames": max_frames, "byte_budget": byte_budget,
-                "chunk_bytes": chunk_bytes, "timeout_s": timeout_s,
+                "width": width,
+                "height": height,
+                "total_frames": total,
+                "max_frames": max_frames,
+                "byte_budget": byte_budget,
+                "chunk_bytes": chunk_bytes,
+                "timeout_s": timeout_s,
                 "ffmpeg_bin": ffmpeg_bin,
-                "threshold_factor": threshold_factor, "floor": floor,
+                "threshold_factor": threshold_factor,
+                "floor": floor,
             },
             notes=tuple(errors) or ("",),
         )

@@ -64,22 +64,24 @@ from proxy_generator import generation_tag
 _HARDWARE_BLOCKED = ("windows-unc", "windows-smb", "cross-volume")
 
 # Issue kinds the reconciler can report.
-ISSUE_PENDING_RENAME = "pending_rename"     # receipt written, artifact not yet exposed
-ISSUE_HASH_MISMATCH = "hash_mismatch"       # artifact present, sha != receipt promise
-ISSUE_FOREIGN_RECEIPT = "foreign_receipt"   # receipt in our slot names another job
-ISSUE_UNATTRIBUTABLE = "unattributable"    # healthy-looking artifact, no receipt
-ISSUE_CORRUPT_RECEIPT = "corrupt_receipt"   # receipt undecodable
-ISSUE_ZOMBIE_STAGING = "zombie_staging"    # crash-residue under a generation
-ISSUE_SHA_DRIFT = "sha_drift"              # source changed after the receipt promise
-ISSUE_UNSAFE_PATH = "unsafe_path"          # symlink / traversal / out-of-bounds
-ISSUE_ORPHAN_RECEIPT = "orphan_receipt"     # decodable receipt, no artifact, no staging
+ISSUE_PENDING_RENAME = "pending_rename"  # receipt written, artifact not yet exposed
+ISSUE_HASH_MISMATCH = "hash_mismatch"  # artifact present, sha != receipt promise
+ISSUE_FOREIGN_RECEIPT = "foreign_receipt"  # receipt in our slot names another job
+ISSUE_UNATTRIBUTABLE = "unattributable"  # healthy-looking artifact, no receipt
+ISSUE_CORRUPT_RECEIPT = "corrupt_receipt"  # receipt undecodable
+ISSUE_ZOMBIE_STAGING = "zombie_staging"  # crash-residue under a generation
+ISSUE_SHA_DRIFT = "sha_drift"  # source changed after the receipt promise
+ISSUE_UNSAFE_PATH = "unsafe_path"  # symlink / traversal / out-of-bounds
+ISSUE_ORPHAN_RECEIPT = "orphan_receipt"  # decodable receipt, no artifact, no staging
 
 
 @dataclass(frozen=True)
 class Issue:
     kind: str
     path: str
-    safe_action: str  # complete_rename | quarantine | discard_staging | preserve | investigate
+    safe_action: (
+        str  # complete_rename | quarantine | discard_staging | preserve | investigate
+    )
 
 
 @dataclass(frozen=True)
@@ -88,7 +90,9 @@ class ReconcileReport:
 
     job_id: str
     expected_token: str | None
-    published_generation: str | None   # generation_tag of the authoritative published gen
+    published_generation: (
+        str | None
+    )  # generation_tag of the authoritative published gen
     published_sha: str | None
     issues: tuple[Issue, ...]
     hardware_blocked_platforms: tuple[str, ...] = _HARDWARE_BLOCKED
@@ -156,8 +160,8 @@ def _safe_staged(staged: Path, out: Path) -> bool:
         return False
     # every intermediate component under out/.staging must be real:
     for i in range(1, len(staged.parts)):
-        if Path(*staged.parts[:i + 1]).is_symlink() and _contained(
-            Path(*staged.parts[:i + 1]), out
+        if Path(*staged.parts[: i + 1]).is_symlink() and _contained(
+            Path(*staged.parts[: i + 1]), out
         ):
             return False
     return True
@@ -207,9 +211,7 @@ def _quarantine(out: Path, job_id: str, src: Path, log: list[str]) -> None:
 # ── read-only assessment ────────────────────────────────────────────
 
 
-def reconcile_proxy_job(
-    out_dir, job_id, *, expected_token=None
-) -> ReconcileReport:
+def reconcile_proxy_job(out_dir, job_id, *, expected_token=None) -> ReconcileReport:
     """Read-only assessment of the on-disk publish truth for `job_id`
     under `out_dir`. NEVER writes.
 
@@ -256,9 +258,7 @@ def reconcile_proxy_job(
         if rec is None:
             issues.append(Issue(ISSUE_CORRUPT_RECEIPT, str(rfile), "quarantine"))
             if artifact.is_file():
-                issues.append(
-                    Issue(ISSUE_CORRUPT_RECEIPT, str(artifact), "quarantine")
-                )
+                issues.append(Issue(ISSUE_CORRUPT_RECEIPT, str(artifact), "quarantine"))
             continue
         if rec.get("job_id") != job_id:
             # a slot in our namespace carrying a FOREIGN job's receipt:
@@ -284,9 +284,7 @@ def reconcile_proxy_job(
             and _sha256_file(staged) == promised
         )
         if staged_valid:
-            issues.append(
-                Issue(ISSUE_PENDING_RENAME, str(staged), "complete_rename")
-            )
+            issues.append(Issue(ISSUE_PENDING_RENAME, str(staged), "complete_rename"))
             continue
         if artifact.is_file():
             actual = _sha256_file(artifact)
@@ -300,9 +298,7 @@ def reconcile_proxy_job(
             issues.append(Issue(ISSUE_HASH_MISMATCH, str(artifact), "quarantine"))
             issues.append(Issue(ISSUE_HASH_MISMATCH, str(rfile), "quarantine"))
             continue
-        if staged.is_symlink() or (
-            staged.exists() and not _safe_staged(staged, out)
-        ):
+        if staged.is_symlink() or (staged.exists() and not _safe_staged(staged, out)):
             # symlink / reparse-point / out-of-bounds staged source: never
             # expose it; preserve for the operator.
             issues.append(Issue(ISSUE_UNSAFE_PATH, str(staged), "preserve"))
@@ -335,8 +331,7 @@ def reconcile_proxy_job(
         for gen_dir in sorted(job_staging.iterdir()):
             if not gen_dir.is_dir() or gen_dir.name in receipted_gens:
                 continue
-            files = [f for f in gen_dir.iterdir()
-                     if f.is_file() or f.is_symlink()]
+            files = [f for f in gen_dir.iterdir() if f.is_file() or f.is_symlink()]
             if not files:
                 continue
             unsafe = [f for f in files if not _safe_staged(f, out)]
@@ -360,9 +355,7 @@ def reconcile_proxy_job(
 # ── lease-gated replay ─────────────────────────────────────────────
 
 
-def apply_recovery(
-    out_dir, job_id, report, *, queue, worker, token
-) -> RecoveryResult:
+def apply_recovery(out_dir, job_id, report, *, queue, worker, token) -> RecoveryResult:
     """Replay the SAFE subset of a ReconcileReport for `job_id`.
 
     - Any mutation requires a LIVE lease on the queue (P09.1): the

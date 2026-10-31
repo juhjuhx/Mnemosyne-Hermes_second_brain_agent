@@ -67,8 +67,10 @@ def test_w3_reserved_source_stem_transformed_inside_composition():
     # A source literally named "CON.mp4" must not yield a reserved
     # device name in any half of the composed artifact name.
     name = safe_artifact_name(
-        job_id="j1", source_filename="CON.mp4",
-        profile="browser", ext=".mp4",
+        job_id="j1",
+        source_filename="CON.mp4",
+        profile="browser",
+        ext=".mp4",
     )
     assert "xCON" in name
     assert not _is_reserved_bare(name)
@@ -76,16 +78,23 @@ def test_w3_reserved_source_stem_transformed_inside_composition():
 
 def test_w4_invalid_source_chars_replaced_not_dropped():
     name = safe_artifact_name(
-        job_id="j2", source_filename="bad:<name>?.mov",
-        profile="browser", ext=".mp4",
+        job_id="j2",
+        source_filename="bad:<name>?.mov",
+        profile="browser",
+        ext=".mp4",
     )
     for ch in '<>:"/\\|?*':
         assert ch not in name
     # deterministic + the visible skeleton is preserved:
-    assert safe_artifact_name(
-        job_id="j2", source_filename="bad:<name>?.mov",
-        profile="browser", ext=".mp4",
-    ) == name
+    assert (
+        safe_artifact_name(
+            job_id="j2",
+            source_filename="bad:<name>?.mov",
+            profile="browser",
+            ext=".mp4",
+        )
+        == name
+    )
 
 
 # ── 2. case / unicode collisions ─────────────────────────────────────
@@ -136,8 +145,11 @@ def test_w7_composed_path_over_max_path_refused():
         )
     # and a short source at the same depth still fits:
     name = safe_artifact_name(
-        job_id="j3", source_filename="a.mov", profile="editor",
-        ext=".mxf", out_dir=deep,
+        job_id="j3",
+        source_filename="a.mov",
+        profile="editor",
+        ext=".mxf",
+        out_dir=deep,
     )
     assert name
 

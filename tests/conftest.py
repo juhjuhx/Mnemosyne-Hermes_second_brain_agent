@@ -28,18 +28,24 @@ import pytest
 _MARKERS = [
     (
         "behavior_tested",
-        ("Test actually exercises the engine/adapter and asserts rejection "
-         "or acceptance behavior (not just that a fixture was built)."),
+        (
+            "Test actually exercises the engine/adapter and asserts rejection "
+            "or acceptance behavior (not just that a fixture was built)."
+        ),
     ),
     (
         "fixture_only",
-        ("Test only verifies that a synthetic scenario/fixture builds; it "
-         "does NOT prove engine or adapter behavior."),
+        (
+            "Test only verifies that a synthetic scenario/fixture builds; it "
+            "does NOT prove engine or adapter behavior."
+        ),
     ),
     (
         "hw_blocked",
-        ("Real-hardware case (A770 / SD / NAS / power-loss) absent on host; "
-         "scenario state + contract only, no fabricated result."),
+        (
+            "Real-hardware case (A770 / SD / NAS / power-loss) absent on host; "
+            "scenario state + contract only, no fabricated result."
+        ),
     ),
 ]
 
@@ -47,6 +53,7 @@ _MARKERS = [
 def pytest_configure(config):
     for name, desc in _MARKERS:
         config.addinivalue_line("markers", f"{name}: {desc}")
+
 
 # --------------------------------------------------------------------------- #
 # Path setup

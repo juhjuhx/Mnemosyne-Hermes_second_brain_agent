@@ -184,9 +184,9 @@ def test_rerun_preserves_good_replica(tmp_path):
         rel = f.relative_to(good)
         srcf = src / rel
         if srcf.exists() and f.name != "zero-byte.A":
-            assert f.read_bytes() == srcf.read_bytes(), (
-                "good replica byte-identical to source (must survive re-run)"
-            )
+            assert (
+                f.read_bytes() == srcf.read_bytes()
+            ), "good replica byte-identical to source (must survive re-run)"
 
 
 # ── device identity change on reconnect (HW BLOCKED) ───────────────
@@ -246,7 +246,9 @@ def test_edge_names_generated(tmp_path):
 # must come back BLOCKED. This is the adapter's single hard safety line.
 
 
-def _gate_for(tmp_path: Path, seed: int, domain: str, with_evidence: bool) -> ReuseEligibility:
+def _gate_for(
+    tmp_path: Path, seed: int, domain: str, with_evidence: bool
+) -> ReuseEligibility:
     aid = _asset_id(seed)
     db_dir = tmp_path / f"gate_{seed:02x}"
     db_dir.mkdir(parents=True, exist_ok=True)
@@ -258,14 +260,26 @@ def _gate_for(tmp_path: Path, seed: int, domain: str, with_evidence: bool) -> Re
         if with_evidence:
             cat.add_evidence(
                 VerificationEvidence(
-                    "e1", aid, "a.mov", "sha256", "11" * 32, "dev1",
-                    "PASS", replica_id="r1",
+                    "e1",
+                    aid,
+                    "a.mov",
+                    "sha256",
+                    "11" * 32,
+                    "dev1",
+                    "PASS",
+                    replica_id="r1",
                 )
             )
             cat.add_evidence(
                 VerificationEvidence(
-                    "e2", aid, "b.mov", "sha256", "22" * 32, "dev2",
-                    "PASS", replica_id="r2",
+                    "e2",
+                    aid,
+                    "b.mov",
+                    "sha256",
+                    "22" * 32,
+                    "dev2",
+                    "PASS",
+                    replica_id="r2",
                 )
             )
         return cat.reuse_eligibility(aid)
@@ -331,8 +345,12 @@ def test_no_scenario_yields_false_safe_to_format(tmp_path):
         assert _classify(name) == "DIT_ADAPTER_GUARD", name
     # The gate never returns SAFE_TO_FORMAT for the forged cases:
     for seed, domain in ((0x51, "fd-1"), (0x52, "unknown"), (0x53, "fd-1")):
-        g = _gate_for(tmp_path / f"agg_{seed:02x}", seed, domain,
-                      with_evidence=(seed == 0x52 and domain == "unknown"))
+        g = _gate_for(
+            tmp_path / f"agg_{seed:02x}",
+            seed,
+            domain,
+            with_evidence=(seed == 0x52 and domain == "unknown"),
+        )
         # 0x52/unknown with evidence still fails trusted-device;
         # 0x51/0x53 without evidence fail readback. All BLOCKED.
         if seed != 0x52:

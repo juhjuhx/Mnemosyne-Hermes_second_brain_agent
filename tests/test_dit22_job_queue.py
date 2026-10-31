@@ -153,9 +153,12 @@ def test_checkpoint_survives_pause_resume(tmp_path):
     q = _q(tmp_path)
     job = q.enqueue("x", idempotency_key="k")
     tok = q.lease(job["job_id"], worker="w")
-    q.update_checkpoint(job["job_id"], worker="w",
-                        checkpoint={"done": ["a.mov"], "next": "b.mov"},
-                        token=tok)
+    q.update_checkpoint(
+        job["job_id"],
+        worker="w",
+        checkpoint={"done": ["a.mov"], "next": "b.mov"},
+        token=tok,
+    )
     q.pause(job["job_id"], worker="w", token=tok)
     st = q.job_state(job["job_id"])
     assert st["state"] == "PAUSED"
@@ -174,8 +177,9 @@ def test_complete_with_drifted_manifest_fails_job(tmp_path):
     job = q.enqueue("x", {"a": "11" * 32}, idempotency_key="k")
     tok = q.lease(job["job_id"], worker="w")
     # The input snapshot on disk no longer matches what was enqueued:
-    ok = q.complete(job["job_id"], worker="w",
-                    actual_manifest={"a": "22" * 32}, token=tok)
+    ok = q.complete(
+        job["job_id"], worker="w", actual_manifest={"a": "22" * 32}, token=tok
+    )
     assert ok is False
     assert q.job_state(job["job_id"])["state"] == "FAILED"
 
@@ -185,8 +189,12 @@ def test_complete_with_matching_manifest_done(tmp_path):
     q = _q(tmp_path)
     job = q.enqueue("x", {"a": "11" * 32}, idempotency_key="k")
     tok = q.lease(job["job_id"], worker="w")
-    assert q.complete(job["job_id"], worker="w",
-                     actual_manifest={"a": "11" * 32}, token=tok) is True
+    assert (
+        q.complete(
+            job["job_id"], worker="w", actual_manifest={"a": "11" * 32}, token=tok
+        )
+        is True
+    )
     assert q.job_state(job["job_id"])["state"] == "DONE"
 
 
@@ -244,8 +252,12 @@ def test_highest_priority_enqueued_first_fifo_within(tmp_path):
     q.enqueue("mid2", idempotency_key="d", priority=3)
     order = [j["job_id"] for j in q.claim_next_batch(4)]
     keys = [q.job_state(jid)["idempotency_key"] for jid in order]
-    assert keys == ["b", "c", "d", "a"], \
-        "high(5) then FIFO of mid(3): c before d, low(1) last"
+    assert keys == [
+        "b",
+        "c",
+        "d",
+        "a",
+    ], "high(5) then FIFO of mid(3): c before d, low(1) last"
 
 
 # ── 7. v4 isolation ─────────────────────────────────────────────────

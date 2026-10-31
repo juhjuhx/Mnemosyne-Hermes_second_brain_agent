@@ -215,9 +215,7 @@ class StaticDeviceIdentityProvider(DeviceIdentityProvider):
         self._mapping = mapping
 
     def identity_for(self, path: str) -> DeviceIdentity:
-        return self._mapping.get(
-            path, DeviceIdentity("unknown", False, "unknown")
-        )
+        return self._mapping.get(path, DeviceIdentity("unknown", False, "unknown"))
 
 
 class Dit22Catalog:
@@ -434,9 +432,7 @@ class Dit22Catalog:
             for e in evs
         )
         verified = [r for r in reps if r.verified]
-        untrusted_domain = any(
-            r.failure_domain == "unknown" for r in verified
-        )
+        untrusted_domain = any(r.failure_domain == "unknown" for r in verified)
 
         gates: dict = {
             "readback_evidence": trusted_readback,

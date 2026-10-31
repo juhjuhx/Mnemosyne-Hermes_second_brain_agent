@@ -38,8 +38,7 @@ FFMPEG = "ffmpeg"
 
 def _mk(path: Path, *ffmpeg_args: str) -> Path:
     subprocess.run(
-        [FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
-         *ffmpeg_args, str(path)],
+        [FFMPEG, "-y", "-hide_banner", "-loglevel", "error", *ffmpeg_args, str(path)],
         check=True,
     )
     assert path.exists() and path.stat().st_size > 0
@@ -49,10 +48,20 @@ def _mk(path: Path, *ffmpeg_args: str) -> Path:
 def _mp4_24p(tmp_path: Path) -> Path:
     return _mk(
         tmp_path / "clip24.mp4",
-        "-f", "lavfi", "-i", "testsrc=duration=1:size=320x240:rate=24",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-color_primaries", "bt709", "-color_trc", "bt709",
-        "-colorspace", "bt709",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=duration=1:size=320x240:rate=24",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-color_primaries",
+        "bt709",
+        "-color_trc",
+        "bt709",
+        "-colorspace",
+        "bt709",
     )
 
 
@@ -85,13 +94,20 @@ def test_24p_mp4_exact_rational_fps_and_time_base(tmp_path):
 def test_29_97p_exact_rational_and_drop_family(tmp_path):
     p = _mk(
         tmp_path / "clip29.mp4",
-        "-f", "lavfi", "-i", "testsrc=duration=1:size=320x240:rate=30000/1001",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=duration=1:size=320x240:rate=30000/1001",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
     )
     m = probe(p)
     v = m.main_video()
-    assert v.r_frame_rate == "30000/1001", \
-        "29.97 must stay the exact rational string, never a rounded float"
+    assert (
+        v.r_frame_rate == "30000/1001"
+    ), "29.97 must stay the exact rational string, never a rounded float"
     assert m.fps == Fraction(30000, 1001)
     assert m.timecode == "drop", "29.97/30 family is drop-frame capable"
     assert m.timecode_basis == "fps-family"
@@ -104,24 +120,46 @@ def test_29_97p_exact_rational_and_drop_family(tmp_path):
 def test_vfr_concatenation_detected_not_assumed_cfr(tmp_path):
     a = _mk(
         tmp_path / "a.mp4",
-        "-f", "lavfi", "-i", "testsrc=duration=0.5:size=320x240:rate=60",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=duration=0.5:size=320x240:rate=60",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
     )
     b = _mk(
         tmp_path / "b.mp4",
-        "-f", "lavfi", "-i", "testsrc=duration=0.5:size=320x240:rate=24",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=duration=0.5:size=320x240:rate=24",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
     )
     (tmp_path / "list.txt").write_text(f"file '{a}'\nfile '{b}'\n")
     vfr = _mk(
         tmp_path / "vfr.mp4",
-        "-f", "concat", "-safe", "0", "-i", str(tmp_path / "list.txt"),
-        "-fps_mode", "vfr",  # keep the original per-frame timestamps
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        str(tmp_path / "list.txt"),
+        "-fps_mode",
+        "vfr",  # keep the original per-frame timestamps
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
     )
     m = probe(vfr, full_fps=True)
-    assert m.vfr_status == "vfr-likely", \
-        "non-uniform per-frame PTS must not be assumed cfr"
+    assert (
+        m.vfr_status == "vfr-likely"
+    ), "non-uniform per-frame PTS must not be assumed cfr"
 
 
 # ── 4. rotation + HDR degradation ───────────────────────────────────
@@ -133,22 +171,39 @@ def test_vfr_concatenation_detected_not_assumed_cfr(tmp_path):
 
 @pytest.mark.fixture_only
 def test_rotation_parser_on_crafted_display_matrix(tmp_path):
-    raw = json.dumps({
-        "streams": [{
-            "index": 0, "codec_type": "video", "codec_name": "h264",
-            "width": 240, "height": 320, "pix_fmt": "yuv420p",
-            "r_frame_rate": "24/1", "avg_frame_rate": "24/1",
-            "time_base": "1/24000", "start_time": "0.000000",
-            "side_data_list": [{
-                "side_data_type": "Display Matrix",
-                "side_data_value": "{rotation=-90.000000}",
-            }],
-        }],
-        "format": {"format_name": "mov,mp4,m4a,3gp,3g2,mj2",
-                   "duration": "1.000000", "nb_streams": 1},
-    })
+    raw = json.dumps(
+        {
+            "streams": [
+                {
+                    "index": 0,
+                    "codec_type": "video",
+                    "codec_name": "h264",
+                    "width": 240,
+                    "height": 320,
+                    "pix_fmt": "yuv420p",
+                    "r_frame_rate": "24/1",
+                    "avg_frame_rate": "24/1",
+                    "time_base": "1/24000",
+                    "start_time": "0.000000",
+                    "side_data_list": [
+                        {
+                            "side_data_type": "Display Matrix",
+                            "side_data_value": "{rotation=-90.000000}",
+                        }
+                    ],
+                }
+            ],
+            "format": {
+                "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+                "duration": "1.000000",
+                "nb_streams": 1,
+            },
+        }
+    )
     m = media_probe._build_probe_from_raw(
-        raw, path="x.mov", ffprobe_version="ffprobe test",
+        raw,
+        path="x.mov",
+        ffprobe_version="ffprobe test",
         source_sha256=None,
     )
     # display-matrix -90° == player-rotated +90° (the sign convention
@@ -159,19 +214,27 @@ def test_rotation_parser_on_crafted_display_matrix(tmp_path):
 @pytest.mark.fixture_only
 def test_hdr_classifier_crafted_json(tmp_path):
     # PQ (smpte2084) transfer => hdr-sdr, verified at parser level:
-    raw = json.dumps({
-        "streams": [{
-            "index": 0, "codec_type": "video", "codec_name": "h264",
-            "r_frame_rate": "24/1", "avg_frame_rate": "24/1",
-            "color_primaries": "bt2020",
-            "color_transfer": "smpte2084",
-            "color_space": "bt2020nc",
-        }],
-        "format": {"format_name": "mov,mp4,m4a,3gp,3g2,mj2",
-                   "nb_streams": 1},
-    })
+    raw = json.dumps(
+        {
+            "streams": [
+                {
+                    "index": 0,
+                    "codec_type": "video",
+                    "codec_name": "h264",
+                    "r_frame_rate": "24/1",
+                    "avg_frame_rate": "24/1",
+                    "color_primaries": "bt2020",
+                    "color_transfer": "smpte2084",
+                    "color_space": "bt2020nc",
+                }
+            ],
+            "format": {"format_name": "mov,mp4,m4a,3gp,3g2,mj2", "nb_streams": 1},
+        }
+    )
     m = media_probe._build_probe_from_raw(
-        raw, path="h.mov", ffprobe_version="ffprobe test",
+        raw,
+        path="h.mov",
+        ffprobe_version="ffprobe test",
         source_sha256=None,
     )
     assert m.video[0].hdr == "hdr-sdr"
@@ -180,7 +243,9 @@ def test_hdr_classifier_crafted_json(tmp_path):
         raw.replace("smpte2084", "bt709")
         .replace("bt2020nc", "bt709")
         .replace('"bt2020"', '"bt709"'),
-        path="s.mov", ffprobe_version="ffprobe test", source_sha256=None,
+        path="s.mov",
+        ffprobe_version="ffprobe test",
+        source_sha256=None,
     )
     assert m2.video[0].hdr == "sdr"
 
@@ -192,8 +257,9 @@ def test_rotation_attribute_present_on_real_clip(tmp_path):
     value on this ffmpeg build)."""
     p = _mp4_24p(tmp_path)
     m = probe(p)
-    assert m.video[0].rotation is None, \
-        "no display matrix in the synthetic clip -> None, never a guess"
+    assert (
+        m.video[0].rotation is None
+    ), "no display matrix in the synthetic clip -> None, never a guess"
 
 
 @pytest.mark.fixture_only
@@ -215,17 +281,34 @@ def test_hdr_transfer_degrades_to_unknown_without_guessing():
 def test_dual_audio_streams_independent(tmp_path):
     p = _mk(
         tmp_path / "dual_audio.mp4",
-        "-f", "lavfi", "-i", "testsrc=duration=1:size=320x240:rate=24",
-        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=1",
-        "-f", "lavfi", "-i", "sine=frequency=880:sample_rate=32000:duration=1",
-        "-map", "0:v", "-map", "1:a", "-map", "2:a",
-        "-c:v", "libx264", "-c:a", "aac", "-shortest",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=duration=1:size=320x240:rate=24",
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=1",
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=880:sample_rate=32000:duration=1",
+        "-map",
+        "0:v",
+        "-map",
+        "1:a",
+        "-map",
+        "2:a",
+        "-c:v",
+        "libx264",
+        "-c:a",
+        "aac",
+        "-shortest",
     )
     m = probe(p)
     assert len(m.audio) == 2, "both audio tracks must be listed"
     rates = sorted(a.sample_rate for a in m.audio if a.sample_rate)
-    assert 32000 in rates and 48000 in rates, \
-        "each stream reports its own sample rate"
+    assert 32000 in rates and 48000 in rates, "each stream reports its own sample rate"
 
 
 # ── 6. corrupt / empty ──────────────────────────────────────────────
@@ -239,8 +322,9 @@ def test_corrupt_file_raises_probe_error(tmp_path):
     truncated.write_bytes(data[:200])
     with pytest.raises(ProbeError) as exc:
         probe(truncated)
-    assert "ffprobe exited" in str(exc.value), \
-        "the error must carry the ffprobe stderr summary"
+    assert "ffprobe exited" in str(
+        exc.value
+    ), "the error must carry the ffprobe stderr summary"
 
 
 @pytest.mark.behavior_tested
@@ -249,7 +333,8 @@ def test_empty_input_refused_without_calling_ffprobe(tmp_path, monkeypatch):
     empty.write_bytes(b"")
     calls: list = []
     monkeypatch.setattr(
-        media_probe, "_run_ffprobe",
+        media_probe,
+        "_run_ffprobe",
         lambda *a, **k: calls.append(a) or "",
     )
     with pytest.raises(ProbeError, match="empty input"):
@@ -290,7 +375,8 @@ def test_cjk_unicode_path_probes(tmp_path):
 def test_network_url_refused_before_ffprobe_runs(tmp_path, monkeypatch):
     calls: list = []
     monkeypatch.setattr(
-        media_probe, "_run_ffprobe",
+        media_probe,
+        "_run_ffprobe",
         lambda *a, **k: calls.append(a) or "",
     )
     with pytest.raises(InvalidInputError, match="network URL"):
@@ -347,12 +433,11 @@ def test_camera_family_classifier_unverified_without_samples():
         (None, ".r3d", "red-mono"),
     ]:
         fam, verified = _classify_camera_family(container, [], f"x{suffix}")
-        assert fam == family and verified is False, \
-            f"{suffix}: {family} must be UNVERIFIED (no sample available)"
+        assert (
+            fam == family and verified is False
+        ), f"{suffix}: {family} must be UNVERIFIED (no sample available)"
     # container-known families may be verified against the container:
-    fam, verified = _classify_camera_family(
-        "mov,quicktime", [], "x.mov"
-    )
+    fam, verified = _classify_camera_family("mov,quicktime", [], "x.mov")
     assert fam == "quicktime" and verified is True
 
 

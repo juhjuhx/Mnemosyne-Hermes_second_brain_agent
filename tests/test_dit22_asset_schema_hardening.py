@@ -53,15 +53,21 @@ def test_upsert_does_not_clobber_known_card_and_reel(tmp_path):
         row = cat.conn.execute(
             "SELECT card_id, reel FROM dit22_asset WHERE asset_id=?", (asset.asset_id,)
         ).fetchone()
-        assert row == ("CF-A001", "A001"), "upsert must not overwrite known values with NULL"
+        assert row == (
+            "CF-A001",
+            "A001",
+        ), "upsert must not overwrite known values with NULL"
 
 
 def test_upsert_fills_missing_fields(tmp_path):
     with Dit22Catalog(tmp_path / "d.db") as cat:
         cat.upsert_asset(MediaAsset(source_sha256=_aid(2)))  # card/reel NULL
-        cat.upsert_asset(MediaAsset(source_sha256=_aid(2), card_id="SSD-B", reel="B002"))
+        cat.upsert_asset(
+            MediaAsset(source_sha256=_aid(2), card_id="SSD-B", reel="B002")
+        )
         row = cat.conn.execute(
-            "SELECT card_id, reel FROM dit22_asset WHERE asset_id=?", (cat.conn.execute("SELECT 1").fetchone()[0] and _aid(2),)
+            "SELECT card_id, reel FROM dit22_asset WHERE asset_id=?",
+            (cat.conn.execute("SELECT 1").fetchone()[0] and _aid(2),),
         ).fetchone()
         assert row == ("SSD-B", "B002"), "gap-fill must still work"
 
@@ -70,19 +76,25 @@ def test_upsert_fills_missing_fields(tmp_path):
 
 
 def test_evidence_conflict_raises_on_verdict_change(tmp_path):
-    ev = VerificationEvidence("e1", _aid(3), "A.mov", "sha256", "ab" * 32, "dev1", "PASS")
+    ev = VerificationEvidence(
+        "e1", _aid(3), "A.mov", "sha256", "ab" * 32, "dev1", "PASS"
+    )
     with Dit22Catalog(tmp_path / "d.db") as cat:
         cat.upsert_asset(MediaAsset(source_sha256=_aid(3)))
         cat.add_evidence(ev)
         # Tampered re-run tries to rewrite the verdict:
         with pytest.raises(EvidenceConflictError):
             cat.add_evidence(
-                VerificationEvidence("e1", _aid(3), "A.mov", "sha256", "ab" * 32, "dev1", "FAIL")
+                VerificationEvidence(
+                    "e1", _aid(3), "A.mov", "sha256", "ab" * 32, "dev1", "FAIL"
+                )
             )
 
 
 def test_evidence_identical_reentry_is_idempotent(tmp_path):
-    ev = VerificationEvidence("e1", _aid(4), "A.mov", "sha256", "cd" * 32, "dev1", "PASS")
+    ev = VerificationEvidence(
+        "e1", _aid(4), "A.mov", "sha256", "cd" * 32, "dev1", "PASS"
+    )
     with Dit22Catalog(tmp_path / "d.db") as cat:
         cat.upsert_asset(MediaAsset(source_sha256=_aid(4)))
         cat.add_evidence(ev)
@@ -124,7 +136,9 @@ def test_replica_conflict_on_value_change(tmp_path):
         with pytest.raises(ReplicaConflictError):
             # Tamper: same replica claimed on a different failure domain
             cat.add_replica(Replica(rid, aid, "s1", "fd-2", "/a", verified=True))
-        cat.add_replica(Replica(rid, aid, "s1", "fd-1", "/a", verified=True))  # identical OK
+        cat.add_replica(
+            Replica(rid, aid, "s1", "fd-1", "/a", verified=True)
+        )  # identical OK
 
 
 # ── Finding 1: replica count must not become SAFE_TO_FORMAT ────────
@@ -152,13 +166,19 @@ def test_reuse_gate_blocks_unknown_device_identity(tmp_path):
         cat.add_replica(Replica("r1", aid, "s1", "fd-1", "/a", verified=True))
         cat.add_replica(Replica("r2", aid, "s2", "unknown", "/b", verified=True))
         cat.add_evidence(
-            VerificationEvidence("e1", aid, "a.mov", "sha256", "11" * 32, "dev1", "PASS", replica_id="r1")
+            VerificationEvidence(
+                "e1", aid, "a.mov", "sha256", "11" * 32, "dev1", "PASS", replica_id="r1"
+            )
         )
         cat.add_evidence(
-            VerificationEvidence("e2", aid, "b.mov", "sha256", "22" * 32, "dev2", "PASS", replica_id="r2")
+            VerificationEvidence(
+                "e2", aid, "b.mov", "sha256", "22" * 32, "dev2", "PASS", replica_id="r2"
+            )
         )
         gate = cat.reuse_eligibility(aid)
-        assert gate.is_eligible is False, "unknown device identity → BLOCKED (fail-closed)"
+        assert (
+            gate.is_eligible is False
+        ), "unknown device identity → BLOCKED (fail-closed)"
         assert gate.gates["no_untrusted_device_identity"] is False
 
 
@@ -169,10 +189,14 @@ def test_reuse_gate_eligible_with_full_chain(tmp_path):
         cat.add_replica(Replica("r1", aid, "s1", "fd-1", "/a", verified=True))
         cat.add_replica(Replica("r2", aid, "s2", "fd-2", "/b", verified=True))
         cat.add_evidence(
-            VerificationEvidence("e1", aid, "a.mov", "sha256", "11" * 32, "dev1", "PASS", replica_id="r1")
+            VerificationEvidence(
+                "e1", aid, "a.mov", "sha256", "11" * 32, "dev1", "PASS", replica_id="r1"
+            )
         )
         cat.add_evidence(
-            VerificationEvidence("e2", aid, "b.mov", "sha256", "22" * 32, "dev2", "PASS", replica_id="r2")
+            VerificationEvidence(
+                "e2", aid, "b.mov", "sha256", "22" * 32, "dev2", "PASS", replica_id="r2"
+            )
         )
         gate = cat.reuse_eligibility(aid)
         assert gate.is_eligible is True
@@ -200,14 +224,18 @@ def test_independent_replicas_is_advisory_documentation(tmp_path):
 
 
 def test_failed_evidence_conflict_leaves_no_partial_state(tmp_path):
-    ev = VerificationEvidence("e1", _aid(10), "A.mov", "sha256", "ab" * 32, "dev1", "PASS")
+    ev = VerificationEvidence(
+        "e1", _aid(10), "A.mov", "sha256", "ab" * 32, "dev1", "PASS"
+    )
     with Dit22Catalog(tmp_path / "d.db") as cat:
         cat.upsert_asset(MediaAsset(source_sha256=_aid(10)))
         cat.add_evidence(ev)
         before = cat.conn.execute("SELECT * FROM dit22_evidence").fetchall()
         with pytest.raises(EvidenceConflictError):
             cat.add_evidence(
-                VerificationEvidence("e1", _aid(10), "A.mov", "sha256", "cc" * 32, "dev1", "FAIL")
+                VerificationEvidence(
+                    "e1", _aid(10), "A.mov", "sha256", "cc" * 32, "dev1", "FAIL"
+                )
             )
         after = cat.conn.execute("SELECT * FROM dit22_evidence").fetchall()
         assert before == after, "rejected tamper must not mutate committed evidence"

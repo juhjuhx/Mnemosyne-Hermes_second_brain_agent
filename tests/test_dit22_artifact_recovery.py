@@ -84,8 +84,15 @@ def _lease(tmp_path: Path, key: str = "j") -> tuple:
     return q, job, tok
 
 
-def _write_receipt(out: Path, job: str, token: str, proxy_sha: str,
-                   *, argv_last: str | None = None, corrupt: bool = False) -> Path:
+def _write_receipt(
+    out: Path,
+    job: str,
+    token: str,
+    proxy_sha: str,
+    *,
+    argv_last: str | None = None,
+    corrupt: bool = False,
+) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     p = _receipt(out, job)
     if corrupt:
@@ -102,16 +109,21 @@ def _write_receipt(out: Path, job: str, token: str, proxy_sha: str,
         "degraded": False,
         "ffmpeg_version": "t",
         "status": "published",
-        "argv": ["ffmpeg", "-hide_banner", "-i",
-                 argv_last if argv_last is not None else str(_staged(out, job, token))],
+        "argv": [
+            "ffmpeg",
+            "-hide_banner",
+            "-i",
+            argv_last if argv_last is not None else str(_staged(out, job, token)),
+        ],
     }
     p.write_text(json.dumps(rec, ensure_ascii=False))
     return p
 
 
 def _expire(q, job: str) -> None:
-    q.conn.execute("UPDATE dit22_job SET lease_expires_at=? WHERE job_id=?",
-                   (time.time() - 5, job))
+    q.conn.execute(
+        "UPDATE dit22_job SET lease_expires_at=? WHERE job_id=?", (time.time() - 5, job)
+    )
     q.conn.commit()
 
 
@@ -192,11 +204,13 @@ def test_n3_healthy_published_not_clobbered_by_failed_retry(tmp_path):
     _expire(q, job)
     live = q.lease(job, "wA", ttl_seconds=60)
     res = apply_recovery(out, job, rep, queue=q, worker="wA", token=live)
-    assert _sha(_published(out, job).read_bytes()) == _sha(healthy), \
-        "the healthy published version must survive a failed retry"
+    assert _sha(_published(out, job).read_bytes()) == _sha(
+        healthy
+    ), "the healthy published version must survive a failed retry"
     assert not zk.exists(), "zombie staging must be discarded"
-    assert zk.parent in [Path(p) for p in res.discarded], \
-        "the zombie generation dir must be in the discarded set"
+    assert zk.parent in [
+        Path(p) for p in res.discarded
+    ], "the zombie generation dir must be in the discarded set"
 
 
 # ── N4: corrupt receipt / unattributable orphan proxy ────────────
@@ -265,8 +279,9 @@ def test_n5_zombie_staging_fenced_from_stale_worker(tmp_path):
 
     # the STALE worker (zombie's own dead token) must be fenced from it:
     rep2 = reconcile_proxy_job(out, job, expected_token=zombie_tok)
-    res_zombie = apply_recovery(out, job, rep2, queue=q, worker="zombie",
-                                token=zombie_tok)
+    res_zombie = apply_recovery(
+        out, job, rep2, queue=q, worker="zombie", token=zombie_tok
+    )
     assert res_zombie.completed is False
     assert "lease" in res_zombie.reason.lower()
 
@@ -278,7 +293,7 @@ def test_n5_zombie_staging_fenced_from_stale_worker(tmp_path):
 def test_n6_takeover_then_recovery_of_new_generation(tmp_path):
     q, job, _tok_a = _lease(tmp_path, key="j6")
     out = tmp_path / "out"
-    _expire(q, job)                      # A's lease dies (worker restart)
+    _expire(q, job)  # A's lease dies (worker restart)
     tok_b = q.lease(job, "wB", ttl_seconds=60)  # takeover, new generation
     payload = b"generation-b"
     st = _staged(out, job, tok_b)
@@ -363,8 +378,11 @@ def test_n9_sha_drift_between_assessment_and_apply(tmp_path):
     # original hash): refuse, and surface the drift.
     assert res.completed is False
     assert not _published(out, job).exists()
-    assert "drift" in res.reason.lower() or ISSUE_SHA_DRIFT in \
-        reconcile_proxy_job(out, job, expected_token=tok).issues_by_kind()
+    assert (
+        "drift" in res.reason.lower()
+        or ISSUE_SHA_DRIFT
+        in reconcile_proxy_job(out, job, expected_token=tok).issues_by_kind()
+    )
 
 
 # ── N10: two recoveries must be idempotent ──────────────────────
@@ -389,8 +407,9 @@ def test_n10_recovery_is_idempotent(tmp_path):
     assert _sha(_published(out, job).read_bytes()) == first_sha
     assert rep2.is_published() and rep2.published_sha == first_sha
     assert not st.exists()
-    assert "complete_rename" not in r2.applied, \
-        "a second recovery over a healthy publish must not re-rename"
+    assert (
+        "complete_rename" not in r2.applied
+    ), "a second recovery over a healthy publish must not re-rename"
     assert r2.completed is True
 
 
@@ -466,8 +485,9 @@ def test_n12a_valid_newer_generation_rotates_in_under_own_lease(tmp_path):
     # the holder is completing its OWN generation -> atomic rotation in:
     res = apply_recovery(out, job, rep, queue=q, worker="w1", token=tok)
     assert res.completed is True
-    assert _sha(_published(out, job).read_bytes()) == _sha(newer_b), \
-        "a valid newer generation under its own live lease rotates in"
+    assert _sha(_published(out, job).read_bytes()) == _sha(
+        newer_b
+    ), "a valid newer generation under its own live lease rotates in"
     assert reconcile_proxy_job(out, job, expected_token=tok).is_published()
 
 
@@ -496,10 +516,12 @@ def test_n12b_crashed_foreign_generation_is_blocked_older_preserved(tmp_path):
     res = apply_recovery(out, job, rep, queue=q, worker="wC", token=tok_holder)
     assert res.completed is False
     assert len(res.deferred) > 0, "a foreign generation's pending is BLOCKED"
-    assert _sha(_published(out, job).read_bytes()) == _sha(healthy_a), \
-        "the healthy older version must survive a crashed foreign generation"
-    assert st_b.exists() and _receipt(out, job).exists(), \
-        "B's evidence is preserved, not destroyed"
+    assert _sha(_published(out, job).read_bytes()) == _sha(
+        healthy_a
+    ), "the healthy older version must survive a crashed foreign generation"
+    assert (
+        st_b.exists() and _receipt(out, job).exists()
+    ), "B's evidence is preserved, not destroyed"
 
 
 # ── N13: a receipt in our namespace naming ANOTHER job ────────────
@@ -512,7 +534,7 @@ def test_n13_foreign_job_receipt_never_confirm_nor_quarantine(tmp_path):
     healthy = b"our-healthy"
     _published(out, job).parent.mkdir(parents=True, exist_ok=True)
     _published(out, job).write_bytes(healthy)
-    _write_receipt(out, job, tok, _sha(healthy))   # our valid receipt
+    _write_receipt(out, job, tok, _sha(healthy))  # our valid receipt
     # tamper: flip the receipt's job_id to a FOREIGN job under the same slot:
     rec = json.loads(_receipt(out, job).read_text())
     rec["job_id"] = "some-other-job"
@@ -524,8 +546,9 @@ def test_n13_foreign_job_receipt_never_confirm_nor_quarantine(tmp_path):
     # a foreign receipt cannot confirm OUR publish -> fail-closed, no auto
     # confirm; the artifact AND the (foreign) receipt are both preserved:
     assert res.completed is False
-    assert _sha(_published(out, job).read_bytes()) == _sha(healthy), \
-        "the artifact is preserved, not quarantined, when its receipt is foreign"
+    assert _sha(_published(out, job).read_bytes()) == _sha(
+        healthy
+    ), "the artifact is preserved, not quarantined, when its receipt is foreign"
     assert _receipt(out, job).exists(), "the foreign receipt is preserved"
 
 
@@ -564,9 +587,12 @@ def test_n14_live_holder_blocks_foreign_generation_pending(tmp_path):
     res = apply_recovery(out, job, rep, queue=q, worker="w1", token=tok)
     assert res.completed is False
     assert len(res.deferred) > 0, "a foreign generation's pending is BLOCKED"
-    assert "lease fence" not in res.reason, \
-        "this must be the generation-mismatch defer, not the lease fence"
-    assert _sha(_published(out, job).read_bytes()) == _sha(older), \
-        "the older healthy exposed bytes must survive a foreign pending"
-    assert st_b.exists() and _receipt(out, job).exists(), \
-        "the foreign generation's evidence is preserved, not destroyed"
+    assert (
+        "lease fence" not in res.reason
+    ), "this must be the generation-mismatch defer, not the lease fence"
+    assert _sha(_published(out, job).read_bytes()) == _sha(
+        older
+    ), "the older healthy exposed bytes must survive a foreign pending"
+    assert (
+        st_b.exists() and _receipt(out, job).exists()
+    ), "the foreign generation's evidence is preserved, not destroyed"

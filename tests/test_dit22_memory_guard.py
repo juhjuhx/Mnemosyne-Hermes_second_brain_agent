@@ -49,14 +49,28 @@ W, H = 240, 160
 FRAME_BYTES = W * H * 3  # 115200 (rgb24)
 
 
-def _mk_clip(tmp: Path, *, rate="25", dur="0.3", name="clip.mp4",
-             color=None) -> Path:
+def _mk_clip(tmp: Path, *, rate="25", dur="0.3", name="clip.mp4", color=None) -> Path:
     out = tmp / name
-    args = [FFMPEG, "-hide_banner", "-loglevel", "error", "-y",
-            "-f", "lavfi", "-i",
-            (f"color={color}:d={dur}:s={W}x{H}:r={rate}"
-             if color else f"testsrc2=d={dur}:r={rate}:s={W}x{H}"),
-            "-c:v", "libx264", "-pix_fmt", "yuv420p", str(out)]
+    args = [
+        FFMPEG,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        (
+            f"color={color}:d={dur}:s={W}x{H}:r={rate}"
+            if color
+            else f"testsrc2=d={dur}:r={rate}:s={W}x{H}"
+        ),
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        str(out),
+    ]
     p = subprocess.run(args, capture_output=True, timeout=60, check=False)
     assert p.returncode == 0, f"fixture encode failed: {p.stderr[:300]!r}"
     return out
@@ -68,14 +82,16 @@ def _fake_ffmpeg_script(tmp: Path, raw_bytes: bytes, *, hang_s: int = 0) -> Path
     no real ffmpeg involvement; the hang case is exercised with a SMALL
     real timeout in the test, so nothing actually waits."""
     scr = tmp / "fake_ffmpeg.py"
-    body = "\n".join([
-        f"#!{sys.executable}",
-        "import sys, time",
-        f"if {hang_s}:",
-        f"    time.sleep({hang_s})",
-        f"sys.stdout.buffer.write(bytes.fromhex('{raw_bytes.hex()}'))",
-        "sys.stdout.flush()",
-    ])
+    body = "\n".join(
+        [
+            f"#!{sys.executable}",
+            "import sys, time",
+            f"if {hang_s}:",
+            f"    time.sleep({hang_s})",
+            f"sys.stdout.buffer.write(bytes.fromhex('{raw_bytes.hex()}'))",
+            "sys.stdout.flush()",
+        ]
+    )
     scr.write_text(body)
     scr.chmod(scr.stat().st_mode | stat.S_IEXEC)
     return scr
@@ -108,15 +124,27 @@ def test_t2_bounded_stream_yields_frames_and_stays_O_one_frame(tmp_path):
     long_ = _mk_clip(tmp_path, rate="25", dur="2.4", name="l.mp4")  # 60 fr
     stats_s, stats_l = {}, {}
     for idx, arr in iter_rawvideo_frames(
-        short, W, H, total_frames=6, ffmpeg_bin=FFMPEG,
-        byte_budget=FRAME_BYTES * 10, chunk_bytes=chunk, stats=stats_s,
+        short,
+        W,
+        H,
+        total_frames=6,
+        ffmpeg_bin=FFMPEG,
+        byte_budget=FRAME_BYTES * 10,
+        chunk_bytes=chunk,
+        stats=stats_s,
     ):
         assert idx in range(6)
         assert arr.shape == (H, W, 3) and arr.dtype == np.uint8
     assert stats_s["frames_yielded"] == 6
     for _idx, _arr in iter_rawvideo_frames(
-        long_, W, H, total_frames=60, ffmpeg_bin=FFMPEG,
-        byte_budget=FRAME_BYTES * 80, chunk_bytes=chunk, stats=stats_l,
+        long_,
+        W,
+        H,
+        total_frames=60,
+        ffmpeg_bin=FFMPEG,
+        byte_budget=FRAME_BYTES * 80,
+        chunk_bytes=chunk,
+        stats=stats_l,
     ):
         pass  # consume, don't hold
     assert stats_l["frames_yielded"] == 60
@@ -124,12 +152,14 @@ def test_t2_bounded_stream_yields_frames_and_stays_O_one_frame(tmp_path):
     # a 6-frame and a 60-frame clip (both capped at chunk + one frame),
     # so pixel memory does NOT grow with clip length:
     assert stats_s["peak_buffer_bytes"] == stats_l["peak_buffer_bytes"]
-    assert stats_s["peak_buffer_bytes"] <= chunk + FRAME_BYTES, \
-        "sliding buffer high-water exceeds the O(1) bound (chunk + frame)"
+    assert (
+        stats_s["peak_buffer_bytes"] <= chunk + FRAME_BYTES
+    ), "sliding buffer high-water exceeds the O(1) bound (chunk + frame)"
     # and it is far below a 60-frame whole-clip total (the failure mode
     # a capture_output implementation would hit):
-    assert stats_s["peak_buffer_bytes"] < FRAME_BYTES * 60, \
-        "buffer high-water must stay bounded, not track clip length"
+    assert (
+        stats_s["peak_buffer_bytes"] < FRAME_BYTES * 60
+    ), "buffer high-water must stay bounded, not track clip length"
 
 
 @pytest.mark.behavior_tested
@@ -137,7 +167,10 @@ def test_t3_streaming_stops_cleanly_at_max_frames(tmp_path):
     clip = _mk_clip(tmp_path, rate="25", dur="0.24")
     p = _probe_clip(clip)
     _cuts, ev = content_diff_bounded(
-        clip, p, max_frames=2, byte_budget=FRAME_BYTES * 10,
+        clip,
+        p,
+        max_frames=2,
+        byte_budget=FRAME_BYTES * 10,
         ffmpeg_bin=FFMPEG,
     )
     assert ev.frames_processed == 2
@@ -151,11 +184,17 @@ def test_t4_byte_budget_exceeded_fails_closed(tmp_path):
     # fake ffmpeg streams 3 frames' worth of bytes; the budget allows 2:
     fake = _fake_ffmpeg_script(tmp_path, b"\x00" * (FRAME_BYTES * 3))
     with pytest.raises(MemoryBudgetExceeded) as ei:
-        list(iter_rawvideo_frames(
-            "whatever", W, H, total_frames=3,
-            byte_budget=FRAME_BYTES * 2 + FRAME_BYTES // 2,
-            ffmpeg_bin=str(fake), chunk_bytes=FRAME_BYTES,
-        ))
+        list(
+            iter_rawvideo_frames(
+                "whatever",
+                W,
+                H,
+                total_frames=3,
+                byte_budget=FRAME_BYTES * 2 + FRAME_BYTES // 2,
+                ffmpeg_bin=str(fake),
+                chunk_bytes=FRAME_BYTES,
+            )
+        )
     assert ei.value.frames_processed == 2
     assert ei.value.frame_bytes == FRAME_BYTES
 
@@ -167,15 +206,25 @@ def test_t5_truncated_raw_eof_fails_closed(tmp_path):
     fake = _fake_ffmpeg_script(tmp_path, b"\x00" * (FRAME_BYTES * 2))
     p = _probe_clip(_mk_clip(tmp_path, dur="0.12", name="ref.mp4"))
     with pytest.raises(TruncatedRawVideo):
-        list(iter_rawvideo_frames(
-            "whatever", W, H, total_frames=3,
-            byte_budget=FRAME_BYTES * 10,
-            ffmpeg_bin=str(fake), chunk_bytes=FRAME_BYTES,
-        ))
+        list(
+            iter_rawvideo_frames(
+                "whatever",
+                W,
+                H,
+                total_frames=3,
+                byte_budget=FRAME_BYTES * 10,
+                ffmpeg_bin=str(fake),
+                chunk_bytes=FRAME_BYTES,
+            )
+        )
     # and the P12.1 bounded content-diff surfaces the same truncation:
     _cuts, ev = content_diff_bounded(
-        "whatever", p, total_frames=3, byte_budget=FRAME_BYTES * 10,
-        ffmpeg_bin=str(fake), chunk_bytes=FRAME_BYTES,
+        "whatever",
+        p,
+        total_frames=3,
+        byte_budget=FRAME_BYTES * 10,
+        ffmpeg_bin=str(fake),
+        chunk_bytes=FRAME_BYTES,
     )
     assert ev.truncated is True and ev.budget_hit is False
     assert ev.frames_processed == 2, "the two decoded frames are the truth"
@@ -187,27 +236,62 @@ def test_t6_vfr_source_refused(tmp_path):
     b = tmp_path / "b.mp4"
     for r, path in (("24", a), ("48", b)):
         p = subprocess.run(
-            [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-             "-i", f"testsrc2=d=0.25:r={r}:s={W//2}x{H//2}", "-c:v", "libx264",
-             str(path)],
-            capture_output=True, timeout=60, check=False,
+            [
+                FFMPEG,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"testsrc2=d=0.25:r={r}:s={W//2}x{H//2}",
+                "-c:v",
+                "libx264",
+                str(path),
+            ],
+            capture_output=True,
+            timeout=60,
+            check=False,
         )
         assert p.returncode == 0, p.stderr[:300]
     vfr_src = tmp_path / "vfr.mp4"
     p = subprocess.run(
-        [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-i", str(a),
-         "-i", str(b), "-filter_complex", "[0:v][1:v]concat=n=2:v=1:a=0",
-         "-fps_mode", "vfr", "-pix_fmt", "yuv420p", "-c:v", "libx264",
-         str(vfr_src)],
-        capture_output=True, timeout=60, check=False,
+        [
+            FFMPEG,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(a),
+            "-i",
+            str(b),
+            "-filter_complex",
+            "[0:v][1:v]concat=n=2:v=1:a=0",
+            "-fps_mode",
+            "vfr",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:v",
+            "libx264",
+            str(vfr_src),
+        ],
+        capture_output=True,
+        timeout=60,
+        check=False,
     )
     assert p.returncode == 0, p.stderr[:300]
     probe_vfr = _probe_clip(vfr_src, full_fps=True)
     assert probe_vfr.vfr_status == "vfr-likely"
     with pytest.raises(VfrGridRefused):
-        content_diff_bounded(vfr_src, probe_vfr, total_frames=10,
-                             byte_budget=FRAME_BYTES * 40,
-                             ffmpeg_bin=FFMPEG)
+        content_diff_bounded(
+            vfr_src,
+            probe_vfr,
+            total_frames=10,
+            byte_budget=FRAME_BYTES * 40,
+            ffmpeg_bin=FFMPEG,
+        )
 
 
 @pytest.mark.behavior_tested
@@ -216,11 +300,17 @@ def test_t7_decode_timeout_kills_child(tmp_path):
     fake = _fake_ffmpeg_script(tmp_path, b"", hang_s=30)
     p = _probe_clip(_mk_clip(tmp_path, dur="0.12", name="ref.mp4"))
     with pytest.raises(DecodeTimeout):
-        list(iter_rawvideo_frames(
-            "whatever", W, H, total_frames=1,
-            byte_budget=FRAME_BYTES * 10,
-            ffmpeg_bin=str(fake), timeout_s=1.0,
-        ))
+        list(
+            iter_rawvideo_frames(
+                "whatever",
+                W,
+                H,
+                total_frames=1,
+                byte_budget=FRAME_BYTES * 10,
+                ffmpeg_bin=str(fake),
+                timeout_s=1.0,
+            )
+        )
     # the source fixture is untouched (read-only contract):
     assert p is not None and len(p.raw_json) > 0
 
@@ -231,23 +321,56 @@ def test_t8_content_diff_bounded_finds_the_hard_cut(tmp_path):
     white = tmp_path / "white.mp4"
     for color, path in (("black", black), ("white", white)):
         p = subprocess.run(
-            [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-             "-i", f"color={color}:d=0.4:s={W}x{H}:r=25", "-c:v", "libx264",
-             str(path)],
-            capture_output=True, timeout=60, check=False,
+            [
+                FFMPEG,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"color={color}:d=0.4:s={W}x{H}:r=25",
+                "-c:v",
+                "libx264",
+                str(path),
+            ],
+            capture_output=True,
+            timeout=60,
+            check=False,
         )
         assert p.returncode == 0, p.stderr[:300]
     joined = tmp_path / "two_blocks.mp4"
     p = subprocess.run(
-        [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-i", str(black),
-         "-i", str(white), "-filter_complex", "[0:v][1:v]concat=n=2:v=1:a=0",
-         "-pix_fmt", "yuv420p", "-c:v", "libx264", str(joined)],
-        capture_output=True, timeout=60, check=False,
+        [
+            FFMPEG,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(black),
+            "-i",
+            str(white),
+            "-filter_complex",
+            "[0:v][1:v]concat=n=2:v=1:a=0",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:v",
+            "libx264",
+            str(joined),
+        ],
+        capture_output=True,
+        timeout=60,
+        check=False,
     )
     assert p.returncode == 0, p.stderr[:300]
     probe_j = _probe_clip(joined, full_fps=True)
     cuts, ev = content_diff_bounded(
-        joined, probe_j, total_frames=20, byte_budget=FRAME_BYTES * 40,
+        joined,
+        probe_j,
+        total_frames=20,
+        byte_budget=FRAME_BYTES * 40,
         ffmpeg_bin=FFMPEG,
     )
     assert len(cuts) == 1, f"expected exactly one hard cut, got {cuts}"
@@ -256,7 +379,7 @@ def test_t8_content_diff_bounded_finds_the_hard_cut(tmp_path):
     assert ev.frames_processed == 20
     assert ev.truncated is False
     assert ev.long_format_accepted is False  # a short clip never claims
-                                              # long-form acceptance
+    # long-form acceptance
 
 
 @pytest.mark.behavior_tested
@@ -264,23 +387,30 @@ def test_t9_memory_evidence_carries_measured_peaks(tmp_path):
     clip = _mk_clip(tmp_path, rate="25", dur="0.24")
     p = _probe_clip(clip)
     _cuts, ev = content_diff_bounded(
-        clip, p, total_frames=6, byte_budget=FRAME_BYTES * 10,
-        ffmpeg_bin=FFMPEG, chunk_bytes=FRAME_BYTES,
+        clip,
+        p,
+        total_frames=6,
+        byte_budget=FRAME_BYTES * 10,
+        ffmpeg_bin=FFMPEG,
+        chunk_bytes=FRAME_BYTES,
     )
     assert ev.peak_child_rss_bytes > 0, "child RSS must be MEASURED, not 0"
-    assert ev.peak_python_alloc_bytes > 0, \
-        "python-side peak must come from a real allocator measurement"
+    assert (
+        ev.peak_python_alloc_bytes > 0
+    ), "python-side peak must come from a real allocator measurement"
     assert ev.sampled_params["byte_budget"] == FRAME_BYTES * 10
     assert ev.sampled_params["chunk_bytes"] == FRAME_BYTES
     # the O(1) property, stated against the DETERMINISTIC per-run buffer
     # high-water: the sliding buffer must never exceed one chunk + one
     # frame — INDEPENDENT of clip length (the whole-clip total is 6x):
     assert ev.peak_buffer_bytes > 0, "buffer high-water must be measured"
-    assert ev.peak_buffer_bytes <= FRAME_BYTES * 2, \
-        f"buffer high-water {ev.peak_buffer_bytes} B exceeds the " \
+    assert ev.peak_buffer_bytes <= FRAME_BYTES * 2, (
+        f"buffer high-water {ev.peak_buffer_bytes} B exceeds the "
         f"O(1) bound (one chunk + one frame = {FRAME_BYTES * 2} B)"
-    assert ev.peak_buffer_bytes < FRAME_BYTES * 6, \
-        "a capture_output-style buffer would approach the whole-clip total"
+    )
+    assert (
+        ev.peak_buffer_bytes < FRAME_BYTES * 6
+    ), "a capture_output-style buffer would approach the whole-clip total"
     # evidence is machine-readable (audit trail):
     blob = json.loads(ev.to_json())
     assert blob["frames_processed"] == 6
@@ -297,8 +427,14 @@ def test_t10_refusal_paths_have_no_side_effects(tmp_path):
     assert plan.feasible is False
     # and a max_frames run leaves the source byte-identical (read-only):
     before = clip.read_bytes()
-    content_diff_bounded(clip, p, total_frames=2, max_frames=2,
-                        byte_budget=FRAME_BYTES * 10, ffmpeg_bin=FFMPEG)
+    content_diff_bounded(
+        clip,
+        p,
+        total_frames=2,
+        max_frames=2,
+        byte_budget=FRAME_BYTES * 10,
+        ffmpeg_bin=FFMPEG,
+    )
     assert clip.read_bytes() == before
 
 
@@ -323,16 +459,23 @@ def test_t11_full_regression_boundary(tmp_path):
     # (nothing may ever `git add` it); on a delivered/CI clone it is
     # legitimately absent, so the assertion only guards the dev tree.
     import subprocess as sp
+
     repo = Path(__file__).resolve().parent.parent
     head = sp.run(
         ["git", "rev-parse", "HEAD"],
-        cwd=repo, capture_output=True, text=True, check=False,
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
     ).stdout.strip()
     cached = sp.run(
         ["git", "diff", "--cached", "--name-only"],
-        cwd=repo, capture_output=True, text=True, check=False,
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
     ).stdout
-    staged = [l for l in cached.splitlines() if l]
+    staged = [line for line in cached.splitlines() if line]
 
     if head == "3d3a2a7bcc16ca68ac26acff51d9ddbbd0f1394c":
         # transient dev tree: P12 staged surface must hold verbatim.
@@ -340,13 +483,17 @@ def test_t11_full_regression_boundary(tmp_path):
         assert (repo / "-encoders").exists(), "protected -encoders missing"
     else:
         # delivered tree: P12 code files byte-identical to their commit.
-        for f in ["src/mnemosyne_dit/scene_detect.py",
-                  "tests/test_dit22_scene_detect.py"]:
-            blob = sp.run(["git", "show", "HEAD:" + f],
-                          cwd=repo, capture_output=True, check=False)
+        for f in [
+            "src/mnemosyne_dit/scene_detect.py",
+            "tests/test_dit22_scene_detect.py",
+        ]:
+            blob = sp.run(
+                ["git", "show", "HEAD:" + f], cwd=repo, capture_output=True, check=False
+            )
             assert blob.returncode == 0, f"{f} not present at HEAD"
-            assert blob.stdout == (repo / f).read_bytes(), \
-                f"{f} diverged from its committed P12 content"
+            assert (
+                blob.stdout == (repo / f).read_bytes()
+            ), f"{f} diverged from its committed P12 content"
 
 
 @pytest.mark.behavior_tested
@@ -358,5 +505,10 @@ def test_t12_fps_unknown_refused(tmp_path):
     p_no_fps.fps = None
     p_no_fps.vfr_status = "unknown"
     with pytest.raises((VfrGridRefused, ValueError, MemoryBudgetExceeded)):
-        content_diff_bounded(clip, p_no_fps, total_frames=6,
-                             byte_budget=FRAME_BYTES * 10, ffmpeg_bin=FFMPEG)
+        content_diff_bounded(
+            clip,
+            p_no_fps,
+            total_frames=6,
+            byte_budget=FRAME_BYTES * 10,
+            ffmpeg_bin=FFMPEG,
+        )

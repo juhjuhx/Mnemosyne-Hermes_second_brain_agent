@@ -145,7 +145,9 @@ def detect_editor_capabilities(ffmpeg_bin: str = "ffmpeg") -> set[str]:
     try:
         p = subprocess.run(
             [ffmpeg_bin, "-hide_banner", "-encoders"],
-            capture_output=True, timeout=30, check=False,
+            capture_output=True,
+            timeout=30,
+            check=False,
         )
         text = (p.stdout or b"").decode("utf-8", "replace")
         if re.search(r"\bprores\b", text):
@@ -160,7 +162,9 @@ def detect_editor_capabilities(ffmpeg_bin: str = "ffmpeg") -> set[str]:
 # ── subprocess helpers ─────────────────────────────────────────────
 
 
-def _run_ffmpeg(ffmpeg_bin: str, args: list[str], timeout_s: float) -> tuple[int, bytes, bytes]:
+def _run_ffmpeg(
+    ffmpeg_bin: str, args: list[str], timeout_s: float
+) -> tuple[int, bytes, bytes]:
     """Run ffmpeg; return (returncode, stdout, stderr). Timeouts and
     missing-binary are reported here (encode stage) as a non-zero code
     with a diagnostic in stderr."""
@@ -169,7 +173,9 @@ def _run_ffmpeg(ffmpeg_bin: str, args: list[str], timeout_s: float) -> tuple[int
     try:
         proc = subprocess.run(
             [ffmpeg_bin, "-hide_banner", *args],
-            capture_output=True, timeout=timeout_s, check=False,
+            capture_output=True,
+            timeout=timeout_s,
+            check=False,
         )
         return proc.returncode, proc.stdout, proc.stderr
     except subprocess.TimeoutExpired:
@@ -180,8 +186,9 @@ def _run_ffmpeg(ffmpeg_bin: str, args: list[str], timeout_s: float) -> tuple[int
 
 def _ffmpeg_version(ffmpeg_bin: str) -> str:
     try:
-        p = subprocess.run([ffmpeg_bin, "-version"], capture_output=True,
-                           timeout=15, check=False)
+        p = subprocess.run(
+            [ffmpeg_bin, "-version"], capture_output=True, timeout=15, check=False
+        )
         first = (p.stdout or b"").decode("utf-8", "replace").splitlines()
         return first[0].strip() if first else "unknown"
     except (subprocess.SubprocessError, OSError):
@@ -202,8 +209,9 @@ def find_stale_proxies(out_dir: Path, job_id: str, expected_token: str) -> list[
     if not out_dir.is_dir():
         return stale
     receipt_rx = re.compile(r"^(?P<base>.+)\.receipt\.json$")
-    receipts = [f for f in out_dir.iterdir()
-                if f.is_file() and f.name.endswith(".receipt.json")]
+    receipts = [
+        f for f in out_dir.iterdir() if f.is_file() and f.name.endswith(".receipt.json")
+    ]
     for rfile in receipts:
         m = receipt_rx.match(rfile.name)
         if not m:
@@ -231,8 +239,9 @@ def delete_proxies(out_dir: Path, job_id: str | None = None) -> int:
     if not out_dir.is_dir():
         return 0
     receipt_rx = re.compile(r"^(?P<base>.+)\.receipt\.json$")
-    receipts = [f for f in out_dir.iterdir()
-                if f.is_file() and f.name.endswith(".receipt.json")]
+    receipts = [
+        f for f in out_dir.iterdir() if f.is_file() and f.name.endswith(".receipt.json")
+    ]
     for rfile in receipts:
         m = receipt_rx.match(rfile.name)
         if not m:
@@ -261,8 +270,16 @@ def _pick_encoder(profile: str, caps: set[str]) -> tuple[list[str], str, str, bo
     """Build (video-encoder args, codec, container, degraded). The
     container is chosen from the codec's natural muxer, not the caller."""
     if profile == "browser":
-        args = ["-c:v", "libx264", "-preset", "veryfast",
-                "-profile:v", "main", "-pix_fmt", "yuv420p"]
+        args = [
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-profile:v",
+            "main",
+            "-pix_fmt",
+            "yuv420p",
+        ]
         return args, "h264", "mp4", False
     # editor: pick the best available editor encoder, else degrade.
     if "dnxhr" in caps:
@@ -274,8 +291,16 @@ def _pick_encoder(profile: str, caps: set[str]) -> tuple[list[str], str, str, bo
         # h264 posing as ProRes.
         return ["-c:v", "prores"], "prores", "mov", False
     # honest fallback: h264, flagged as degraded
-    args = ["-c:v", "libx264", "-preset", "veryfast",
-            "-profile:v", "main", "-pix_fmt", "yuv420p"]
+    args = [
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-profile:v",
+        "main",
+        "-pix_fmt",
+        "yuv420p",
+    ]
     return args, "h264", "mov", True
 
 
@@ -361,8 +386,7 @@ def generate_proxy(
         ("http:", "ftp:", "data:", "srt:", "udp:")
     ):
         raise ProxyInputError(
-            f"refusing to encode a network URL ({source!r}); pass a local "
-            f"file path"
+            f"refusing to encode a network URL ({source!r}); pass a local " f"file path"
         )
     if profile not in ("browser", "editor"):
         raise ProxyInputError(f"unknown profile {profile!r}")
@@ -436,7 +460,8 @@ def generate_proxy(
             # reaches staging or ffmpeg.
             if decision.asset_id is not None:
                 record_admission_evidence(
-                    catalog, decision,
+                    catalog,
+                    decision,
                     job_id=job_id,
                     evidence_id=f"adm-{job_id}-{decision.fingerprint[:12]}",
                 )
@@ -453,7 +478,8 @@ def generate_proxy(
             raise ProxyInputError(f"empty source: {src}")
         # the admission outcome is part of the job's controlled evidence:
         record_admission_evidence(
-            catalog, decision,
+            catalog,
+            decision,
             job_id=job_id,
             evidence_id=f"adm-{job_id}-ok-{decision.fingerprint[:12]}",
         )
@@ -478,8 +504,7 @@ def generate_proxy(
         except KeyError:
             return False
         unexpired = (
-            row["lease_expires_at"] is None
-            or time.time() < row["lease_expires_at"]
+            row["lease_expires_at"] is None or time.time() < row["lease_expires_at"]
         )
         return (
             row["state"] == "LEASED"
@@ -516,9 +541,12 @@ def generate_proxy(
             if sc.lower().endswith(".sidecar.json"):
                 s_reel = sc
         audio_mapping = [
-            {"index": a.index, "codec": a.codec,
-             "sample_rate": a.sample_rate,
-             "channel_layout": a.channel_layout}
+            {
+                "index": a.index,
+                "codec": a.codec,
+                "sample_rate": a.sample_rate,
+                "channel_layout": a.channel_layout,
+            }
             for a in source_probe.audio
         ]
         source_sha = source_probe.source_sha256
@@ -529,9 +557,12 @@ def generate_proxy(
             s_fps, s_tc = s_probe.fps, s_probe.timecode
             s_reel = None
             audio_mapping = [
-                {"index": a.index, "codec": a.codec,
-                 "sample_rate": a.sample_rate,
-                 "channel_layout": a.channel_layout}
+                {
+                    "index": a.index,
+                    "codec": a.codec,
+                    "sample_rate": a.sample_rate,
+                    "channel_layout": a.channel_layout,
+                }
                 for a in s_probe.audio
             ]
             source_sha = s_probe.source_sha256
@@ -566,7 +597,10 @@ def generate_proxy(
         ff_args += ["-r", str(fps_cap)]
     if profile == "browser":
         # cap height for a browser-friendly proxy (never upscale)
-        ff_args += ["-vf", f"scale='min(iw,{_BROWSER_MAX_HEIGHT * 2})':'min(ih,{_BROWSER_MAX_HEIGHT})'"]
+        ff_args += [
+            "-vf",
+            f"scale='min(iw,{_BROWSER_MAX_HEIGHT * 2})':'min(ih,{_BROWSER_MAX_HEIGHT})'",
+        ]
     # carry source audio 1:1 (a264/aac floor); if none, don't add
     if audio_mapping:
         ff_args += ["-c:a", "aac", "-b:a", "192k"]

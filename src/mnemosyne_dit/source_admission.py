@@ -59,9 +59,7 @@ class AdmissionDecision:
     fingerprint: str = ""
 
 
-def _trusted_readback(
-    catalog: Dit22Catalog, asset_id: str
-) -> bool:
+def _trusted_readback(catalog: Dit22Catalog, asset_id: str) -> bool:
     """P07.1 trust-source rule (mirrors `reuse_eligibility`'s
     readback gate): a PASS evidence row is trusted ONLY when its
     `replica_id` references an existing VERIFIED replica that belongs
@@ -77,15 +75,26 @@ def _trusted_readback(
     )
 
 
-def _fingerprint(admitted: bool, reason: str, asset_id: str | None,
-                 replica_id: str | None, storage_id: str,
-                 replica_path: str) -> str:
+def _fingerprint(
+    admitted: bool,
+    reason: str,
+    asset_id: str | None,
+    replica_id: str | None,
+    storage_id: str,
+    replica_path: str,
+) -> str:
     """Deterministic identity of this admission outcome; stored in the
     evidence ledger's `digest` so a re-recorded row is a no-op
     (P05.1 S5 append-only) while a changed outcome is a new row."""
     material = "|".join(
-        ["admission-v1", "ADMITTED" if admitted else reason,
-         asset_id or "-", replica_id or "-", storage_id, replica_path]
+        [
+            "admission-v1",
+            "ADMITTED" if admitted else reason,
+            asset_id or "-",
+            replica_id or "-",
+            storage_id,
+            replica_path,
+        ]
     )
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
@@ -119,37 +128,59 @@ def admit_source(
     if not p.is_file():
         gates["file_exists"] = False
         return AdmissionDecision(
-            admitted=False, reason="file_exists", gates=gates,
-            storage_id=storage_id, replica_path=replica_path_s,
-            asset_id=None, replica_id=None, source_sha256=None,
-            fingerprint=_fingerprint(False, "file_exists", None, None,
-                                     storage_id, replica_path_s),
+            admitted=False,
+            reason="file_exists",
+            gates=gates,
+            storage_id=storage_id,
+            replica_path=replica_path_s,
+            asset_id=None,
+            replica_id=None,
+            source_sha256=None,
+            fingerprint=_fingerprint(
+                False, "file_exists", None, None, storage_id, replica_path_s
+            ),
         )
 
     asset_id = asset_id_for_file(p)
 
     matching = [
-        r for r in catalog.replicas_for(asset_id)
+        r
+        for r in catalog.replicas_for(asset_id)
         if r.storage_id == storage_id and str(Path(r.path)) == str(p)
     ]
     gates["replica_recorded"] = bool(matching)
     gates["replica_verified"] = bool(matching) and all(r.verified for r in matching)
 
     if not matching:
-        gates.update({"trusted_readback_evidence": None, "sha_matches": None,
-                      "device_identity_trusted": None})
-        return _deny(gates, "replica_recorded", asset_id, None,
-                     storage_id, replica_path_s)
+        gates.update(
+            {
+                "trusted_readback_evidence": None,
+                "sha_matches": None,
+                "device_identity_trusted": None,
+            }
+        )
+        return _deny(
+            gates, "replica_recorded", asset_id, None, storage_id, replica_path_s
+        )
     if not all(r.verified for r in matching):
-        gates.update({"trusted_readback_evidence": None, "sha_matches": None,
-                      "device_identity_trusted": None})
-        return _deny(gates, "replica_verified", asset_id,
-                     matching[0].replica_id, storage_id, replica_path_s)
+        gates.update(
+            {
+                "trusted_readback_evidence": None,
+                "sha_matches": None,
+                "device_identity_trusted": None,
+            }
+        )
+        return _deny(
+            gates,
+            "replica_verified",
+            asset_id,
+            matching[0].replica_id,
+            storage_id,
+            replica_path_s,
+        )
 
     gates["trusted_readback_evidence"] = _trusted_readback(catalog, asset_id)
-    gates["sha_matches"] = (
-        expected_sha256 is None or expected_sha256 == asset_id
-    )
+    gates["sha_matches"] = expected_sha256 is None or expected_sha256 == asset_id
     if device_provider is not None:
         gates["device_identity_trusted"] = all(
             device_provider.identity_for(str(r.path)).is_physical for r in matching
@@ -165,30 +196,55 @@ def admit_source(
         "device_identity_trusted",
     ):
         if gates.get(name) is False:
-            return _deny(gates, name, asset_id, matching[0].replica_id,
-                         storage_id, replica_path_s)
+            return _deny(
+                gates,
+                name,
+                asset_id,
+                matching[0].replica_id,
+                storage_id,
+                replica_path_s,
+            )
 
     return AdmissionDecision(
-        admitted=True, reason="admitted", gates=gates,
-        storage_id=storage_id, replica_path=replica_path_s,
-        asset_id=asset_id, replica_id=matching[0].replica_id,
+        admitted=True,
+        reason="admitted",
+        gates=gates,
+        storage_id=storage_id,
+        replica_path=replica_path_s,
+        asset_id=asset_id,
+        replica_id=matching[0].replica_id,
         source_sha256=asset_id,
-        fingerprint=_fingerprint(True, "admitted", asset_id,
-                                 matching[0].replica_id,
-                                 storage_id, replica_path_s),
+        fingerprint=_fingerprint(
+            True,
+            "admitted",
+            asset_id,
+            matching[0].replica_id,
+            storage_id,
+            replica_path_s,
+        ),
     )
 
 
-def _deny(gates: dict, reason: str, asset_id: str | None,
-          replica_id: str | None, storage_id: str,
-          replica_path: str) -> AdmissionDecision:
+def _deny(
+    gates: dict,
+    reason: str,
+    asset_id: str | None,
+    replica_id: str | None,
+    storage_id: str,
+    replica_path: str,
+) -> AdmissionDecision:
     return AdmissionDecision(
-        admitted=False, reason=reason, gates=gates,
-        storage_id=storage_id, replica_path=replica_path,
-        asset_id=asset_id, replica_id=replica_id,
+        admitted=False,
+        reason=reason,
+        gates=gates,
+        storage_id=storage_id,
+        replica_path=replica_path,
+        asset_id=asset_id,
+        replica_id=replica_id,
         source_sha256=asset_id,
-        fingerprint=_fingerprint(False, reason, asset_id, replica_id,
-                                 storage_id, replica_path),
+        fingerprint=_fingerprint(
+            False, reason, asset_id, replica_id, storage_id, replica_path
+        ),
     )
 
 

@@ -33,13 +33,33 @@ _DEFAULT_TIMEOUT_S = 30.0
 
 # sidecar extensions (lowercased)
 _SIDECAR_EXTS = {
-    ".sidecar.json", ".json", ".csv", ".m3u8", ".srt",
-    ".xml", ".edl",
+    ".sidecar.json",
+    ".json",
+    ".csv",
+    ".m3u8",
+    ".srt",
+    ".xml",
+    ".edl",
 }
 # treat these as media containers, not sidecars
-_MEDIA_EXTS = {".mov", ".mp4", ".mxf", ".braw", ".x-ocn", ".dng",
-               ".r3d", ".arri", ".prores", ".m2ts", ".m2t",
-               ".wav", ".aif", ".m4a", ".ac3", ".aac"}
+_MEDIA_EXTS = {
+    ".mov",
+    ".mp4",
+    ".mxf",
+    ".braw",
+    ".x-ocn",
+    ".dng",
+    ".r3d",
+    ".arri",
+    ".prores",
+    ".m2ts",
+    ".m2t",
+    ".wav",
+    ".aif",
+    ".m4a",
+    ".ac3",
+    ".aac",
+}
 
 
 class ProbeError(Exception):
@@ -127,8 +147,14 @@ class MediaProbe:
             {
                 "ffprobe_version": self.ffprobe_version,
                 "argv_base": [
-                    "ffprobe", "-hide_banner", "-loglevel", "error",
-                    "-of", "json", "-show_format", "-show_streams",
+                    "ffprobe",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-of",
+                    "json",
+                    "-show_format",
+                    "-show_streams",
                     self.path,
                 ],
                 "container": self.container,
@@ -161,16 +187,36 @@ class MediaProbe:
 
 # ── classification helpers ──────────────────────────────────────────
 
-_SDR_TRANSFER = {"bt709", "smpte170m", "bt470m", "bt470bg", "iec61966-2-1",
-                 "smpte2085", "smpte2085-1"}
-_SDR_PRIMARIES = {"bt709", "smpte170m", "bt470m", "bt470bg", "ntsc",
-                  "smpte240m", "iec61966-2-1", "xvycc709", "smpte432"}
-_HDR_TRANSFER = {"smpte2084", "arib-std-b67", "arib-std-b67-s2",
-                 "arib-std-b67-s3", "arib-std-b67-s4"}
+_SDR_TRANSFER = {
+    "bt709",
+    "smpte170m",
+    "bt470m",
+    "bt470bg",
+    "iec61966-2-1",
+    "smpte2085",
+    "smpte2085-1",
+}
+_SDR_PRIMARIES = {
+    "bt709",
+    "smpte170m",
+    "bt470m",
+    "bt470bg",
+    "ntsc",
+    "smpte240m",
+    "iec61966-2-1",
+    "xvycc709",
+    "smpte432",
+}
+_HDR_TRANSFER = {
+    "smpte2084",
+    "arib-std-b67",
+    "arib-std-b67-s2",
+    "arib-std-b67-s3",
+    "arib-std-b67-s4",
+}
 
 
-def classify_hdr(primaries: str | None, transfer: str | None,
-                 space: str | None) -> str:
+def classify_hdr(primaries: str | None, transfer: str | None, space: str | None) -> str:
     """Conservative: only claim 'sdr' when BOTH transfer and primaries
     are SDR-family; claim 'hdr-sdr' when transfer is HDR (PQ/HLG);
     otherwise degrade to 'unknown' (never guess)."""
@@ -184,9 +230,17 @@ def classify_hdr(primaries: str | None, transfer: str | None,
 
 
 _DROP_FPS = {Fraction(30), Fraction(30000, 1001)}
-_NONDROP_FPS = {Fraction(24), Fraction(25), Fraction(48), Fraction(50),
-                Fraction(60), Fraction(60000, 1001), Fraction(12),
-                Fraction(15), Fraction(1000, 40)}
+_NONDROP_FPS = {
+    Fraction(24),
+    Fraction(25),
+    Fraction(48),
+    Fraction(50),
+    Fraction(60),
+    Fraction(60000, 1001),
+    Fraction(12),
+    Fraction(15),
+    Fraction(1000, 40),
+}
 
 
 def classify_timecode(fps: Fraction | None) -> tuple[str | None, str]:
@@ -201,8 +255,9 @@ def classify_timecode(fps: Fraction | None) -> tuple[str | None, str]:
     return "non-drop", "fps-value"  # fall back on value, still non-drop
 
 
-def _classify_camera_family(container: str | None, video: list[VideoStream],
-                            path: str) -> tuple[str, bool]:
+def _classify_camera_family(
+    container: str | None, video: list[VideoStream], path: str
+) -> tuple[str, bool]:
     """Best-effort camera family from container/codec/filename.
     Families with NO real sample available are returned
     `verified=False` (never claim a real-camera match)."""
@@ -311,9 +366,18 @@ def _reject_url(path: str) -> None:
     """Refuse any input that looks like a network URL — P10 must never
     implicitly open a remote resource."""
     lowered = path.lower()
-    for scheme in ("http://", "https://", "ftp://", "ftps://",
-                   "data:", "rtmp://", "rtp://", "srt://", "tcp://",
-                   "udp://"):
+    for scheme in (
+        "http://",
+        "https://",
+        "ftp://",
+        "ftps://",
+        "data:",
+        "rtmp://",
+        "rtp://",
+        "srt://",
+        "tcp://",
+        "udp://",
+    ):
         if lowered.startswith(scheme) or "://" in path:
             raise InvalidInputError(
                 f"refusing to probe a network URL ({path!r}); pass a "
@@ -374,8 +438,9 @@ def _parse_streams(payload: dict) -> tuple[list[VideoStream], list[AudioStream]]
     return video, audio
 
 
-def _build_probe_from_raw(raw: str, *, path: str, ffprobe_version: str,
-                          source_sha256: str | None) -> MediaProbe:
+def _build_probe_from_raw(
+    raw: str, *, path: str, ffprobe_version: str, source_sha256: str | None
+) -> MediaProbe:
     payload = json.loads(raw)
     fmt = payload.get("format", {})
     video, audio = _parse_streams(payload)
@@ -427,12 +492,8 @@ def _run_ffprobe(bin: str, args: list[str], timeout_s: float) -> str:
     except FileNotFoundError as e:
         raise ProbeError(f"ffprobe binary not found: {bin!r}") from e
     if proc.returncode != 0:
-        err = (proc.stderr or b"")[:_MAX_STDERR_BYTES].decode(
-            "utf-8", "replace"
-        )
-        raise ProbeError(
-            f"ffprobe exited {proc.returncode}: {err.strip()[:500]}"
-        )
+        err = (proc.stderr or b"")[:_MAX_STDERR_BYTES].decode("utf-8", "replace")
+        raise ProbeError(f"ffprobe exited {proc.returncode}: {err.strip()[:500]}")
     out = proc.stdout
     if len(out) > _MAX_OUTPUT_BYTES:
         raise ProbeError("output limit exceeded (>50MB JSON)")
@@ -440,7 +501,9 @@ def _run_ffprobe(bin: str, args: list[str], timeout_s: float) -> str:
 
 
 def run_ffprobe_json(
-    path: str | Path, *, timeout_s: float = _DEFAULT_TIMEOUT_S,
+    path: str | Path,
+    *,
+    timeout_s: float = _DEFAULT_TIMEOUT_S,
     ffprobe_bin: str = "ffprobe",
 ) -> dict:
     """Parse a local media file to its ffprobe JSON payload (a read-only
@@ -462,16 +525,23 @@ def _run_ffprobe_json_only(bin: str, path: str, timeout_s: float) -> str:
     if p.stat().st_size == 0:
         raise ProbeError(f"empty input: {p}")
     args = [
-        "-hide_banner", "-loglevel", "error",
-        "-of", "json", "-show_format", "-show_streams", path,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-of",
+        "json",
+        "-show_format",
+        "-show_streams",
+        path,
     ]
     return _run_ffprobe(bin, args, timeout_s)
 
 
 def _ffprobe_version(bin: str) -> str:
     try:
-        p = subprocess.run([bin, "-version"], capture_output=True, timeout=15,
-                           check=False)
+        p = subprocess.run(
+            [bin, "-version"], capture_output=True, timeout=15, check=False
+        )
         first = (p.stdout or b"").decode("utf-8", "replace").splitlines()
         return first[0].strip() if first else "unknown"
     except (subprocess.SubprocessError, OSError):
@@ -511,8 +581,14 @@ def probe(
     version = _ffprobe_version(ffprobe_bin)
 
     base_args = [
-        "-hide_banner", "-loglevel", "error",
-        "-of", "json", "-show_format", "-show_streams", str(p),
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-of",
+        "json",
+        "-show_format",
+        "-show_streams",
+        str(p),
     ]
     raw = _run_ffprobe(ffprobe_bin, base_args, timeout_s)
     try:
@@ -539,10 +615,17 @@ def probe(
 
 def _frame_pts(bin: str, path: Path, timeout_s: float) -> list[float]:
     args = [
-        "-hide_banner", "-loglevel", "error",
-        "-select_streams", "v:0",
-        "-show_frames", "-show_entries", "frame=pts_time",
-        "-of", "json", str(path),
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_frames",
+        "-show_entries",
+        "frame=pts_time",
+        "-of",
+        "json",
+        str(path),
     ]
     out = _run_ffprobe(bin, args, timeout_s)
     try:

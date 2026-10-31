@@ -65,8 +65,16 @@ def test_dangling_replica_evidence_is_not_trusted_readback(tmp_path):
         cat.add_replica(Replica("r1", aid, "s1", "fd-1", "/a", verified=True))
         # Evidence references a ghost replica that was never registered.
         cat.add_evidence(
-            VerificationEvidence("e-ghost", aid, "ghost.mov", "sha256",
-                                 "11" * 32, "dev1", "PASS", replica_id="ghost")
+            VerificationEvidence(
+                "e-ghost",
+                aid,
+                "ghost.mov",
+                "sha256",
+                "11" * 32,
+                "dev1",
+                "PASS",
+                replica_id="ghost",
+            )
         )
         gate = cat.reuse_eligibility(aid)
         assert gate.is_eligible is False, "dangling replica must not be trusted"
@@ -83,8 +91,9 @@ def test_zero_replicas_with_pass_evidence_blocked(tmp_path):
     cat = _cat(tmp_path, 0x72)
     try:
         cat.add_evidence(
-            VerificationEvidence("e1", aid, "x.mov", "sha256", "ab" * 32,
-                                 "dev", "PASS", replica_id="rX")
+            VerificationEvidence(
+                "e1", aid, "x.mov", "sha256", "ab" * 32, "dev", "PASS", replica_id="rX"
+            )
         )
         gate = cat.reuse_eligibility(aid)
         assert gate.is_eligible is False
@@ -100,11 +109,20 @@ def test_evidence_bound_to_unverified_replica_not_trusted(tmp_path):
     aid = _aid(0x73)
     cat = _cat(tmp_path, 0x73)
     try:
-        cat.add_replica(Replica("r-unverified", aid, "s1", "fd-1", "/a",
-                                verified=False))
+        cat.add_replica(
+            Replica("r-unverified", aid, "s1", "fd-1", "/a", verified=False)
+        )
         cat.add_evidence(
-            VerificationEvidence("e1", aid, "a.mov", "sha256", "11" * 32,
-                                 "dev1", "PASS", replica_id="r-unverified")
+            VerificationEvidence(
+                "e1",
+                aid,
+                "a.mov",
+                "sha256",
+                "11" * 32,
+                "dev1",
+                "PASS",
+                replica_id="r-unverified",
+            )
         )
         gate = cat.reuse_eligibility(aid)
         assert gate.is_eligible is False, "unverified replica's PASS is not trusted"
@@ -124,8 +142,16 @@ def test_evidence_pointing_to_wrong_asset_replica_not_trusted(tmp_path):
         cat.add_replica(Replica("r-b", b, "s2", "fd-2", "/b", verified=True))
         # Evidence recorded against asset A but bound to B's replica:
         cat.add_evidence(
-            VerificationEvidence("e-cross", a, "b.mov", "sha256", "22" * 32,
-                                 "dev2", "PASS", replica_id="r-b")
+            VerificationEvidence(
+                "e-cross",
+                a,
+                "b.mov",
+                "sha256",
+                "22" * 32,
+                "dev2",
+                "PASS",
+                replica_id="r-b",
+            )
         )
         gate = cat.reuse_eligibility(a)
         assert gate.is_eligible is False, "cross-asset replica is not A's readback"
@@ -144,8 +170,9 @@ def test_single_verified_replica_readback_eligible_but_not_independent(tmp_path)
     try:
         cat.add_replica(Replica("r1", aid, "s1", "fd-1", "/a", verified=True))
         cat.add_evidence(
-            VerificationEvidence("e1", aid, "a.mov", "sha256", "11" * 32,
-                                 "dev1", "PASS", replica_id="r1")
+            VerificationEvidence(
+                "e1", aid, "a.mov", "sha256", "11" * 32, "dev1", "PASS", replica_id="r1"
+            )
         )
         gate = cat.reuse_eligibility(aid)
         assert gate.is_eligible is True, "single verified replica + bound readback"
@@ -158,7 +185,9 @@ def test_single_verified_replica_readback_eligible_but_not_independent(tmp_path)
 # ── item 4: injectable fake device-identity provider ───────────────
 
 
-def _provider(paths_to_same_device: dict[str, DeviceIdentity]) -> StaticDeviceIdentityProvider:
+def _provider(
+    paths_to_same_device: dict[str, DeviceIdentity],
+) -> StaticDeviceIdentityProvider:
     return StaticDeviceIdentityProvider(paths_to_same_device)
 
 
@@ -169,13 +198,19 @@ def test_same_device_two_paths_collapse_via_provider(tmp_path):
     behavior test through the provider, not a string/path comparison."""
     aid = _aid(0x77)
     cat = _cat(tmp_path, 0x77)
-    prov = _provider({
-        "/mnt/sdcard/a": DeviceIdentity("VOLSER-1", True, "removable"),
-        "/Volumes/MediaCard": DeviceIdentity("VOLSER-1", True, "removable"),
-    })
+    prov = _provider(
+        {
+            "/mnt/sdcard/a": DeviceIdentity("VOLSER-1", True, "removable"),
+            "/Volumes/MediaCard": DeviceIdentity("VOLSER-1", True, "removable"),
+        }
+    )
     try:
-        cat.add_replica(Replica("r-a", aid, "s-a", "VOLSER-1", "/mnt/sdcard/a", verified=True))
-        cat.add_replica(Replica("r-b", aid, "s-b", "VOLSER-1", "/Volumes/MediaCard", verified=True))
+        cat.add_replica(
+            Replica("r-a", aid, "s-a", "VOLSER-1", "/mnt/sdcard/a", verified=True)
+        )
+        cat.add_replica(
+            Replica("r-b", aid, "s-b", "VOLSER-1", "/Volumes/MediaCard", verified=True)
+        )
         assert cat.independent_domains(aid, prov) == 1, "same device => one domain"
     finally:
         cat.close()
@@ -185,13 +220,19 @@ def test_same_device_two_paths_collapse_via_provider(tmp_path):
 def test_two_distinct_devices_counted_independent_via_provider(tmp_path):
     aid = _aid(0x78)
     cat = _cat(tmp_path, 0x78)
-    prov = _provider({
-        "/dev/nvme1n1p1": DeviceIdentity("SER-AAA", True, "ssd"),
-        "/mnt/nas/share": DeviceIdentity("SER-BBB", True, "disk"),
-    })
+    prov = _provider(
+        {
+            "/dev/nvme1n1p1": DeviceIdentity("SER-AAA", True, "ssd"),
+            "/mnt/nas/share": DeviceIdentity("SER-BBB", True, "disk"),
+        }
+    )
     try:
-        cat.add_replica(Replica("r1", aid, "s1", "SER-AAA", "/dev/nvme1n1p1", verified=True))
-        cat.add_replica(Replica("r2", aid, "s2", "SER-BBB", "/mnt/nas/share", verified=True))
+        cat.add_replica(
+            Replica("r1", aid, "s1", "SER-AAA", "/dev/nvme1n1p1", verified=True)
+        )
+        cat.add_replica(
+            Replica("r2", aid, "s2", "SER-BBB", "/mnt/nas/share", verified=True)
+        )
         assert cat.independent_domains(aid, prov) == 2
     finally:
         cat.close()
@@ -203,11 +244,15 @@ def test_network_share_not_physical_collapses_to_zero(tmp_path):
     contribute to the independent-physical-domain count."""
     aid = _aid(0x79)
     cat = _cat(tmp_path, 0x79)
-    prov = _provider({
-        "//nas/share1": DeviceIdentity("NAS-X", False, "network"),
-    })
+    prov = _provider(
+        {
+            "//nas/share1": DeviceIdentity("NAS-X", False, "network"),
+        }
+    )
     try:
-        cat.add_replica(Replica("r1", aid, "s1", "NAS-X", "//nas/share1", verified=True))
+        cat.add_replica(
+            Replica("r1", aid, "s1", "NAS-X", "//nas/share1", verified=True)
+        )
         assert cat.independent_domains(aid, prov) == 0, "network share is non-physical"
     finally:
         cat.close()
@@ -219,14 +264,17 @@ def test_untrusted_device_blocks_reuse_when_provider_given(tmp_path):
     fails the device-identity gate → BLOCKED even with valid readback."""
     aid = _aid(0x7A)
     cat = _cat(tmp_path, 0x7A)
-    prov = _provider({
-        "//nas/share": DeviceIdentity("NAS-X", False, "network"),
-    })
+    prov = _provider(
+        {
+            "//nas/share": DeviceIdentity("NAS-X", False, "network"),
+        }
+    )
     try:
         cat.add_replica(Replica("r1", aid, "s1", "NAS-X", "//nas/share", verified=True))
         cat.add_evidence(
-            VerificationEvidence("e1", aid, "a.mov", "sha256", "11" * 32,
-                                 "dev", "PASS", replica_id="r1")
+            VerificationEvidence(
+                "e1", aid, "a.mov", "sha256", "11" * 32, "dev", "PASS", replica_id="r1"
+            )
         )
         gate = cat.reuse_eligibility(aid, provider=prov)
         assert gate.is_eligible is False
@@ -246,11 +294,13 @@ def test_unlisted_path_is_fail_closed_non_physical(tmp_path):
     cat = _cat(tmp_path, 0x7B)
     prov = _provider({})  # provider knows NOTHING
     try:
-        cat.add_replica(Replica("r1", aid, "s1", "fd-1", "/some/unlisted/mount",
-                                verified=True))
+        cat.add_replica(
+            Replica("r1", aid, "s1", "fd-1", "/some/unlisted/mount", verified=True)
+        )
         cat.add_evidence(
-            VerificationEvidence("e1", aid, "a.mov", "sha256", "11" * 32,
-                                 "dev", "PASS", replica_id="r1")
+            VerificationEvidence(
+                "e1", aid, "a.mov", "sha256", "11" * 32, "dev", "PASS", replica_id="r1"
+            )
         )
         # Gate: unlisted path => non-physical => device gate fails, BLOCKED.
         gate = cat.reuse_eligibility(aid, provider=prov)

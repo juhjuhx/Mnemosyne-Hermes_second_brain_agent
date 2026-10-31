@@ -217,8 +217,14 @@ def build_rerun_with_verified_replica(root: Path) -> dict:
 
 def build_device_reconnect_identity_change(root: Path) -> dict:
     return {
-        "old_identity": {"serial": "VOLSER-12345", "key": "win-volume:12345:VOLSER-12345"},
-        "new_identity": {"serial": "VOLSER-98765", "key": "win-volume:98765:VOLSER-98765"},
+        "old_identity": {
+            "serial": "VOLSER-12345",
+            "key": "win-volume:12345:VOLSER-12345",
+        },
+        "new_identity": {
+            "serial": "VOLSER-98765",
+            "key": "win-volume:98765:VOLSER-98765",
+        },
         "note": "card ejected and a different card inserted in the same reader",
     }
 
@@ -275,7 +281,11 @@ def build_forged_verified_flag(root: Path) -> dict:
 
 def build_forged_failure_domain(root: Path) -> dict:
     """A replica claiming an independent domain it cannot prove."""
-    return {"asset_sha": "cd" * 32, "forged_domain": "fd-claims-independent", "proof": None}
+    return {
+        "asset_sha": "cd" * 32,
+        "forged_domain": "fd-claims-independent",
+        "proof": None,
+    }
 
 
 def build_missing_readback(root: Path) -> dict:
@@ -283,55 +293,103 @@ def build_missing_readback(root: Path) -> dict:
 
 
 SCENARIOS: list[FaultScenario] = [
-    FaultScenario("S1 source==destination", "DIT_ADAPTER_GUARD",
-                  "rejected before any write; source untouched",
-                  build_source_is_destination),
-    FaultScenario("S1 destination inside source", "DIT_ADAPTER_GUARD",
-                  "rejected (UnsafeDestination); source untouched",
-                  build_destination_inside_source),
-    FaultScenario("S1 symlink traversal", "MOCK_SIMULATION",
-                  "symlink skipped/never followed; outside file intact",
-                  build_symlink_traversal),
-    FaultScenario("S2 two paths one device", "DIT_ADAPTER_GUARD",
-                  "same device serial → NOT counted independent (contract)",
-                  build_two_paths_one_device),
-    FaultScenario("S2 two NAS shares one appliance", "HW_BLOCKED",
-                  "real SMB/NAS share identity unavailable on host; contract-only",
-                  build_two_nas_shares),
-    FaultScenario("S3 destination write interrupted", "MOCK_SIMULATION",
-                  "partial file detected; resume or discard; no false verified",
-                  build_destination_write_interrupt),
-    FaultScenario("S3 disk full", "MOCK_SIMULATION",
-                  "fail before first media byte (preflight); no verdict issued",
-                  build_disk_full),
-    FaultScenario("S4 process kill + resume", "MOCK_SIMULATION",
-                  "checkpoint re-entry converges to same verified replica",
-                  build_process_kill_resume),
-    FaultScenario("S1 source replaced between pre-read and copy-read", "MOCK_SIMULATION",
-                  "digest drift detected → FAILED, no verified replica",
-                  build_source_replaced_midrun),
-    FaultScenario("S4 re-run with verified replica present", "ENGINE_NATIVE",
-                  "previous good copy untouched on failure (offloader regression test)",
-                  build_rerun_with_verified_replica),
-    FaultScenario("S2 device identity change on reconnect", "HW_BLOCKED",
-                  "different serial on same reader → not the same card; untestable here",
-                  build_device_reconnect_identity_change),
-    FaultScenario("S5 ASC MHL manifest tamper", "ENGINE_NATIVE",
-                  "digest mismatch → chain verification fails (offloader ascmhl)",
-                  build_mhl_tamper),
-    FaultScenario("S7 edge names: 0-byte/Unicode/case/Windows-reserved", "MOCK_SIMULATION",
-                  "0-byte flagged; Unicode roundtrip; case collision deduped; "
-                  "Windows reserved name is a documented gap (offloader MISSING)",
-                  build_edge_names),
-    FaultScenario("S6 forged verified flag, no readback", "DIT_ADAPTER_GUARD",
-                  "reuse gate BLOCKED: readback_evidence gate fails",
-                  build_forged_verified_flag),
-    FaultScenario("S6 forged failure_domain, no proof", "DIT_ADAPTER_GUARD",
-                  "untrusted domain → BLOCKED",
-                  build_forged_failure_domain),
-    FaultScenario("S6 missing readback evidence", "DIT_ADAPTER_GUARD",
-                  "BLOCKED despite two replicas",
-                  build_missing_readback),
+    FaultScenario(
+        "S1 source==destination",
+        "DIT_ADAPTER_GUARD",
+        "rejected before any write; source untouched",
+        build_source_is_destination,
+    ),
+    FaultScenario(
+        "S1 destination inside source",
+        "DIT_ADAPTER_GUARD",
+        "rejected (UnsafeDestination); source untouched",
+        build_destination_inside_source,
+    ),
+    FaultScenario(
+        "S1 symlink traversal",
+        "MOCK_SIMULATION",
+        "symlink skipped/never followed; outside file intact",
+        build_symlink_traversal,
+    ),
+    FaultScenario(
+        "S2 two paths one device",
+        "DIT_ADAPTER_GUARD",
+        "same device serial → NOT counted independent (contract)",
+        build_two_paths_one_device,
+    ),
+    FaultScenario(
+        "S2 two NAS shares one appliance",
+        "HW_BLOCKED",
+        "real SMB/NAS share identity unavailable on host; contract-only",
+        build_two_nas_shares,
+    ),
+    FaultScenario(
+        "S3 destination write interrupted",
+        "MOCK_SIMULATION",
+        "partial file detected; resume or discard; no false verified",
+        build_destination_write_interrupt,
+    ),
+    FaultScenario(
+        "S3 disk full",
+        "MOCK_SIMULATION",
+        "fail before first media byte (preflight); no verdict issued",
+        build_disk_full,
+    ),
+    FaultScenario(
+        "S4 process kill + resume",
+        "MOCK_SIMULATION",
+        "checkpoint re-entry converges to same verified replica",
+        build_process_kill_resume,
+    ),
+    FaultScenario(
+        "S1 source replaced between pre-read and copy-read",
+        "MOCK_SIMULATION",
+        "digest drift detected → FAILED, no verified replica",
+        build_source_replaced_midrun,
+    ),
+    FaultScenario(
+        "S4 re-run with verified replica present",
+        "ENGINE_NATIVE",
+        "previous good copy untouched on failure (offloader regression test)",
+        build_rerun_with_verified_replica,
+    ),
+    FaultScenario(
+        "S2 device identity change on reconnect",
+        "HW_BLOCKED",
+        "different serial on same reader → not the same card; untestable here",
+        build_device_reconnect_identity_change,
+    ),
+    FaultScenario(
+        "S5 ASC MHL manifest tamper",
+        "ENGINE_NATIVE",
+        "digest mismatch → chain verification fails (offloader ascmhl)",
+        build_mhl_tamper,
+    ),
+    FaultScenario(
+        "S7 edge names: 0-byte/Unicode/case/Windows-reserved",
+        "MOCK_SIMULATION",
+        "0-byte flagged; Unicode roundtrip; case collision deduped; "
+        "Windows reserved name is a documented gap (offloader MISSING)",
+        build_edge_names,
+    ),
+    FaultScenario(
+        "S6 forged verified flag, no readback",
+        "DIT_ADAPTER_GUARD",
+        "reuse gate BLOCKED: readback_evidence gate fails",
+        build_forged_verified_flag,
+    ),
+    FaultScenario(
+        "S6 forged failure_domain, no proof",
+        "DIT_ADAPTER_GUARD",
+        "untrusted domain → BLOCKED",
+        build_forged_failure_domain,
+    ),
+    FaultScenario(
+        "S6 missing readback evidence",
+        "DIT_ADAPTER_GUARD",
+        "BLOCKED despite two replicas",
+        build_missing_readback,
+    ),
 ]
 
 

@@ -67,7 +67,7 @@ _LARGE_OFFSET_S = 0.5
 
 @dataclass(frozen=True)
 class FrameMapping:
-    source_fps: str | None      # Fraction rendering, or None
+    source_fps: str | None  # Fraction rendering, or None
     proxy_fps: str | None
     fps_exact_match: bool
     source_frame_count: int | None
@@ -76,13 +76,13 @@ class FrameMapping:
     source_last_pts: float | None
     proxy_first_pts: float | None
     proxy_last_pts: float | None
-    vfr_source: str             # cfr | vfr-likely | unknown
+    vfr_source: str  # cfr | vfr-likely | unknown
     vfr_proxy: str
-    mapping_rule: str          # index-identity | pts-anchored | unresolvable
+    mapping_rule: str  # index-identity | pts-anchored | unresolvable
     start_pts_offset_s: float | None
-    source_start_time: float | None   # container-level start (reel timecode)
+    source_start_time: float | None  # container-level start (reel timecode)
     b_frames_note: str
-    confidence: str            # verified | degraded | unresolvable
+    confidence: str  # verified | degraded | unresolvable
 
     def source_index_to_proxy_time(self, i: int) -> float | None:
         """Reconstructable mapping: the PROXY display-time of the
@@ -94,8 +94,7 @@ class FrameMapping:
         if self.mapping_rule == "unresolvable":
             return None
         fps_raw = (
-            self.proxy_fps if self.mapping_rule == "index-identity"
-            else self.source_fps
+            self.proxy_fps if self.mapping_rule == "index-identity" else self.source_fps
         )
         if not fps_raw:
             return None
@@ -121,21 +120,21 @@ class AudioReport:
 
 @dataclass(frozen=True)
 class ColorReport:
-    source_hdr: str            # sdr | hdr-sdr | unknown
+    source_hdr: str  # sdr | hdr-sdr | unknown
     proxy_hdr: str
     source_rotation: float | None
     proxy_rotation: float | None
-    hdr_lost: bool            # HDR content into an SDR proxy (blocker)
-    rotation_lost: bool       # orientation metadata not carried (blocker)
+    hdr_lost: bool  # HDR content into an SDR proxy (blocker)
+    rotation_lost: bool  # orientation metadata not carried (blocker)
     note: str = ""
 
 
 @dataclass(frozen=True)
 class TimecodeReport:
-    source_timecode: str | None       # drop | non-drop | None
+    source_timecode: str | None  # drop | non-drop | None
     source_timecode_basis: str
     proxy_timecode_present: bool
-    mapping_anchor: str               # pts | timecode
+    mapping_anchor: str  # pts | timecode
     note: str = ""
 
 
@@ -264,13 +263,24 @@ def _frame_stats(
     what a source-to-proxy mapping needs — B-frame decode order is
     irrelevant to it."""
     args = [
-        ffprobe_bin, "-hide_banner", "-loglevel", "error",
-        "-select_streams", "v:0", "-show_entries", "frame=pts_time",
-        "-of", "json", str(path),
+        ffprobe_bin,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "frame=pts_time",
+        "-of",
+        "json",
+        str(path),
     ]
     try:
         proc = subprocess.run(
-            args, input=None, capture_output=True, timeout=timeout_s,
+            args,
+            input=None,
+            capture_output=True,
+            timeout=timeout_s,
             check=False,
         )
     except subprocess.TimeoutExpired as e:
@@ -303,14 +313,22 @@ def _frame_stats(
 
 def _empty_mapping() -> FrameMapping:
     return FrameMapping(
-        source_fps=None, proxy_fps=None, fps_exact_match=False,
-        source_frame_count=None, proxy_frame_count=None,
-        source_first_pts=None, source_last_pts=None,
-        proxy_first_pts=None, proxy_last_pts=None,
-        vfr_source="unknown", vfr_proxy="unknown",
-        mapping_rule="unresolvable", start_pts_offset_s=None,
+        source_fps=None,
+        proxy_fps=None,
+        fps_exact_match=False,
+        source_frame_count=None,
+        proxy_frame_count=None,
+        source_first_pts=None,
+        source_last_pts=None,
+        proxy_first_pts=None,
+        proxy_last_pts=None,
+        vfr_source="unknown",
+        vfr_proxy="unknown",
+        mapping_rule="unresolvable",
+        start_pts_offset_s=None,
         source_start_time=None,
-        b_frames_note="", confidence="unresolvable",
+        b_frames_note="",
+        confidence="unresolvable",
     )
 
 
@@ -367,13 +385,9 @@ def validate_editor_proxy(
 
     # golden readback of the PROXY (never an encoder claim):
     try:
-        proxy_raw = run_ffprobe_json(
-            prx, ffprobe_bin=ffprobe_bin, timeout_s=timeout_s
-        )
+        proxy_raw = run_ffprobe_json(prx, ffprobe_bin=ffprobe_bin, timeout_s=timeout_s)
     except ProbeError as e:
-        return _undecodable(
-            f"proxy undecodable by ffprobe (fail-closed): {e}"
-        )
+        return _undecodable(f"proxy undecodable by ffprobe (fail-closed): {e}")
     proxy_streams = proxy_raw.get("streams", []) or []
 
     # source side: the caller's evidence, or a fresh read-only probe:
@@ -382,17 +396,17 @@ def validate_editor_proxy(
 
         try:
             source_probe = _probe(
-                src, full_fps=True, ffprobe_bin=ffprobe_bin,
+                src,
+                full_fps=True,
+                ffprobe_bin=ffprobe_bin,
                 timeout_s=timeout_s,
             )
         except ProbeError as e:
-            return _undecodable(
-                f"source undecodable by ffprobe (fail-closed): {e}"
-            )
+            return _undecodable(f"source undecodable by ffprobe (fail-closed): {e}")
     s_fps = _fps_fraction(
-        (source_probe.video[0].avg_frame_rate
-         or source_probe.video[0].r_frame_rate)
-        if source_probe.video else None
+        (source_probe.video[0].avg_frame_rate or source_probe.video[0].r_frame_rate)
+        if source_probe.video
+        else None
     )
     p_fps = _stream_fps(proxy_streams)
     s_vfr = getattr(source_probe, "vfr_status", "unknown") or "unknown"
@@ -402,7 +416,9 @@ def validate_editor_proxy(
     s_trunc = p_trunc = False
     try:
         s_count, s_first, s_last, s_vfr_read, s_trunc = _frame_stats(
-            src, ffprobe_bin=ffprobe_bin, timeout_s=timeout_s,
+            src,
+            ffprobe_bin=ffprobe_bin,
+            timeout_s=timeout_s,
             max_frames=max_frames,
         )
         if s_vfr_read != "unknown":
@@ -411,7 +427,9 @@ def validate_editor_proxy(
         s_vfr = "unknown"
     try:
         p_count, p_first, p_last, p_vfr, p_trunc = _frame_stats(
-            prx, ffprobe_bin=ffprobe_bin, timeout_s=timeout_s,
+            prx,
+            ffprobe_bin=ffprobe_bin,
+            timeout_s=timeout_s,
             max_frames=max_frames,
         )
     except ProbeError:
@@ -424,9 +442,7 @@ def validate_editor_proxy(
     # This is the number an editor must know when mapping a reel; the
     # first-frame pts delta stays informational in first/last pts fields.
     s_start: float | None = None
-    _raw_s_start = (
-        source_probe.video[0].start_time if source_probe.video else None
-    )
+    _raw_s_start = source_probe.video[0].start_time if source_probe.video else None
     if _raw_s_start is not None:
         try:
             s_start = float(_raw_s_start)
@@ -441,15 +457,16 @@ def validate_editor_proxy(
             p_start = 0.0
     if p_start is None:
         p_start = 0.0
-    start_offset: float | None = (
-        s_start - p_start if s_start is not None else None
-    )
+    start_offset: float | None = s_start - p_start if s_start is not None else None
 
     if s_fps is None:
         rule, confidence = "unresolvable", "unresolvable"
     elif (
-        fps_exact and s_vfr == "cfr" and p_vfr == "cfr"
-        and s_count is not None and p_count is not None
+        fps_exact
+        and s_vfr == "cfr"
+        and p_vfr == "cfr"
+        and s_count is not None
+        and p_count is not None
         and s_count == p_count
     ):
         # Reaching this branch requires both frame counts to be non-None,
@@ -464,7 +481,8 @@ def validate_editor_proxy(
     b_note = (
         "mapping is display (PTS) order; B-frame decode order is not "
         "tracked (a note, never a penalty)"
-        if rule != "unresolvable" else ""
+        if rule != "unresolvable"
+        else ""
     )
     mapping = FrameMapping(
         source_fps=str(s_fps) if s_fps is not None else None,
@@ -500,15 +518,19 @@ def validate_editor_proxy(
     s_n = len(s_audio)
     audio_lost = p_n < s_n
     audio_note = (
-        f"{s_n} source audio track(s) -> {p_n} proxy track(s): "
-        "audio stream loss" if audio_lost else ""
+        f"{s_n} source audio track(s) -> {p_n} proxy track(s): " "audio stream loss"
+        if audio_lost
+        else ""
     )
     audio = AudioReport(
-        source_streams=s_n, proxy_streams=p_n,
-        source_sample_rates=tuple(s_sr), proxy_sample_rates=tuple(p_sr),
+        source_streams=s_n,
+        proxy_streams=p_n,
+        source_sample_rates=tuple(s_sr),
+        proxy_sample_rates=tuple(p_sr),
         source_channel_layouts=tuple(s_cl),
         proxy_channel_layouts=tuple(p_cl),
-        streams_lost=audio_lost, note=audio_note,
+        streams_lost=audio_lost,
+        note=audio_note,
     )
 
     # ── color / rotation: content loss blocks, missing tags don't ──
@@ -518,21 +540,27 @@ def validate_editor_proxy(
     p_hdr = _stream_hdr(proxy_streams)
     p_rot = _stream_rotation(proxy_streams)
     hdr_lost = s_hdr == "hdr-sdr" and p_hdr != "hdr-sdr"
-    rotation_lost = (
-        s_rot is not None and s_rot != 0 and (p_rot is None or p_rot == 0)
-    )
+    rotation_lost = s_rot is not None and s_rot != 0 and (p_rot is None or p_rot == 0)
     if hdr_lost:
-        color_note = ("HDR content (source) downgraded to SDR proxy: "
-                      "tone-mapping is irreversible in the proxy")
+        color_note = (
+            "HDR content (source) downgraded to SDR proxy: "
+            "tone-mapping is irreversible in the proxy"
+        )
     elif not rotation_lost and s_hdr in ("sdr", "unknown") and p_hdr == "unknown":
-        color_note = ("color metadata tags not carried into the proxy "
-                      "(metadata-only: no content risk claimed)")
+        color_note = (
+            "color metadata tags not carried into the proxy "
+            "(metadata-only: no content risk claimed)"
+        )
     else:
         color_note = ""
     color = ColorReport(
-        source_hdr=s_hdr, proxy_hdr=p_hdr,
-        source_rotation=s_rot, proxy_rotation=p_rot,
-        hdr_lost=hdr_lost, rotation_lost=rotation_lost, note=color_note,
+        source_hdr=s_hdr,
+        proxy_hdr=p_hdr,
+        source_rotation=s_rot,
+        proxy_rotation=p_rot,
+        hdr_lost=hdr_lost,
+        rotation_lost=rotation_lost,
+        note=color_note,
     )
 
     # ── timecode: the proxy never carries a TC track; the mapping is
@@ -541,7 +569,8 @@ def validate_editor_proxy(
     s_tc_basis = getattr(source_probe, "timecode_basis", "unresolved")
     proxy_tc_present = any(
         bool((v.get("tags") or {}).get("timecode"))
-        for v in proxy_streams if v.get("codec_type") == "video"
+        for v in proxy_streams
+        if v.get("codec_type") == "video"
     )
     tc_note = ""
     if start_offset is not None and abs(start_offset) > _LARGE_OFFSET_S:
@@ -551,13 +580,17 @@ def validate_editor_proxy(
             "reported not error"
         )
     elif s_tc == "drop" and not proxy_tc_present:
-        tc_note = ("source is drop-frame-capable; the proxy carries no TC "
-                   "track — mapping is PTS-anchored, drop-frame semantics "
-                   "NOT preserved in metadata (report, never guess)")
+        tc_note = (
+            "source is drop-frame-capable; the proxy carries no TC "
+            "track — mapping is PTS-anchored, drop-frame semantics "
+            "NOT preserved in metadata (report, never guess)"
+        )
     timecode = TimecodeReport(
-        source_timecode=s_tc, source_timecode_basis=s_tc_basis,
+        source_timecode=s_tc,
+        source_timecode_basis=s_tc_basis,
         proxy_timecode_present=bool(proxy_tc_present),
-        mapping_anchor="pts", note=tc_note,
+        mapping_anchor="pts",
+        note=tc_note,
     )
 
     # ── assemble the verdict ───────────────────────────────────────
@@ -573,9 +606,7 @@ def validate_editor_proxy(
             "content; metadata presence is not acceptance)"
         )
     if s_count is not None and p_count is not None and s_count != p_count:
-        reasons.append(
-            f"frame count mismatch: source {s_count} vs proxy {p_count}"
-        )
+        reasons.append(f"frame count mismatch: source {s_count} vs proxy {p_count}")
     if truncated:
         reasons.append(
             f"frame enumeration truncated at max_frames={max_frames}: "
@@ -588,24 +619,19 @@ def validate_editor_proxy(
         )
     if audio_lost:
         reasons.append(
-            f"audio stream loss: {s_n} source track(s) -> {p_n} "
-            "proxy track(s)"
+            f"audio stream loss: {s_n} source track(s) -> {p_n} " "proxy track(s)"
         )
     if hdr_lost:
         reasons.append(
-            "hdr content downgraded to SDR proxy (explicit downgrade, "
-            "irreversible)"
+            "hdr content downgraded to SDR proxy (explicit downgrade, " "irreversible)"
         )
     if rotation_lost:
         reasons.append(
-            f"rotation/orientation metadata lost: source "
-            f"{s_rot}deg -> proxy none"
+            f"rotation/orientation metadata lost: source " f"{s_rot}deg -> proxy none"
         )
 
     family = getattr(source_probe, "camera_family", "unknown")
-    family_verified = bool(
-        getattr(source_probe, "family_verified", False)
-    )
+    family_verified = bool(getattr(source_probe, "family_verified", False))
     if not family_verified:
         status = STATUS_UNVERIFIED
         reasons.insert(
@@ -620,10 +646,16 @@ def validate_editor_proxy(
         status = STATUS_VERIFIED
 
     return EditorVerdict(
-        status=status, reasons=tuple(reasons), frame_mapping=mapping,
-        audio=audio, color=color, timecode=timecode,
-        camera_family=family, family_verified=family_verified,
-        asset_id=asset_id, reel=reel,
+        status=status,
+        reasons=tuple(reasons),
+        frame_mapping=mapping,
+        audio=audio,
+        color=color,
+        timecode=timecode,
+        camera_family=family,
+        family_verified=family_verified,
+        asset_id=asset_id,
+        reel=reel,
     )
 
 

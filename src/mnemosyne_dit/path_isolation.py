@@ -79,7 +79,10 @@ def windows_stem_safe(filename: str) -> str:
 
 
 def check_path_isolation(
-    source: str, out_dir: str, *, protected_source: bool = False,
+    source: str,
+    out_dir: str,
+    *,
+    protected_source: bool = False,
 ) -> bool | str:
     """Fail-closed C5 check of a (source file, output dir) pair.
 

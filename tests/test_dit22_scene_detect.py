@@ -41,8 +41,7 @@ FFMPEG = "ffmpeg"
 
 def _mk(path: Path, *ffmpeg_args: str) -> Path:
     subprocess.run(
-        [FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
-         *ffmpeg_args, str(path)],
+        [FFMPEG, "-y", "-hide_banner", "-loglevel", "error", *ffmpeg_args, str(path)],
         check=True,
     )
     assert path.exists() and path.stat().st_size > 0
@@ -53,17 +52,45 @@ def _two_scenes(tmp_path: Path, total_s: float = 2.0) -> tuple[Path, int]:
     """A/B hard-cut, `total_s` TOTAL (each half = total_s/2), cut at the
     half-point. Returns (path, cut_frame) at 24p. Zero real media."""
     half = total_s / 2
-    a = _mk(tmp_path / "a.mp4",
-            "-f", "lavfi", "-i", f"testsrc=duration={half}:size=320x240:rate=24",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p")
-    b = _mk(tmp_path / "b.mp4",
-            "-f", "lavfi", "-i", f"smptebars=duration={half}:size=320x240:rate=24",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p")
+    a = _mk(
+        tmp_path / "a.mp4",
+        "-f",
+        "lavfi",
+        "-i",
+        f"testsrc=duration={half}:size=320x240:rate=24",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+    )
+    b = _mk(
+        tmp_path / "b.mp4",
+        "-f",
+        "lavfi",
+        "-i",
+        f"smptebars=duration={half}:size=320x240:rate=24",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+    )
     (tmp_path / "list.txt").write_text(f"file '{a}'\nfile '{b}'\n")
     cut = round(half * 24)
-    out = _mk(tmp_path / "two.mp4",
-               "-f", "concat", "-safe", "0", "-i", str(tmp_path / "list.txt"),
-               "-fps_mode", "cfr", "-c:v", "libx264", "-pix_fmt", "yuv420p")
+    out = _mk(
+        tmp_path / "two.mp4",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        str(tmp_path / "list.txt"),
+        "-fps_mode",
+        "cfr",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+    )
     return out, cut
 
 
@@ -83,7 +110,9 @@ def test_fixed_interval_tool_semantics(tmp_path):
         assert s.confidence is None, "a fixed tool has NO detection confidence"
         assert s.model_version == "fixed"
         assert s.source_asset_id == "asset-1" and s.camera_reel == "A001"
-    assert segs[0].start_frame == 0 and segs[-1].end_frame == round(m.duration_s * float(m.fps))
+    assert segs[0].start_frame == 0 and segs[-1].end_frame == round(
+        m.duration_s * float(m.fps)
+    )
     # pts mapping comes from the probe's time_base (tested precisely in #4):
     tb = segs[0].time_base
     assert tb and "/" in tb
@@ -99,7 +128,10 @@ def test_fixed_interval_remainder_absorbed(tmp_path):
     segs = FixedIntervalProvider(seconds=0.3).detect(src, source_probe=m)
     assert segs[0].end_frame - segs[0].start_frame == round(0.3 * m.fps)
     assert segs[-1].end_frame == total, "last interval absorbs the remainder"
-    assert segs[-1].end_frame - segs[-1].start_frame <= segs[0].end_frame - segs[0].start_frame
+    assert (
+        segs[-1].end_frame - segs[-1].start_frame
+        <= segs[0].end_frame - segs[0].start_frame
+    )
 
 
 # ── 2. content diff detects the known hard cut ─────────────────────
@@ -113,13 +145,13 @@ def test_content_diff_detects_known_hard_cut(tmp_path):
     assert len(segs) >= 2, "the known cut must split the clip"
     boundary = segs[0].end_frame
     assert abs(boundary - cut) <= 1, (
-        f"detected cut {boundary} must land within 1 frame of the known "
-        f"cut {cut}"
+        f"detected cut {boundary} must land within 1 frame of the known " f"cut {cut}"
     )
     assert segs[0].kind == BoundaryKind.CONTENT_CUT
     assert segs[0].detector == "content-diff"
-    assert segs[0].confidence is None, "segment 0 starts at the source " \
-        "beginning — no detected boundary"
+    assert segs[0].confidence is None, (
+        "segment 0 starts at the source " "beginning — no detected boundary"
+    )
     assert segs[1].confidence is not None and 0 < segs[1].confidence <= 1
     assert_contiguous(segs, round(m.duration_s * float(m.fps)))
 
@@ -130,17 +162,31 @@ def test_content_diff_detects_known_hard_cut(tmp_path):
 @pytest.mark.fixture_only
 def test_assert_contiguous_rejects_gaps_overlaps_and_shortfall():
     from scene_detect import SceneSegment
+
     def seg(i, s, e):
-        return SceneSegment(i, s, e, None, None, None, None, None,
-                            BoundaryKind.FIXED_INTERVAL, "fixed", "fixed",
-                            None, None)
+        return SceneSegment(
+            i,
+            s,
+            e,
+            None,
+            None,
+            None,
+            None,
+            None,
+            BoundaryKind.FIXED_INTERVAL,
+            "fixed",
+            "fixed",
+            None,
+            None,
+        )
+
     assert_contiguous([seg(0, 0, 5), seg(1, 5, 10)], 10)
     with pytest.raises(ProviderError):
-        assert_contiguous([seg(0, 0, 5), seg(1, 6, 10)], 10)      # gap
+        assert_contiguous([seg(0, 0, 5), seg(1, 6, 10)], 10)  # gap
     with pytest.raises(ProviderError):
-        assert_contiguous([seg(0, 0, 5), seg(1, 5, 8)], 10)       # shortfall
+        assert_contiguous([seg(0, 0, 5), seg(1, 5, 8)], 10)  # shortfall
     with pytest.raises(ProviderError):
-        assert_contiguous([seg(0, 0, 5), seg(0, 5, 10)], 10)      # index mismatch
+        assert_contiguous([seg(0, 0, 5), seg(0, 5, 10)], 10)  # index mismatch
     with pytest.raises(ProviderError):
         assert_contiguous([], 10)
 
@@ -157,17 +203,23 @@ def test_source_correspondence_from_probe(tmp_path):
     )
     for s in segs:
         assert s.source_asset_id == "asset-9" and s.camera_reel == "B007"
-        assert s.time_base == m.main_video().time_base, \
-            "time_base must come from the P10 probe verbatim"
+        assert (
+            s.time_base == m.main_video().time_base
+        ), "time_base must come from the P10 probe verbatim"
         if s.start_pts is not None:
             assert s.end_pts is not None and s.end_pts >= s.start_pts
-            pts_per = s.start_pts // s.start_frame if s.start_frame else s.end_pts // s.end_frame
+            pts_per = (
+                s.start_pts // s.start_frame
+                if s.start_frame
+                else s.end_pts // s.end_frame
+            )
             assert pts_per > 0
             # pts/frame must equal (timebase_den/timebase_num)/fps
             num, den = [int(x) for x in s.time_base.split("/")]
             expect_pps = round((den / num) / float(m.fps))
-            assert abs(pts_per - expect_pps) <= 1, \
-                f"pts/frame {pts_per} != expected {expect_pps}"
+            assert (
+                abs(pts_per - expect_pps) <= 1
+            ), f"pts/frame {pts_per} != expected {expect_pps}"
 
 
 # ── 5. detection without fps: refuse, do not guess ────────────────
@@ -195,17 +247,34 @@ def test_content_diff_refuses_unknown_resolution(tmp_path):
     fail closed — never fabricate a 320x240 default grid."""
     src, _ = _two_scenes(tmp_path, total_s=0.5)
     unknown_mv = VideoStream(
-        index=0, codec="h264", width=None, height=None,
-        pix_fmt=None, r_frame_rate="24/1", avg_frame_rate="24/1",
-        time_base="1/24000", start_time=0.0,
-        color_primaries=None, color_transfer=None, color_space=None,
+        index=0,
+        codec="h264",
+        width=None,
+        height=None,
+        pix_fmt=None,
+        r_frame_rate="24/1",
+        avg_frame_rate="24/1",
+        time_base="1/24000",
+        start_time=0.0,
+        color_primaries=None,
+        color_transfer=None,
+        color_space=None,
     )
     m = MediaProbe(
-        path=str(src), ffprobe_version="9.0.2", container="mov",
-        duration_s=0.5, nb_streams=1, video=[unknown_mv],
-        audio=[], fps=Fraction(24, 1), fps_status="ok",
-        vfr_status="cfr", timecode=None, timecode_basis="no-guess",
-        camera_family="unknown", family_verified=False,
+        path=str(src),
+        ffprobe_version="9.0.2",
+        container="mov",
+        duration_s=0.5,
+        nb_streams=1,
+        video=[unknown_mv],
+        audio=[],
+        fps=Fraction(24, 1),
+        fps_status="ok",
+        vfr_status="cfr",
+        timecode=None,
+        timecode_basis="no-guess",
+        camera_family="unknown",
+        family_verified=False,
     )
     with pytest.raises(ProviderError, match="resolution"):
         ContentDiffProvider().detect(src, source_probe=m)
@@ -244,6 +313,7 @@ def test_transnet_unavailable_contract():
 @pytest.mark.fixture_only
 def test_transnet_boundaries_extraction():
     import numpy as np
+
     # two scenes: frames 0-9 low, 10-19 high, 20-29 low
     pred = np.concatenate([np.zeros(10), np.ones(10), np.zeros(10)])
     b = _transnet_boundaries(pred, 0.5)
@@ -261,8 +331,12 @@ def test_transnet_boundaries_extraction():
 
 @pytest.mark.fixture_only
 def test_url_source_refused(tmp_path):
-    for prov in (FixedIntervalProvider(0.25), ContentDiffProvider(),
-                 PySceneDetectProvider(), TransNetV2Provider()):
+    for prov in (
+        FixedIntervalProvider(0.25),
+        ContentDiffProvider(),
+        PySceneDetectProvider(),
+        TransNetV2Provider(),
+    ):
         with pytest.raises(InvalidInputError, match="network URL"):
             prov.detect("http://example.com/c.mp4")
 
@@ -319,11 +393,13 @@ def test_no_safety_verdict_surface_in_scene_detect():
     import inspect
 
     import scene_detect
+
     src_txt = inspect.getsource(scene_detect)
-    assert "verdict" not in src_txt.lower().replace(
-        "archive safety verdict", ""
-    ) or "safety_verdict" not in src_txt, \
-        "scene detection must not expose or touch any archive safety verdict"
+    assert (
+        "verdict" not in src_txt.lower().replace("archive safety verdict", "")
+        or "safety_verdict" not in src_txt
+    ), "scene detection must not expose or touch any archive safety verdict"
     for prov in (FixedIntervalProvider(1.0), ContentDiffProvider()):
-        assert not hasattr(prov, "safety_verdict") and \
-            not hasattr(prov, "archive_verdict")
+        assert not hasattr(prov, "safety_verdict") and not hasattr(
+            prov, "archive_verdict"
+        )

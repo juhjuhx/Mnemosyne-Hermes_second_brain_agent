@@ -85,8 +85,11 @@ class StagedArchive:
         if not self.staging_dir.exists():
             return out
         for p in self.staging_dir.rglob("*"):
-            if p.is_file() and p.name not in (MANIFEST_NAME,) \
-                    and not p.name.endswith(_PARTIAL_SUFFIX):
+            if (
+                p.is_file()
+                and p.name not in (MANIFEST_NAME,)
+                and not p.name.endswith(_PARTIAL_SUFFIX)
+            ):
                 out[p.relative_to(self.staging_dir).as_posix()] = p
         return out
 
@@ -104,9 +107,7 @@ class StagedArchive:
         This is the gate a crash-recovery resume trusts (plus the
         current directory state)."""
         manifest = self._hash_staged()
-        (self.staging_dir / MANIFEST_NAME).parent.mkdir(
-            parents=True, exist_ok=True
-        )
+        (self.staging_dir / MANIFEST_NAME).parent.mkdir(parents=True, exist_ok=True)
         (self.staging_dir / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))
         return manifest
 
@@ -139,7 +140,9 @@ class StagedArchive:
             "manifest": saved,
             "staged_at_epoch": time.time(),
         }
-        part = (self.target_dir / RECEIPT_NAME).with_name(RECEIPT_NAME + _PARTIAL_SUFFIX)
+        part = (self.target_dir / RECEIPT_NAME).with_name(
+            RECEIPT_NAME + _PARTIAL_SUFFIX
+        )
         part.write_text(json.dumps(receipt, indent=2))
         os.replace(part, self.target_dir / RECEIPT_NAME)
         return True

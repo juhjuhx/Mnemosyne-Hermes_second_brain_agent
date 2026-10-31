@@ -65,9 +65,9 @@ class ProviderUnavailable(Exception):
 
 class BoundaryKind(str, Enum):
     FIXED_INTERVAL = "fixed_interval"  # a tool, NOT detection
-    CONTENT_CUT = "content_cut"        # content-change shot detection
-    NEURAL_SBD = "neural_sbd"         # neural SBD (TransNetV2 ...)
-    SEMANTIC = "semantic"             # P13 slot — not implemented here
+    CONTENT_CUT = "content_cut"  # content-change shot detection
+    NEURAL_SBD = "neural_sbd"  # neural SBD (TransNetV2 ...)
+    SEMANTIC = "semantic"  # P13 slot — not implemented here
 
 
 @dataclass(frozen=True)
@@ -124,7 +124,9 @@ def _time_base_to_pts_per_frame(tb: str, fps: Fraction | float) -> int | None:
         return None
 
 
-def _frame_context(m: MediaProbe, fps: Fraction | float | None) -> tuple[int, str | None]:
+def _frame_context(
+    m: MediaProbe, fps: Fraction | float | None
+) -> tuple[int, str | None]:
     """(total_frames, time_base) from a P10 probe + fps (the probe's fps
     is authoritative when the caller did not pass one)."""
     fps_eff = fps if fps is not None else m.fps
@@ -240,10 +242,20 @@ class ContentDiffProvider:
         timeout_s: float,
     ) -> np.ndarray:
         cmd = [
-            ffmpeg_bin, "-hide_banner", "-loglevel", "error",
-            "-i", str(source),
-            "-f", "rawvideo", "-pix_fmt", "rgb24",
-            "-an", "-vframes", str(total), "-",
+            ffmpeg_bin,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(source),
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-an",
+            "-vframes",
+            str(total),
+            "-",
         ]
         try:
             proc = subprocess.run(
@@ -262,9 +274,8 @@ class ContentDiffProvider:
                 f"decoded {len(proc.stdout)} bytes, expected {expected} "
                 f"— undecodable / truncated source"
             )
-        return (
-            np.frombuffer(proc.stdout[:expected], dtype=np.uint8)
-            .reshape(total, height, width, 3)
+        return np.frombuffer(proc.stdout[:expected], dtype=np.uint8).reshape(
+            total, height, width, 3
         )
 
     def detect(
@@ -314,9 +325,8 @@ class ContentDiffProvider:
         pts_per = _time_base_to_pts_per_frame(tb, fps_eff) if tb else None
 
         frames = self._decode_frames(src, total, width, height, ffmpeg_bin, timeout_s)
-        diffs = (
-            np.abs(frames[1:].astype(np.int16) - frames[:-1].astype(np.int16))
-            .mean(axis=(1, 2, 3))
+        diffs = np.abs(frames[1:].astype(np.int16) - frames[:-1].astype(np.int16)).mean(
+            axis=(1, 2, 3)
         )
         median = float(np.median(diffs))
         threshold = max(self.floor, self.threshold_factor * median)
@@ -391,15 +401,15 @@ class PySceneDetectProvider:
         # for a provider whose optional dependency happens to be present
         ok, reason = self.is_available()
         if not ok:
-            raise ProviderUnavailable(
-                f"PySceneDetectProvider unavailable: {reason}"
-            )
+            raise ProviderUnavailable(f"PySceneDetectProvider unavailable: {reason}")
         from scenedetect import detect  # available at this point
 
         det = _pysd_detector(self.detector, self.threshold)
         scenes = detect(str(source), det)  # list of (start, end) frames
-        fps_eff = fps if fps is not None else (
-            source_probe.fps if source_probe is not None else None
+        fps_eff = (
+            fps
+            if fps is not None
+            else (source_probe.fps if source_probe is not None else None)
         )
         fps_f = float(fps_eff) if fps_eff else None
         _mv0 = source_probe.main_video() if source_probe is not None else None
@@ -475,9 +485,7 @@ class TransNetV2Provider:
         _refuse_url(str(source))  # safety gate runs regardless of availability
         ok, reason = self.is_available()
         if not ok:
-            raise ProviderUnavailable(
-                f"TransNetV2Provider unavailable: {reason}"
-            )
+            raise ProviderUnavailable(f"TransNetV2Provider unavailable: {reason}")
         # tensorflow-based inference path: run only when available.
         from transnetv2 import TransNetV2  # provided alongside weights
 
@@ -485,8 +493,10 @@ class TransNetV2Provider:
         _out, _single, many = model.predict_video(str(source))
         pred = many.numpy()
         boundaries = _transnet_boundaries(pred, self.threshold)
-        fps_eff = fps if fps is not None else (
-            source_probe.fps if source_probe is not None else None
+        fps_eff = (
+            fps
+            if fps is not None
+            else (source_probe.fps if source_probe is not None else None)
         )
         fps_f = float(fps_eff) if fps_eff else None
         _mv0 = source_probe.main_video() if source_probe is not None else None

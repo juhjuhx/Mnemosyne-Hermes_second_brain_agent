@@ -53,12 +53,18 @@ def _mk_source(path: Path, audio: bool = True) -> Path:
     default — the audio stream keeps the chain's audio-mapping live)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     args = [
-        FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
-        "-f", "lavfi", "-i", "testsrc=duration=2:size=320x240:rate=24",
+        FFMPEG,
+        "-y",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=duration=2:size=320x240:rate=24",
     ]
     if audio:
-        args += ["-f", "lavfi", "-i",
-                 "sine=frequency=440:sample_rate=48000:duration=2"]
+        args += ["-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=2"]
     args += ["-c:v", "libx264", "-pix_fmt", "yuv420p"]
     if audio:
         args += ["-c:a", "aac", "-shortest"]
@@ -68,7 +74,9 @@ def _mk_source(path: Path, audio: bool = True) -> Path:
     return path
 
 
-def _make_catalog_and_source(tmp_path: Path, name: str = "reel_A.mov") -> tuple[Dit22Catalog, Path, str]:
+def _make_catalog_and_source(
+    tmp_path: Path, name: str = "reel_A.mov"
+) -> tuple[Dit22Catalog, Path, str]:
     """A VERIFIED replica chain on a tmp 'storage' (synthetic device)."""
     cat = Dit22Catalog(tmp_path / "cat.db")
     src = _mk_source(tmp_path / "media" / name)
@@ -78,13 +86,16 @@ def _make_catalog_and_source(tmp_path: Path, name: str = "reel_A.mov") -> tuple[
         AssetPathObservation(aid, "sd-synthetic", str(src), src.stat().st_size)
     )
     cat.add_replica(
-        Replica("rep-A", aid, "sd-synthetic", "card-synthetic", str(src),
-                verified=True)
+        Replica("rep-A", aid, "sd-synthetic", "card-synthetic", str(src), verified=True)
     )
     cat.add_evidence(
         VerificationEvidence(
-            evidence_id="ev-A", asset_id=aid, file_name=src.name,
-            algorithm="sha256", digest=aid, verdict="PASS",
+            evidence_id="ev-A",
+            asset_id=aid,
+            file_name=src.name,
+            algorithm="sha256",
+            digest=aid,
+            verdict="PASS",
             replica_id="rep-A",
         )
     )
@@ -107,8 +118,7 @@ def test_I1_full_chain_admission_to_scene(tmp_path):
     manifest = {"reel_A.mov": aid}
     q = DurableJobQueue(tmp_path / "jobs.db")
     try:
-        job = q.enqueue("proxy-reel-A", manifest,
-                        idempotency_key="i1", max_attempts=3)
+        job = q.enqueue("proxy-reel-A", manifest, idempotency_key="i1", max_attempts=3)
         jid = job["job_id"]
         token = q.lease(jid, "worker-1", ttl_seconds=300)
 
@@ -119,7 +129,9 @@ def test_I1_full_chain_admission_to_scene(tmp_path):
 
         # ── 4. PROXY (P11/P11.1-B) with C1 pinner + C4 reservation ──
         pin = pin_from_admission(
-            dec, catalog=cat, manifest=manifest,
+            dec,
+            catalog=cat,
+            manifest=manifest,
         )
         assert pin.manifest_digest == manifest_digest_of(manifest)
         assert pin.asset_id == aid
@@ -129,10 +141,16 @@ def test_I1_full_chain_admission_to_scene(tmp_path):
             total = 1 << 40
 
         result = generate_proxy(
-            src, "editor", tmp_path / "proxies",
-            job_id=jid, lease_token=token, test_mode=False,
-            catalog=cat, storage_id="sd-synthetic",
-            queue=q, worker="worker-1",
+            src,
+            "editor",
+            tmp_path / "proxies",
+            job_id=jid,
+            lease_token=token,
+            test_mode=False,
+            catalog=cat,
+            storage_id="sd-synthetic",
+            queue=q,
+            worker="worker-1",
             source_probe=probe,
             source_pin=pin,
             capacity_probe=_Roomy(),
@@ -152,27 +170,34 @@ def test_I1_full_chain_admission_to_scene(tmp_path):
 
         # ── 5. ARTIFACT RECOVERY (P11.1-C) — a healthy publish
         # reconciles clean, idempotently, under the live lease ──
-        report = reconcile_proxy_job(tmp_path / "proxies", jid,
-                                    expected_token=token)
+        report = reconcile_proxy_job(tmp_path / "proxies", jid, expected_token=token)
         assert report.is_published()
         assert report.published_sha == result.proxy_sha256
         assert report.issues == ()
-        rr = apply_recovery(tmp_path / "proxies", jid, report,
-                           queue=q, worker="worker-1", token=token)
+        rr = apply_recovery(
+            tmp_path / "proxies", jid, report, queue=q, worker="worker-1", token=token
+        )
         assert rr.completed
         assert rr.published_generation == report.published_generation
 
         # a STALE token must be fenced (no mutation):
         rr_stale = apply_recovery(
-            tmp_path / "proxies", jid, report,
-            queue=q, worker="worker-2", token="forged-token",
+            tmp_path / "proxies",
+            jid,
+            report,
+            queue=q,
+            worker="worker-2",
+            token="forged-token",
         )
         assert not rr_stale.completed
 
         # ── 6. EDITOR VALIDATION (P11.1-D) — the edit-side truth ──
         verdict = validate_editor_proxy(
-            src, result.path, source_probe=probe,
-            asset_id=aid, reel="reel_A.mov",
+            src,
+            result.path,
+            source_probe=probe,
+            asset_id=aid,
+            reel="reel_A.mov",
         )
         assert verdict.status in (STATUS_VERIFIED, "EDITOR_DEGRADED")
         assert verdict.asset_id == aid
@@ -184,8 +209,11 @@ def test_I1_full_chain_admission_to_scene(tmp_path):
 
         # ── 7. SCENE DETECTION (P12) — the segment carries the IDs ──
         segs = FixedIntervalProvider(seconds=1.0).detect(
-            result.path, fps=probe.fps, source_probe=probe,
-            source_asset_id=aid, camera_reel="reel_A.mov",
+            result.path,
+            fps=probe.fps,
+            source_probe=probe,
+            source_asset_id=aid,
+            camera_reel="reel_A.mov",
         )
         assert len(segs) == 2
         for s in segs:
@@ -215,8 +243,11 @@ def test_I2_source_mutated_after_admission_blocks_encode(tmp_path):
 
     with pytest.raises(SourceDriftError):
         generate_proxy(
-            src, "browser", tmp_path / "out",
-            source_pin=pin, test_mode=True,
+            src,
+            "browser",
+            tmp_path / "out",
+            source_pin=pin,
+            test_mode=True,
             actual_manifest=manifest,
             ffmpeg_bin="ffmpeg",
         )
@@ -248,9 +279,17 @@ def test_I4_crash_recovery_replays_a_receipt_first_window(tmp_path):
         probe = media_probe.probe(src, sha256=True)
         out = tmp_path / "proxies"
         result = generate_proxy(
-            src, "browser", out, job_id=jid, lease_token=token,
-            test_mode=False, catalog=cat, storage_id="sd-synthetic",
-            queue=q, worker="w", source_probe=probe,
+            src,
+            "browser",
+            out,
+            job_id=jid,
+            lease_token=token,
+            test_mode=False,
+            catalog=cat,
+            storage_id="sd-synthetic",
+            queue=q,
+            worker="w",
+            source_probe=probe,
         )
         pub = Path(result.path)
         g = generation_tag(token)
@@ -270,8 +309,7 @@ def test_I4_crash_recovery_replays_a_receipt_first_window(tmp_path):
         kinds = report.issues_by_kind()
         assert kinds.get("pending_rename"), kinds
 
-        rr = apply_recovery(out, jid, report, queue=q, worker="w",
-                            token=token)
+        rr = apply_recovery(out, jid, report, queue=q, worker="w", token=token)
         assert rr.completed
         assert pub.exists()
         rep2 = reconcile_proxy_job(out, jid, expected_token=token)
@@ -305,5 +343,6 @@ def test_I5_scene_on_an_unverified_probe_is_honest(tmp_path):
     provider = FixedIntervalProvider(seconds=1.0)
     # _frame_context refuses to guess: ValueError("fps unknown …")
     with pytest.raises(ValueError, match="fps unknown"):
-        provider.detect(tmp_path / "x.mov", fps=p.fps,
-                        source_probe=p, source_asset_id="a")
+        provider.detect(
+            tmp_path / "x.mov", fps=p.fps, source_probe=p, source_asset_id="a"
+        )

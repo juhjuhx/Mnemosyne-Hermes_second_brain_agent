@@ -156,13 +156,9 @@ class DurableJobQueue:
         in place (NULL = legacy unbounded, 0 = no re-queues yet).
         Existing rows keep the old behavior: a NULL budget never
         exhausts."""
-        cols = {
-            r[1] for r in self.conn.execute("PRAGMA table_info(dit22_job)")
-        }
+        cols = {r[1] for r in self.conn.execute("PRAGMA table_info(dit22_job)")}
         if "max_attempts" not in cols:
-            self.conn.execute(
-                "ALTER TABLE dit22_job ADD COLUMN max_attempts INTEGER"
-            )
+            self.conn.execute("ALTER TABLE dit22_job ADD COLUMN max_attempts INTEGER")
         if "retry_count" not in cols:
             self.conn.execute(
                 "ALTER TABLE dit22_job ADD COLUMN retry_count INTEGER"
@@ -204,10 +200,9 @@ class DurableJobQueue:
             row = self._row(existing[0])
             return row
         job_id = str(uuid.uuid4())
-        seq = (
-            self.conn.execute("SELECT COALESCE(MAX(seq), 0) + 1 FROM dit22_job")
-            .fetchone()[0]
-        )
+        seq = self.conn.execute(
+            "SELECT COALESCE(MAX(seq), 0) + 1 FROM dit22_job"
+        ).fetchone()[0]
         self.conn.execute(
             "INSERT INTO dit22_job (job_id, idempotency_key, name, input_manifest,"
             " priority, reversible, state, attempt, checkpoint, seq, max_attempts)"
@@ -334,7 +329,9 @@ class DurableJobQueue:
         row = self._row(job_id)
         self._assert_leased_to(row, worker, token)
         self._fenced_update(
-            job_id, worker, token,
+            job_id,
+            worker,
+            token,
             "checkpoint=?",
             (json.dumps(checkpoint),),
         )
@@ -344,7 +341,9 @@ class DurableJobQueue:
         row = self._row(job_id)
         self._assert_leased_to(row, worker, token)
         self._fenced_update(
-            job_id, worker, token,
+            job_id,
+            worker,
+            token,
             "state='PAUSED', lease_token=NULL, lease_worker=NULL,"
             " lease_expires_at=NULL",
             (),
@@ -355,7 +354,9 @@ class DurableJobQueue:
         row = self._row(job_id)
         self._assert_leased_to(row, worker, token)
         self._fenced_update(
-            job_id, worker, token,
+            job_id,
+            worker,
+            token,
             "state='FAILED', fail_reason=?,"
             " lease_token=NULL, lease_worker=NULL, lease_expires_at=NULL",
             (reason,),
@@ -390,7 +391,9 @@ class DurableJobQueue:
             self.verify_manifest(job_id, actual_manifest)
         except InputManifestDriftError:
             self._fenced_update(
-                job_id, worker, token,
+                job_id,
+                worker,
+                token,
                 "state='FAILED', fail_reason='input manifest drift', "
                 "lease_token=NULL, lease_worker=NULL, lease_expires_at=NULL",
                 (),
@@ -398,7 +401,9 @@ class DurableJobQueue:
             self.conn.commit()
             return False
         self._fenced_update(
-            job_id, worker, token,
+            job_id,
+            worker,
+            token,
             "state='DONE', lease_token=NULL, lease_worker=NULL,"
             " lease_expires_at=NULL",
             (),
@@ -451,7 +456,7 @@ class DurableJobQueue:
         own schedule.)"""
         row = self._row(job_id)
         k = max(0, row.get("retry_count") or 0)
-        return min(self.BASE_BACKOFF_S * (2 ** k), self.MAX_BACKOFF_S)
+        return min(self.BASE_BACKOFF_S * (2**k), self.MAX_BACKOFF_S)
 
     # ── claiming (priority + FIFO) ───────────────────────────────────
 

@@ -154,10 +154,12 @@ def test_two_mounts_one_device_fold_to_single_domain(tmp_path):
     arch = StagedArchive("job-mirror", tmp_path / "s", tmp_path / "t")
     arch.register_destination("/mnt/sdcard/a")
     arch.register_destination("/Volumes/MediaCard")
-    prov = _prov({
-        "/mnt/sdcard/a": DeviceIdentity("VOLSER-1", True, "removable"),
-        "/Volumes/MediaCard": DeviceIdentity("VOLSER-1", True, "removable"),
-    })
+    prov = _prov(
+        {
+            "/mnt/sdcard/a": DeviceIdentity("VOLSER-1", True, "removable"),
+            "/Volumes/MediaCard": DeviceIdentity("VOLSER-1", True, "removable"),
+        }
+    )
     rep = arch.independence_report(prov)
     assert rep["independent_backup_count"] == 1
     assert rep["domains"] == ["VOLSER-1"]
@@ -169,10 +171,12 @@ def test_two_distinct_physical_devices_count_as_two_backups(tmp_path):
     arch = StagedArchive("job-two", tmp_path / "s", tmp_path / "t")
     arch.register_destination("/dev/nvme1n1p1")
     arch.register_destination("/mnt/backup-card")
-    prov = _prov({
-        "/dev/nvme1n1p1": DeviceIdentity("SER-A", True, "ssd"),
-        "/mnt/backup-card": DeviceIdentity("SER-B", True, "removable"),
-    })
+    prov = _prov(
+        {
+            "/dev/nvme1n1p1": DeviceIdentity("SER-A", True, "ssd"),
+            "/mnt/backup-card": DeviceIdentity("SER-B", True, "removable"),
+        }
+    )
     rep = arch.independence_report(prov)
     assert rep["independent_backup_count"] == 2
     assert set(rep["domains"]) == {"SER-A", "SER-B"}
@@ -184,11 +188,13 @@ def test_network_share_and_unlisted_paths_never_count(tmp_path):
     arch.register_destination("//nas/share")
     arch.register_destination("/mnt/unknown-thing")
     arch.register_destination("/dev/backup-disk")
-    prov = _prov({
-        "//nas/share": DeviceIdentity("NAS-1", False, "network"),
-        "/dev/backup-disk": DeviceIdentity("SER-B", True, "ssd"),
-        # /mnt/unknown-thing intentionally absent -> fail-closed unknown
-    })
+    prov = _prov(
+        {
+            "//nas/share": DeviceIdentity("NAS-1", False, "network"),
+            "/dev/backup-disk": DeviceIdentity("SER-B", True, "ssd"),
+            # /mnt/unknown-thing intentionally absent -> fail-closed unknown
+        }
+    )
     rep = arch.independence_report(prov)
     assert rep["independent_backup_count"] == 1
     assert rep["domains"] == ["SER-B"]
@@ -204,7 +210,10 @@ def test_real_zfs_snapshot_restore_drill_is_contract_only(tmp_path):
     real result — the scenario state is inspectable, nothing is fabricated."""
     contract = {
         "inputs": ["zfs snapshot @pre-offload", "replication stream", "restore target"],
-        "expected": ["restored tree hash == pre-offload manifest", "RPO=0 for committed archive"],
+        "expected": [
+            "restored tree hash == pre-offload manifest",
+            "RPO=0 for committed archive",
+        ],
         "status": "HARDWARE_BLOCKED",
         "result": None,
     }

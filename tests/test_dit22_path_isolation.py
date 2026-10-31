@@ -65,7 +65,8 @@ def test_p3b_protected_source_inside_rejected(tmp_path: Path):
     src.write_bytes(b"x")
     with pytest.raises(PathIsolationError) as exc:
         check_path_isolation(
-            str(src), str(tmp_path / "media" / "out"),
+            str(src),
+            str(tmp_path / "media" / "out"),
             protected_source=True,
         )
     assert "INSIDE" in str(exc.value)
@@ -107,9 +108,7 @@ def test_p7_unc_out_dir_is_hardware_blocked_not_supported():
     # A UNC share can still be *used*, but its rename/persistence
     # semantics are untested => the check reports HARDWARE_BLOCKED
     # rather than silently passing (C6).
-    res = check_path_isolation(
-        "/Volumes/SD1/clip.mov", r"\\nas\share\proxies"
-    )
+    res = check_path_isolation("/Volumes/SD1/clip.mov", r"\\nas\share\proxies")
     assert res == HARDWARE_BLOCKED
 
 

@@ -64,14 +64,28 @@ def _catalog(
     cat.upsert_asset(MediaAsset(source_sha256=aid))
     if replica:
         cat.add_replica(
-            Replica("r1", aid, "storage-a", domain, str(tmp_path / "clip.mp4"),
-                    verified=verified, verified_at=123)
+            Replica(
+                "r1",
+                aid,
+                "storage-a",
+                domain,
+                str(tmp_path / "clip.mp4"),
+                verified=verified,
+                verified_at=123,
+            )
         )
     if with_evidence:
         cat.add_evidence(
-            VerificationEvidence("e1", aid, "clip.mp4", "sha256", aid,
-                                 device_id="dev-a", verdict="PASS",
-                                 replica_id="r1")
+            VerificationEvidence(
+                "e1",
+                aid,
+                "clip.mp4",
+                "sha256",
+                aid,
+                device_id="dev-a",
+                verdict="PASS",
+                replica_id="r1",
+            )
         )
     return cat, aid, tmp_path / "clip.mp4"
 
@@ -80,9 +94,22 @@ def _media(tmp_path: Path) -> Path:
     """Real (synthetic, zero real material) media for behavior tests."""
     p = tmp_path / "m.mp4"
     subprocess.run(
-        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-         "-f", "lavfi", "-i", "testsrc=duration=0.5:size=320x240:rate=24",
-         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(p)],
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=0.5:size=320x240:rate=24",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            str(p),
+        ],
         check=True,
     )
     return p
@@ -127,9 +154,16 @@ def test_dangling_evidence_is_denied(tmp_path):
     not a verification (P07.1 trust-source rule)."""
     cat, aid, clip = _catalog(tmp_path, with_evidence=False)
     cat.add_evidence(
-        VerificationEvidence("e-x", aid, "clip.mp4", "sha256", aid,
-                             device_id="dev-a", verdict="PASS",
-                             replica_id="r-GONE")
+        VerificationEvidence(
+            "e-x",
+            aid,
+            "clip.mp4",
+            "sha256",
+            aid,
+            device_id="dev-a",
+            verdict="PASS",
+            replica_id="r-GONE",
+        )
     )
     d = admit_source(cat, storage_id="storage-a", replica_path=str(clip))
     assert not d.admitted and "trusted_readback_evidence" in d.reason
@@ -142,13 +176,27 @@ def test_cross_asset_evidence_is_denied(tmp_path):
     other = asset_id_for_bytes(b"another-asset")
     cat.upsert_asset(MediaAsset(source_sha256=other))
     cat.add_replica(
-        Replica("r-o", other, "storage-b", "nas-b", "/somewhere/other.mp4",
-                verified=True, verified_at=1)
+        Replica(
+            "r-o",
+            other,
+            "storage-b",
+            "nas-b",
+            "/somewhere/other.mp4",
+            verified=True,
+            verified_at=1,
+        )
     )
     cat.add_evidence(
-        VerificationEvidence("e-o", aid, "clip.mp4", "sha256", aid,
-                             device_id="dev-a", verdict="PASS",
-                             replica_id="r-o")
+        VerificationEvidence(
+            "e-o",
+            aid,
+            "clip.mp4",
+            "sha256",
+            aid,
+            device_id="dev-a",
+            verdict="PASS",
+            replica_id="r-o",
+        )
     )
     d = admit_source(cat, storage_id="storage-a", replica_path=str(clip))
     assert not d.admitted and "trusted_readback_evidence" in d.reason
@@ -157,16 +205,18 @@ def test_cross_asset_evidence_is_denied(tmp_path):
 @pytest.mark.fixture_only
 def test_source_sha_mismatch_is_denied(tmp_path):
     cat, _aid, clip = _catalog(tmp_path)
-    d = admit_source(cat, storage_id="storage-a", replica_path=str(clip),
-                     expected_sha256="0" * 64)
+    d = admit_source(
+        cat, storage_id="storage-a", replica_path=str(clip), expected_sha256="0" * 64
+    )
     assert not d.admitted and "sha_matches" in d.reason
 
 
 @pytest.mark.fixture_only
 def test_missing_file_is_denied_and_unrecordable(tmp_path):
     cat, _aid, _ = _catalog(tmp_path)
-    d = admit_source(cat, storage_id="storage-a",
-                     replica_path=str(tmp_path / "nope.mp4"))
+    d = admit_source(
+        cat, storage_id="storage-a", replica_path=str(tmp_path / "nope.mp4")
+    )
     assert not d.admitted and "file_exists" in d.reason
     # No on-disk content => no content identity => nothing to attribute an
     # evidence row to; the controlled ledger refuses it.
@@ -181,8 +231,9 @@ def test_untrusted_device_denies_when_provider_given(tmp_path):
     prov = StaticDeviceIdentityProvider(
         {str(clip): DeviceIdentity("net-share", False, "smb")}
     )
-    d = admit_source(cat, storage_id="storage-a", replica_path=str(clip),
-                     device_provider=prov)
+    d = admit_source(
+        cat, storage_id="storage-a", replica_path=str(clip), device_provider=prov
+    )
     assert not d.admitted and "device_identity_trusted" in d.reason
 
 
@@ -192,8 +243,9 @@ def test_physical_device_passes_when_provider_given(tmp_path):
     prov = StaticDeviceIdentityProvider(
         {str(clip): DeviceIdentity("disk-c", True, "usb-sd")}
     )
-    d = admit_source(cat, storage_id="storage-a", replica_path=str(clip),
-                     device_provider=prov)
+    d = admit_source(
+        cat, storage_id="storage-a", replica_path=str(clip), device_provider=prov
+    )
     assert d.admitted
 
 
@@ -225,8 +277,10 @@ def test_admission_recorded_and_reentry_idempotent(tmp_path):
     assert rows[0].digest == d.fingerprint
     # identical re-entry: append-only no-op (P05.1 S5)
     record_admission_evidence(cat, d, job_id="job-77", evidence_id="adm-job-77-x")
-    assert len([e for e in cat.evidence_for(aid)
-                if e.file_name == "admission/job-77"]) == 1
+    assert (
+        len([e for e in cat.evidence_for(aid) if e.file_name == "admission/job-77"])
+        == 1
+    )
 
 
 @pytest.mark.fixture_only
@@ -248,13 +302,20 @@ def test_admission_row_is_not_trusted_readback(tmp_path):
     other = asset_id_for_bytes(b"other-clip")
     cat.upsert_asset(MediaAsset(source_sha256=other))
     cat.add_replica(
-        Replica("r-2", other, "storage-a", "nas-a", str(clip),
-                verified=True, verified_at=5)
+        Replica(
+            "r-2", other, "storage-a", "nas-a", str(clip), verified=True, verified_at=5
+        )
     )
     cat.add_evidence(
-        VerificationEvidence("e-adm", other, "clip.mp4",
-                             "sha256-admission-gate", d.fingerprint,
-                             verdict="ADMITTED", replica_id="r-2")
+        VerificationEvidence(
+            "e-adm",
+            other,
+            "clip.mp4",
+            "sha256-admission-gate",
+            d.fingerprint,
+            verdict="ADMITTED",
+            replica_id="r-2",
+        )
     )
     el = cat.reuse_eligibility(other)
     assert el.gates["readback_evidence"] is False
@@ -280,8 +341,12 @@ def test_denied_source_blocks_encode_before_ffmpeg(tmp_path, monkeypatch):
     calls = _spy_ffmpeg(monkeypatch)
     with pytest.raises(ProxySourceAdmissionError, match="DENIED"):
         proxy_generator.generate_proxy(
-            clip, "browser", tmp_path / "out",
-            job_id="job-bad", catalog=cat, storage_id="storage-a",
+            clip,
+            "browser",
+            tmp_path / "out",
+            job_id="job-bad",
+            catalog=cat,
+            storage_id="storage-a",
         )
     assert calls == [], "a denied source must never reach ffmpeg"
 
@@ -309,14 +374,20 @@ def test_formal_missing_source_file_raises_admission_not_value_error(
     calls = _spy_ffmpeg(monkeypatch)
     with pytest.raises(ProxySourceAdmissionError, match="DENIED"):
         proxy_generator.generate_proxy(
-            tmp_path / "ghost.mp4", "browser", tmp_path / "out",
-            job_id="job-ghost", catalog=cat, storage_id="storage-a",
+            tmp_path / "ghost.mp4",
+            "browser",
+            tmp_path / "out",
+            job_id="job-ghost",
+            catalog=cat,
+            storage_id="storage-a",
         )
     assert calls == [], "a missing source must never reach ffmpeg"
 
 
 @pytest.mark.behavior_tested
-def test_formal_empty_source_denied_before_any_evidence_or_ffmpeg(tmp_path, monkeypatch):
+def test_formal_empty_source_denied_before_any_evidence_or_ffmpeg(
+    tmp_path, monkeypatch
+):
     """Review Minor #2 pin: a 0-B source on a FULL trust chain is
     refused before the ADMITTED ledger row is written (an 'ADMITTED'
     record must never point at a source from which no encode ran) and
@@ -326,13 +397,21 @@ def test_formal_empty_source_denied_before_any_evidence_or_ffmpeg(tmp_path, monk
     aid = asset_id_for_file(media)
     cat.upsert_asset(MediaAsset(source_sha256=aid))
     cat.add_replica(
-        Replica("r1", aid, "storage-a", "nas-a", str(media),
-                verified=True, verified_at=1)
+        Replica(
+            "r1", aid, "storage-a", "nas-a", str(media), verified=True, verified_at=1
+        )
     )
     cat.add_evidence(
-        VerificationEvidence("e1", aid, media.name, "sha256", aid,
-                             device_id="dev-a", verdict="PASS",
-                             replica_id="r1")
+        VerificationEvidence(
+            "e1",
+            aid,
+            media.name,
+            "sha256",
+            aid,
+            device_id="dev-a",
+            verdict="PASS",
+            replica_id="r1",
+        )
     )
     # now a 0-B replica record pointing at an empty file, trusted chain:
     cat2 = cat  # same catalog
@@ -341,25 +420,45 @@ def test_formal_empty_source_denied_before_any_evidence_or_ffmpeg(tmp_path, monk
     aid_empty = asset_id_for_file(empty)
     cat2.upsert_asset(MediaAsset(source_sha256=aid_empty))
     cat2.add_replica(
-        Replica("r-e", aid_empty, "storage-a", "nas-a", str(empty),
-                verified=True, verified_at=2)
+        Replica(
+            "r-e",
+            aid_empty,
+            "storage-a",
+            "nas-a",
+            str(empty),
+            verified=True,
+            verified_at=2,
+        )
     )
     cat2.add_evidence(
-        VerificationEvidence("e-e", aid_empty, "empty.mp4", "sha256",
-                             aid_empty, device_id="dev-a", verdict="PASS",
-                             replica_id="r-e")
+        VerificationEvidence(
+            "e-e",
+            aid_empty,
+            "empty.mp4",
+            "sha256",
+            aid_empty,
+            device_id="dev-a",
+            verdict="PASS",
+            replica_id="r-e",
+        )
     )
     calls = _spy_ffmpeg(monkeypatch)
     with pytest.raises(proxy_generator.ProxyInputError, match="empty"):
         proxy_generator.generate_proxy(
-            empty, "browser", tmp_path / "out",
-            job_id="job-empty", catalog=cat2, storage_id="storage-a",
+            empty,
+            "browser",
+            tmp_path / "out",
+            job_id="job-empty",
+            catalog=cat2,
+            storage_id="storage-a",
         )
     assert calls == []
     # no ADMITTED row may have been written for the empty source:
-    rows = [e for e in cat2.evidence_for(aid_empty)
-            if e.file_name == "admission/job-empty"
-            and e.verdict == "ADMITTED"]
+    rows = [
+        e
+        for e in cat2.evidence_for(aid_empty)
+        if e.file_name == "admission/job-empty" and e.verdict == "ADMITTED"
+    ]
     assert rows == [], "a 0-B source must never produce an ADMITTED ledger row"
 
 
@@ -390,17 +489,29 @@ def test_admitted_source_encodes_and_records_admission(tmp_path):
     aid = asset_id_for_file(media)
     cat.upsert_asset(MediaAsset(source_sha256=aid))
     cat.add_replica(
-        Replica("r1", aid, "storage-a", "nas-a", str(media),
-                verified=True, verified_at=1)
+        Replica(
+            "r1", aid, "storage-a", "nas-a", str(media), verified=True, verified_at=1
+        )
     )
     cat.add_evidence(
-        VerificationEvidence("e1", aid, media.name, "sha256", aid,
-                             device_id="dev-a", verdict="PASS",
-                             replica_id="r1")
+        VerificationEvidence(
+            "e1",
+            aid,
+            media.name,
+            "sha256",
+            aid,
+            device_id="dev-a",
+            verdict="PASS",
+            replica_id="r1",
+        )
     )
     r = proxy_generator.generate_proxy(
-        media, "browser", tmp_path / "out",
-        job_id="job-ok", catalog=cat, storage_id="storage-a",
+        media,
+        "browser",
+        tmp_path / "out",
+        job_id="job-ok",
+        catalog=cat,
+        storage_id="storage-a",
     )
     assert r.admission is not None and r.admission.admitted
     rows = [e for e in cat.evidence_for(aid) if e.file_name == "admission/job-ok"]
@@ -415,7 +526,14 @@ def test_admission_decision_is_immutable_and_field_bounded():
     """The decision carries exactly the fields the gate decides on — no
     authorization surface beyond `admitted` (and never a format mandate)."""
     allowed = {
-        "admitted", "reason", "gates", "storage_id", "replica_path",
-        "asset_id", "replica_id", "source_sha256", "fingerprint",
+        "admitted",
+        "reason",
+        "gates",
+        "storage_id",
+        "replica_path",
+        "asset_id",
+        "replica_id",
+        "source_sha256",
+        "fingerprint",
     }
     assert set(AdmissionDecision.__dataclass_fields__) == allowed

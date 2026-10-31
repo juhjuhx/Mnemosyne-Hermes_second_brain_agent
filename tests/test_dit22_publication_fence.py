@@ -54,9 +54,21 @@ def _media(tmp_path: Path) -> Path:
     p = tmp_path / "m.mp4"
     proxy_generator._run_ffmpeg(
         "ffmpeg",
-        ["-y", "-hide_banner", "-loglevel", "error",
-         "-f", "lavfi", "-i", "testsrc=duration=0.3:size=160x120:rate=24",
-         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(p)],
+        [
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=0.3:size=160x120:rate=24",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            str(p),
+        ],
         60,
     )
     return p
@@ -67,13 +79,21 @@ def _catalog(tmp_path: Path, media: Path) -> Dit22Catalog:
     aid = asset_id_for_file(media)
     cat.upsert_asset(MediaAsset(source_sha256=aid))
     cat.add_replica(
-        Replica("r1", aid, "storage-a", "nas-a", str(media),
-                verified=True, verified_at=1)
+        Replica(
+            "r1", aid, "storage-a", "nas-a", str(media), verified=True, verified_at=1
+        )
     )
     cat.add_evidence(
-        VerificationEvidence("e1", aid, media.name, "sha256", aid,
-                             device_id="dev-a", verdict="PASS",
-                             replica_id="r1")
+        VerificationEvidence(
+            "e1",
+            aid,
+            media.name,
+            "sha256",
+            aid,
+            device_id="dev-a",
+            verdict="PASS",
+            replica_id="r1",
+        )
     )
     return cat
 
@@ -117,8 +137,13 @@ def test_formal_token_without_queue_is_fenced(tmp_path, monkeypatch):
     calls = _spy(monkeypatch)
     with pytest.raises(ProxyFencedError, match="queue"):
         proxy_generator.generate_proxy(
-            media, "browser", tmp_path / "out",
-            job_id=job, lease_token=tok, catalog=cat, storage_id="storage-a",
+            media,
+            "browser",
+            tmp_path / "out",
+            job_id=job,
+            lease_token=tok,
+            catalog=cat,
+            storage_id="storage-a",
         )
     assert calls == [], "the obligation must fire before any encode"
     assert not (tmp_path / "out" / ".staging").exists()
@@ -133,9 +158,15 @@ def test_formal_token_without_worker_is_fenced(tmp_path, monkeypatch):
     calls = _spy(monkeypatch)
     with pytest.raises(ProxyFencedError, match="worker"):
         proxy_generator.generate_proxy(
-            media, "browser", tmp_path / "out",
-            job_id=job, lease_token=tok, catalog=cat,
-            storage_id="storage-a", queue=q, worker=None,
+            media,
+            "browser",
+            tmp_path / "out",
+            job_id=job,
+            lease_token=tok,
+            catalog=cat,
+            storage_id="storage-a",
+            queue=q,
+            worker=None,
         )
     assert calls == []
 
@@ -157,9 +188,15 @@ def test_stale_worker_fenced_at_start(tmp_path, monkeypatch):
     calls = _spy(monkeypatch)
     with pytest.raises(ProxyFencedError, match="live lease"):
         proxy_generator.generate_proxy(
-            media, "browser", tmp_path / "out",
-            job_id=job, lease_token=tok_a, catalog=cat,
-            storage_id="storage-a", queue=q, worker="wA",
+            media,
+            "browser",
+            tmp_path / "out",
+            job_id=job,
+            lease_token=tok_a,
+            catalog=cat,
+            storage_id="storage-a",
+            queue=q,
+            worker="wA",
         )
     assert calls == []
     assert not (tmp_path / "out" / ".staging").exists()
@@ -180,8 +217,9 @@ def test_lease_lost_mid_encode_fences_publish(tmp_path, monkeypatch):
     tok_a = q.lease(job, "wA")
     # a reference proxy (real encode, ad-hoc isolated) to copy into
     # the zombie's staging slot so the verify gate passes:
-    ref = proxy_generator.generate_proxy(media, "browser", tmp_path / "ref",
-                                         test_mode=True)
+    ref = proxy_generator.generate_proxy(
+        media, "browser", tmp_path / "ref", test_mode=True
+    )
     ref_bytes = Path(ref.path).read_bytes()
 
     def fake(ff_bin, args, timeout_s):
@@ -196,9 +234,15 @@ def test_lease_lost_mid_encode_fences_publish(tmp_path, monkeypatch):
     monkeypatch.setattr(proxy_generator, "_run_ffmpeg", fake)
     with pytest.raises(ProxyFencedError, match="publish"):
         proxy_generator.generate_proxy(
-            media, "browser", out,
-            job_id=job, lease_token=tok_a, catalog=cat,
-            storage_id="storage-a", queue=q, worker="wA",
+            media,
+            "browser",
+            out,
+            job_id=job,
+            lease_token=tok_a,
+            catalog=cat,
+            storage_id="storage-a",
+            queue=q,
+            worker="wA",
         )
     # nothing published by the zombie:
     assert not (out / f"{job}__m__browser.mp4").exists()
@@ -222,8 +266,15 @@ def test_healthy_artifact_without_receipt_is_fenced(tmp_path):
     out = tmp_path / "out"
     tok_a = q.lease(job, "wA")
     r_a = proxy_generator.generate_proxy(
-        media, "browser", out, job_id=job, lease_token=tok_a,
-        catalog=cat, storage_id="storage-a", queue=q, worker="wA",
+        media,
+        "browser",
+        out,
+        job_id=job,
+        lease_token=tok_a,
+        catalog=cat,
+        storage_id="storage-a",
+        queue=q,
+        worker="wA",
     )
     target = Path(r_a.path)
     healthy_hash = _sha256_file(target)
@@ -233,8 +284,15 @@ def test_healthy_artifact_without_receipt_is_fenced(tmp_path):
     tok_b = q.lease(job, "wB")  # the NEW live holder
     with pytest.raises(ProxyFencedError, match="healthy artifact"):
         proxy_generator.generate_proxy(
-            media, "browser", out, job_id=job, lease_token=tok_b,
-            catalog=cat, storage_id="storage-a", queue=q, worker="wB",
+            media,
+            "browser",
+            out,
+            job_id=job,
+            lease_token=tok_b,
+            catalog=cat,
+            storage_id="storage-a",
+            queue=q,
+            worker="wB",
         )
     # the healthy artifact survived byte-identical:
     assert _sha256_file(target) == healthy_hash
@@ -257,8 +315,15 @@ def test_foreign_job_receipt_is_fenced(tmp_path, monkeypatch):
     tok = q.lease(job, "w1")
     with pytest.raises(ProxyFencedError, match="does not attribute"):
         proxy_generator.generate_proxy(
-            media, "browser", out, job_id=job, lease_token=tok,
-            catalog=cat, storage_id="storage-a", queue=q, worker="w1",
+            media,
+            "browser",
+            out,
+            job_id=job,
+            lease_token=tok,
+            catalog=cat,
+            storage_id="storage-a",
+            queue=q,
+            worker="w1",
         )
     assert (out / slot).read_bytes() == b"foreign-artifact"
 
@@ -275,8 +340,15 @@ def test_undecodable_receipt_is_fenced(tmp_path, monkeypatch):
     tok = q.lease(job, "w1")
     with pytest.raises(ProxyFencedError, match="undecodable receipt"):
         proxy_generator.generate_proxy(
-            media, "browser", out, job_id=job, lease_token=tok,
-            catalog=cat, storage_id="storage-a", queue=q, worker="w1",
+            media,
+            "browser",
+            out,
+            job_id=job,
+            lease_token=tok,
+            catalog=cat,
+            storage_id="storage-a",
+            queue=q,
+            worker="w1",
         )
     # nothing was written to the slot:
     assert not (out / slot).exists()
@@ -300,8 +372,15 @@ def test_receipt_missing_job_id_key_is_fenced(tmp_path, monkeypatch):
     tok = q.lease(job, "w1")
     with pytest.raises(ProxyFencedError, match="no `job_id` key"):
         proxy_generator.generate_proxy(
-            media, "browser", out, job_id=job, lease_token=tok,
-            catalog=cat, storage_id="storage-a", queue=q, worker="w1",
+            media,
+            "browser",
+            out,
+            job_id=job,
+            lease_token=tok,
+            catalog=cat,
+            storage_id="storage-a",
+            queue=q,
+            worker="w1",
         )
     assert not (out / slot).exists()
 
@@ -323,8 +402,15 @@ def test_adhoc_receipt_under_formal_slot_is_fenced(tmp_path, monkeypatch):
     tok = q.lease(job, "w1")
     with pytest.raises(ProxyFencedError, match="does not attribute"):
         proxy_generator.generate_proxy(
-            media, "browser", out, job_id=job, lease_token=tok,
-            catalog=cat, storage_id="storage-a", queue=q, worker="w1",
+            media,
+            "browser",
+            out,
+            job_id=job,
+            lease_token=tok,
+            catalog=cat,
+            storage_id="storage-a",
+            queue=q,
+            worker="w1",
         )
     assert (out / slot).read_bytes() == b"adhoc-artifact"
 
@@ -341,18 +427,31 @@ def test_live_rotation_supersedes_stale_generation(tmp_path):
     out = tmp_path / "out"
     tok_a = q.lease(job, "wA")
     r1 = proxy_generator.generate_proxy(
-        media, "browser", out, job_id=job, lease_token=tok_a,
-        catalog=cat, storage_id="storage-a", queue=q, worker="wA",
+        media,
+        "browser",
+        out,
+        job_id=job,
+        lease_token=tok_a,
+        catalog=cat,
+        storage_id="storage-a",
+        queue=q,
+        worker="wA",
     )
     _expire(q, job)
     tok_b = q.lease(job, "wB")  # takeover
     r2 = proxy_generator.generate_proxy(
-        media, "browser", out, job_id=job, lease_token=tok_b,
-        catalog=cat, storage_id="storage-a", queue=q, worker="wB",
+        media,
+        "browser",
+        out,
+        job_id=job,
+        lease_token=tok_b,
+        catalog=cat,
+        storage_id="storage-a",
+        queue=q,
+        worker="wB",
     )
     receipt = json.loads(
-        Path(r2.path).with_name(Path(r2.path).name + ".receipt.json")
-        .read_text()
+        Path(r2.path).with_name(Path(r2.path).name + ".receipt.json").read_text()
     )
     assert receipt["lease_token"] == tok_b
     assert r2.proxy_sha256 == _sha256_file(Path(r2.path))
@@ -372,18 +471,31 @@ def test_same_token_reentry_still_replaces(tmp_path):
     out = tmp_path / "out"
     tok = q.lease(job, "w1")
     r1 = proxy_generator.generate_proxy(
-        media, "browser", out, job_id=job, lease_token=tok,
-        catalog=cat, storage_id="storage-a", queue=q, worker="w1",
+        media,
+        "browser",
+        out,
+        job_id=job,
+        lease_token=tok,
+        catalog=cat,
+        storage_id="storage-a",
+        queue=q,
+        worker="w1",
     )
     r2 = proxy_generator.generate_proxy(
-        media, "browser", out, job_id=job, lease_token=tok,
-        catalog=cat, storage_id="storage-a", queue=q, worker="w1",
+        media,
+        "browser",
+        out,
+        job_id=job,
+        lease_token=tok,
+        catalog=cat,
+        storage_id="storage-a",
+        queue=q,
+        worker="w1",
     )
     assert Path(r2.path).exists()
     assert r1.path == r2.path
     receipt = json.loads(
-        Path(r2.path).with_name(Path(r2.path).name + ".receipt.json")
-        .read_text()
+        Path(r2.path).with_name(Path(r2.path).name + ".receipt.json").read_text()
     )
     assert receipt["lease_token"] == tok
 
@@ -421,8 +533,15 @@ def test_zombie_staging_residue_swept_after_live_publish(tmp_path):
     _expire(q, job)
     tok_b = q.lease(job, "wB")
     r2 = proxy_generator.generate_proxy(
-        media, "browser", out, job_id=job, lease_token=tok_b,
-        catalog=cat, storage_id="storage-a", queue=q, worker="wB",
+        media,
+        "browser",
+        out,
+        job_id=job,
+        lease_token=tok_b,
+        catalog=cat,
+        storage_id="storage-a",
+        queue=q,
+        worker="wB",
     )
     assert r2.path
     assert not gen_a.exists(), "zombie residue must be discarded by the live holder"

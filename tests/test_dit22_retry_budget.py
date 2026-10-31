@@ -83,9 +83,7 @@ def test_r2_backoff_is_deterministic_exponential(queue, tmp_path):
 def test_r3_irreversible_still_refuses_all_retries(queue, tmp_path):
     from job_queue import IrreversibleRetryError
 
-    row = queue.enqueue(
-        "job", idempotency_key="k3", reversible=False, max_attempts=3
-    )
+    row = queue.enqueue("job", idempotency_key="k3", reversible=False, max_attempts=3)
     jid = row["job_id"]
     _fail_cycle(queue, jid)
     with pytest.raises(IrreversibleRetryError):
@@ -128,9 +126,7 @@ def test_r4_v1_databases_migrate_transparently(tmp_path):
 
     q = DurableJobQueue(db)
     try:
-        cols = [
-            r[1] for r in q.conn.execute("PRAGMA table_info(dit22_job)")
-        ]
+        cols = [r[1] for r in q.conn.execute("PRAGMA table_info(dit22_job)")]
         assert "max_attempts" in cols and "retry_count" in cols
         row = q.job_state("j-old")
         assert row["max_attempts"] is None  # legacy default: unbounded
@@ -172,8 +168,10 @@ def test_c2_capacity_passes_with_margin(tmp_path):
         total = 10_000
 
     res = check_capacity(
-        _Probe(), estimated_staging_bytes=200,
-        estimated_output_bytes=150, safety_factor=1.0,
+        _Probe(),
+        estimated_staging_bytes=200,
+        estimated_output_bytes=150,
+        safety_factor=1.0,
     )
     assert res.ok is True
     assert res.required_bytes == 350  # staging + output
@@ -192,18 +190,26 @@ def test_c3_safety_factor_inflates_the_requirement(tmp_path):
 
     with pytest.raises(CapacityShortError):
         check_capacity(
-            _Probe(), estimated_staging_bytes=500,
-            estimated_output_bytes=50, safety_factor=1.0,
+            _Probe(),
+            estimated_staging_bytes=500,
+            estimated_output_bytes=50,
+            safety_factor=1.0,
         )
+
     # with headroom it passes:
     class _BigProbe:
         free = 600
         total = 10_000
 
-    assert check_capacity(
-        _BigProbe(), estimated_staging_bytes=500,
-        estimated_output_bytes=50, safety_factor=1.0,
-    ).ok is True
+    assert (
+        check_capacity(
+            _BigProbe(),
+            estimated_staging_bytes=500,
+            estimated_output_bytes=50,
+            safety_factor=1.0,
+        ).ok
+        is True
+    )
 
 
 def test_c4_free_space_probe_reads_real_disk(tmp_path):
@@ -225,12 +231,14 @@ def test_c5_advisory_15pct_census_threshold_never_blocks(tmp_path):
     from capacity_gate import check_capacity
 
     class _Probe:
-        free = int(0.10 * 10_000_000_000)   # 10% of a 10 GB vol
+        free = int(0.10 * 10_000_000_000)  # 10% of a 10 GB vol
         total = 10_000_000_000
 
     res = check_capacity(
-        _Probe(), estimated_staging_bytes=1_000,
-        estimated_output_bytes=900, safety_factor=1.0,
+        _Probe(),
+        estimated_staging_bytes=1_000,
+        estimated_output_bytes=900,
+        safety_factor=1.0,
     )
     assert res.ok is True
     assert res.advisory_low_space is True  # flagged, not blocked
@@ -250,7 +258,8 @@ def test_c6_estimated_output_never_zero_floors(tmp_path):
     # 5 staging + floor => required >> 100 free => blocked:
     with pytest.raises(CapacityShortError):
         check_capacity(
-            _TinyVol(), estimated_staging_bytes=5,
-            estimated_output_bytes=0, safety_factor=1.0,
+            _TinyVol(),
+            estimated_staging_bytes=5,
+            estimated_output_bytes=0,
+            safety_factor=1.0,
         )
-
