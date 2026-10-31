@@ -73,15 +73,20 @@ def test_p3b_protected_source_inside_rejected(tmp_path: Path):
 
 
 def test_p4_symlink_alias_of_source_dir_rejected(tmp_path: Path):
-    # macOS: /tmp -> /private/tmp (real symlink alias). An out_dir that
-    # alias-normalizes onto the source's own directory => the "same"
-    # rule fires (realpath equality), regardless of which alias was
-    # supplied. The source file need not exist (string/realpath logic).
-    src_file = "/private/tmp/somesomefile.bin"
-    out_alias = "/tmp"
-    assert os.path.realpath(out_alias) == "/private/tmp"
+    # Portable cross-host (macOS + Linux) version of the macOS
+    # `/tmp` -> `/private/tmp` alias case: build a REAL source dir and
+    # a REAL symlink alias of that dir, then assert that an out_dir
+    # supplied through the alias still alias-normalizes onto the
+    # source's own directory, so the "same" rule fires (realpath
+    # equality), regardless of which alias was supplied. No hard-coded
+    # /tmp <-> /private/tmp equivalence (that is a macOS-only fact).
+    src_dir = tmp_path / "reel_dir"
+    src_dir.mkdir()
+    out_alias = tmp_path / "alias"
+    out_alias.symlink_to(src_dir)  # symlink alias -> real source dir
+    assert os.path.realpath(str(out_alias)) == os.path.realpath(str(src_dir))
     with pytest.raises(PathIsolationError) as exc:
-        check_path_isolation(src_file, out_alias)
+        check_path_isolation(str(src_dir / "somesomefile.bin"), str(out_alias))
     assert "SAME" in str(exc.value)
 
 
@@ -146,8 +151,16 @@ def test_p9_windows_reserved_names_detected():
 # ── same_path helper (case-insensitive, alias-normalized) ──────────
 
 
-def test_p10_same_path_case_and_alias_insensitive():
+def test_p10_same_path_case_and_alias_insensitive(tmp_path: Path):
     assert same_path("/Volumes/VOL/a.mov", "/volumes/vol/a.mov") is True
-    # realpath aliasing:
-    assert same_path("/tmp/x", "/private/tmp/x") is True
+    # Symlink alias normalization via a REAL, verifiable symlink (portable
+    # cross-host — does NOT assume the macOS-only /tmp <-> /private/tmp
+    # fact). Build a real dir + a real symlink alias of it, and confirm
+    # same_path() treats both spellings as the same path.
+    real_dir = tmp_path / "realdir"
+    real_dir.mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(real_dir)
+    assert same_path(str(alias / "clip.mov"), str(real_dir / "clip.mov")) is True
+    # Negative (retained): a different path is NOT the same path.
     assert same_path("/a/b", "/a/c") is False
